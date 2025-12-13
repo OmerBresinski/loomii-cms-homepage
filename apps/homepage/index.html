@@ -113,39 +113,134 @@
           <!-- Features Bento Grid -->
           <div id="features" class="grid grid-cols-1 md:grid-cols-3">
             <!-- Hero Card -->
-            <div class="md:row-span-2 p-8 md:p-10 border-b md:border-b-0 md:border-r border-white/10 flex flex-col justify-center bg-[#0a0a0a]">
-              <h2 class="text-3xl md:text-4xl font-bold mb-4">Your Content, Empowered.</h2>
-              <p class="text-gray-400 text-lg leading-relaxed">
-                Security, speed, and AI included, so you can focus on your users.
-              </p>
+            <div class="md:row-span-2 p-8 md:p-10 border-b md:border-b-0 md:border-r border-white/10 flex flex-col justify-between bg-[#0a0a0a]">
+              <div>
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Your Content, Empowered.</h2>
+                <p class="text-gray-400 text-lg leading-relaxed">
+                  Security, speed, and AI included, so you can focus on your users.
+                </p>
+              </div>
+              <!-- Visual: AI thinking animation -->
+              <div class="mt-6 p-4 bg-[#111] rounded-lg border border-white/10">
+                <div class="flex items-center gap-2 mb-3">
+                  <div class="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                  </div>
+                  <span class="text-sm text-gray-400">Analyzing page...</span>
+                </div>
+                <div class="space-y-2">
+                  <div class="h-2 bg-white/5 rounded w-full overflow-hidden"><div class="h-full w-3/4 bg-gradient-to-r from-violet-500/50 to-fuchsia-500/50 rounded"></div></div>
+                  <div class="h-2 bg-white/5 rounded w-2/3"></div>
+                </div>
+              </div>
             </div>
             
-            <!-- Feature 1 -->
-            <div class="p-8 border-b md:border-r border-white/10 bg-[#0a0a0a] hover:bg-[#111] transition-colors group relative overflow-hidden">
+            <!-- Feature 1: Site Analysis -->
+            <div class="p-6 border-b md:border-r border-white/10 bg-[#0a0a0a] hover:bg-[#111] transition-colors group relative overflow-hidden">
               <div class="absolute top-0 left-0 w-full h-px bg-white/30 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-              <h3 class="text-xl font-semibold mb-3">Site Analysis</h3>
-              <p class="text-gray-400 text-sm leading-relaxed">AI navigates and parses your live deployment to identify editable elements automatically.</p>
+              <h3 class="text-lg font-semibold mb-2">Site Analysis</h3>
+              <p class="text-gray-400 text-xs leading-relaxed mb-4">AI navigates and parses your live deployment to identify editable elements.</p>
+              <!-- Visual: Detected elements tree -->
+              <div class="space-y-1.5 font-mono text-[10px]">
+                <div class="flex items-center gap-2">
+                  <span class="text-cyan-400">├</span>
+                  <span class="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded">hero</span>
+                  <span class="text-gray-600">h1, p, button</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-emerald-400">├</span>
+                  <span class="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">nav</span>
+                  <span class="text-gray-600">5 links</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-amber-400">├</span>
+                  <span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">features</span>
+                  <span class="text-gray-600">4 cards</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-fuchsia-400">└</span>
+                  <span class="px-1.5 py-0.5 bg-fuchsia-500/20 text-fuchsia-400 rounded">footer</span>
+                  <span class="text-gray-600">3 sections</span>
+                </div>
+              </div>
             </div>
             
-            <!-- Feature 2 -->
-            <div class="p-8 border-b border-white/10 bg-[#0a0a0a] hover:bg-[#111] transition-colors group relative overflow-hidden">
+            <!-- Feature 2: Intuitive Editing -->
+            <div class="p-6 pb-0 border-b border-white/10 bg-[#0a0a0a] hover:bg-[#111] transition-colors group relative overflow-hidden">
               <div class="absolute top-0 left-0 w-full h-px bg-white/30 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-              <h3 class="text-xl font-semibold mb-3">Intuitive Editing</h3>
-              <p class="text-gray-400 text-sm leading-relaxed">WYSIWYG tools for text, images, and layouts. Non-devs make changes with ease.</p>
+              <h3 class="text-lg font-semibold mb-2">Intuitive Editing</h3>
+              <p class="text-gray-400 text-xs leading-relaxed mb-4">WYSIWYG tools for text, images, and layouts. Non-devs make changes with ease.</p>
+              <!-- Visual: Editor window popping from bottom -->
+              <div class="bg-[#161616] rounded-t-lg border border-b-0 border-white/10 translate-y-2">
+                <div class="flex items-center gap-1.5 px-3 py-2 border-b border-white/10">
+                  <div class="w-2 h-2 rounded-full bg-white/20"></div>
+                  <div class="w-2 h-2 rounded-full bg-white/20"></div>
+                  <div class="w-2 h-2 rounded-full bg-white/20"></div>
+                  <span class="ml-2 text-[10px] text-gray-500">Edit content</span>
+                </div>
+                <div class="p-3">
+                  <div class="flex gap-1 mb-3">
+                    <div class="px-2 py-1 bg-white/10 rounded text-[10px] text-gray-400 font-bold">B</div>
+                    <div class="px-2 py-1 bg-white/10 rounded text-[10px] text-gray-400 italic">I</div>
+                    <div class="px-2 py-1 bg-white/10 rounded text-[10px] text-gray-400 underline">U</div>
+                    <div class="w-px bg-white/10 mx-1"></div>
+                    <div class="px-1.5 py-1 bg-white/10 rounded flex flex-col gap-0.5 justify-center">
+                      <div class="w-3 h-px bg-gray-400"></div>
+                      <div class="w-2 h-px bg-gray-400"></div>
+                      <div class="w-3 h-px bg-gray-400"></div>
+                    </div>
+                    <div class="px-1.5 py-1 bg-white/10 rounded flex flex-col gap-0.5 justify-center items-center">
+                      <div class="w-3 h-px bg-gray-400"></div>
+                      <div class="w-2 h-px bg-gray-400"></div>
+                      <div class="w-3 h-px bg-gray-400"></div>
+                    </div>
+                    <div class="px-1.5 py-1 bg-white/10 rounded flex flex-col gap-0.5 justify-center items-end">
+                      <div class="w-3 h-px bg-gray-400"></div>
+                      <div class="w-2 h-px bg-gray-400"></div>
+                      <div class="w-3 h-px bg-gray-400"></div>
+                    </div>
+                  </div>
+                  <div class="space-y-1.5">
+                    <div class="h-2.5 bg-white/10 rounded w-full"></div>
+                    <div class="h-2.5 bg-white/20 rounded w-3/4"></div>
+                    <div class="h-2.5 bg-white/10 rounded w-5/6"></div>
+                  </div>
+                </div>
+              </div>
             </div>
             
-            <!-- Feature 3 -->
-            <div class="p-8 border-b md:border-r border-white/10 bg-[#0a0a0a] hover:bg-[#111] transition-colors group relative overflow-hidden">
+            <!-- Feature 3: PR Automation -->
+            <div class="p-6 border-b md:border-r border-white/10 bg-[#0a0a0a] hover:bg-[#111] transition-colors group relative overflow-hidden">
               <div class="absolute top-0 left-0 w-full h-px bg-white/30 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-              <h3 class="text-xl font-semibold mb-3">PR Automation</h3>
-              <p class="text-gray-400 text-sm leading-relaxed">Every edit generates a GitHub pull request with diffs and summaries.</p>
+              <h3 class="text-lg font-semibold mb-2">PR Automation</h3>
+              <p class="text-gray-400 text-xs leading-relaxed mb-4">Every edit generates a GitHub pull request with diffs and summaries.</p>
+              <!-- Visual: PR notification -->
+              <div class="bg-[#111] rounded border border-white/10 p-3">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center">
+                    <svg class="w-2.5 h-2.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+                  </div>
+                  <span class="text-[10px] text-emerald-400 font-medium">Ready to merge</span>
+                </div>
+                <div class="text-[10px] text-gray-500 font-mono">#142 Update hero section</div>
+              </div>
             </div>
             
-            <!-- Feature 4 -->
-            <div class="p-8 border-b border-white/10 bg-[#0a0a0a] hover:bg-[#111] transition-colors group relative overflow-hidden">
+            <!-- Feature 4: Any Framework -->
+            <div class="p-6 border-b border-white/10 bg-[#0a0a0a] hover:bg-[#111] transition-colors group relative overflow-hidden">
               <div class="absolute top-0 left-0 w-full h-px bg-white/30 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-              <h3 class="text-xl font-semibold mb-3">Any Framework</h3>
-              <p class="text-gray-400 text-sm leading-relaxed">Works with Next.js, React, Vue, Svelte, or static HTML sites.</p>
+              <h3 class="text-lg font-semibold mb-2">Any Framework</h3>
+              <p class="text-gray-400 text-xs leading-relaxed mb-4">Works with Next.js, React, Vue, Svelte, or static HTML sites.</p>
+              <!-- Visual: Framework badges -->
+              <div class="flex flex-wrap gap-1.5">
+                <div class="px-2 py-1 bg-white/5 border border-white/10 rounded text-[10px] text-gray-400 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-white"></span>Next
+                </div>
+                <div class="px-2 py-1 bg-[#61DAFB]/10 border border-[#61DAFB]/30 rounded text-[10px] text-[#61DAFB]">React</div>
+                <div class="px-2 py-1 bg-[#4FC08D]/10 border border-[#4FC08D]/30 rounded text-[10px] text-[#4FC08D]">Vue</div>
+                <div class="px-2 py-1 bg-[#FF3E00]/10 border border-[#FF3E00]/30 rounded text-[10px] text-[#FF3E00]">Svelte</div>
+                <div class="px-2 py-1 bg-[#E34F26]/10 border border-[#E34F26]/30 rounded text-[10px] text-[#E34F26]">HTML</div>
+              </div>
             </div>
           </div>
 
