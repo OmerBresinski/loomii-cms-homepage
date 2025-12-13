@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "pnpm turbo build --filter=@ai-cms/web",
+  "outputDirectory": "dist",
+  "installCommand": "pnpm install",
+  "ignoreCommand": "npx turbo-ignore"
+}
+
