@@ -7,6 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
+        primary: {
+          DEFAULT: 'rgb(var(--color-primary) / <alpha-value>)',
+          hover: 'rgb(var(--color-primary) / 0.8)',
+        },
+        secondary: {
+          DEFAULT: 'rgb(var(--color-secondary) / <alpha-value>)',
+        },
         background: "#000000",
         foreground: "#ffffff",
         muted: "#888888",
@@ -26,4 +33,3 @@ export default {
   },
   plugins: [],
 }
-
