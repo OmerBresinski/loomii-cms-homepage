@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-CMS | Edit content. Ship as code.</title>
+    <meta name="description" content="Add a CMS to any live site in minutes. AI analyzes your pages, you edit visually, changes become pull requests." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body class="bg-[#0a0a0a] text-white antialiased">
+    
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-md">
+      <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-2 font-semibold text-lg hover:opacity-80 transition-opacity">
+          <div class="w-7 h-7 bg-white rounded flex items-center justify-center">
+            <span class="text-black text-xs font-bold">AI</span>
+          </div>
+          <span>CMS</span>
+        </a>
+        <div class="hidden md:flex items-center gap-8 text-sm text-gray-400">
+          <a href="#features" class="hover:text-white transition-colors">Features</a>
+          <a href="#how-it-works" class="hover:text-white transition-colors">How it Works</a>
+          <a href="https://github.com/ai-cms/ai-cms" target="_blank" class="hover:text-white transition-colors">GitHub</a>
+        </div>
+        <a href="/dashboard" class="px-4 py-2 bg-white text-black text-sm font-medium rounded-md hover:bg-gray-200 transition-colors">
+          Get Started
+        </a>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-32 pb-20 md:pt-40 md:pb-28">
+      <div class="max-w-6xl mx-auto px-6 text-center">
+        <div class="inline-block px-3 py-1 bg-white/10 text-white/70 text-xs font-medium rounded-full mb-8 border border-white/10">
+          Now in Public Beta
+        </div>
+        
+        <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
+          Edit content.<br />
+          <span class="text-gray-500">Ship as code.</span>
+        </h1>
+
+        <p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10">
+          Add a CMS to any live site in minutes. AI analyzes your pages, you edit visually, changes become pull requests.
+        </p>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <a href="/dashboard" class="h-12 px-8 flex items-center justify-center bg-white text-black font-medium rounded-md hover:bg-gray-200 transition-colors w-full sm:w-auto">
+            Get Started
+          </a>
+          <a href="#how-it-works" class="h-12 px-8 flex items-center justify-center border border-white/20 text-white font-medium rounded-md hover:bg-white/5 transition-colors w-full sm:w-auto">
+            See How It Works
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Logos -->
+    <section class="py-12 border-y border-white/10">
+      <div class="max-w-6xl mx-auto px-6">
+        <p class="text-center text-gray-500 text-sm mb-6">Works with your stack</p>
+        <div class="flex flex-wrap justify-center items-center gap-8 md:gap-12 text-gray-500">
+          <span class="text-sm font-medium hover:text-white transition-colors">Next.js</span>
+          <span class="text-sm font-medium hover:text-white transition-colors">React</span>
+          <span class="text-sm font-medium hover:text-white transition-colors">Vue</span>
+          <span class="text-sm font-medium hover:text-white transition-colors">Svelte</span>
+          <span class="text-sm font-medium hover:text-white transition-colors">Astro</span>
+          <span class="text-sm font-medium hover:text-white transition-colors">HTML</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="py-24">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="text-center max-w-2xl mx-auto mb-16">
+          <h2 class="text-3xl md:text-4xl font-bold mb-4">Your Content, Empowered.</h2>
+          <p class="text-gray-400 text-lg">
+            Security, speed, and flexibility included.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/10 rounded-lg overflow-hidden">
+          <!-- Feature 1 -->
+          <div class="bg-[#0a0a0a] p-8 hover:bg-white/[0.02] transition-colors">
+            <h3 class="text-lg font-semibold mb-3">Site Analysis</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">AI navigates and parses your live deployment to identify editable elements—building an adaptive interface automatically.</p>
+          </div>
+          
+          <!-- Feature 2 -->
+          <div class="bg-[#0a0a0a] p-8 hover:bg-white/[0.02] transition-colors">
+            <h3 class="text-lg font-semibold mb-3">Intuitive Editing</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">WYSIWYG tools for text, images, and layouts. Non-devs make changes that AI translates into precise code updates.</p>
+          </div>
+          
+          <!-- Feature 3 -->
+          <div class="bg-[#0a0a0a] p-8 hover:bg-white/[0.02] transition-colors">
+            <h3 class="text-lg font-semibold mb-3">PR Automation</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">Every edit generates a detailed GitHub pull request with diffs and summaries. Developers approve, not build from scratch.</p>
+          </div>
+          
+          <!-- Feature 4 -->
+          <div class="bg-[#0a0a0a] p-8 hover:bg-white/[0.02] transition-colors">
+            <h3 class="text-lg font-semibold mb-3">Framework Agnostic</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">Works with Next.js, React, Vue, Svelte, or static sites. Infers structure from your repo and URL.</p>
+          </div>
+          
+          <!-- Feature 5 -->
+          <div class="bg-[#0a0a0a] p-8 hover:bg-white/[0.02] transition-colors">
+            <h3 class="text-lg font-semibold mb-3">Team Collaboration</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">Role-based access for editors and approvers, with notifications and staging environments for safe testing.</p>
+          </div>
+          
+          <!-- Feature 6 -->
+          <div class="bg-[#0a0a0a] p-8 hover:bg-white/[0.02] transition-colors">
+            <h3 class="text-lg font-semibold mb-3">Preview Changes</h3>
+            <p class="text-gray-400 text-sm leading-relaxed">See your edits live in a staging environment before they go to production. Catch issues early.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="py-24 border-t border-white/10">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="text-center max-w-2xl mx-auto mb-16">
+          <h2 class="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+          <p class="text-gray-400 text-lg">Four steps. Five minutes. Full CMS.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div class="relative">
+            <div class="text-5xl font-bold text-white/10 mb-4">01</div>
+            <h3 class="text-lg font-semibold mb-2">Connect</h3>
+            <p class="text-gray-400 text-sm">Link your GitHub repo and deployment URL.</p>
+          </div>
+          <div class="relative">
+            <div class="text-5xl font-bold text-white/10 mb-4">02</div>
+            <h3 class="text-lg font-semibold mb-2">Analyze</h3>
+            <p class="text-gray-400 text-sm">AI scans your site and maps editable content.</p>
+          </div>
+          <div class="relative">
+            <div class="text-5xl font-bold text-white/10 mb-4">03</div>
+            <h3 class="text-lg font-semibold mb-2">Edit</h3>
+            <p class="text-gray-400 text-sm">Make changes in the visual editor.</p>
+          </div>
+          <div class="relative">
+            <div class="text-5xl font-bold text-white/10 mb-4">04</div>
+            <h3 class="text-lg font-semibold mb-2">Ship</h3>
+            <p class="text-gray-400 text-sm">Approve the PR. Changes go live.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Code Example -->
+    <section class="py-24 border-t border-white/10">
+      <div class="max-w-6xl mx-auto px-6">
+        <div class="grid lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <h2 class="text-3xl md:text-4xl font-bold mb-6">Content as Code</h2>
+            <p class="text-gray-400 text-lg mb-8 leading-relaxed">
+              Every change is a git commit. Every update is a pull request. Your content history is your git history.
+            </p>
+            <ul class="space-y-3 text-gray-300">
+              <li class="flex items-center gap-3">
+                <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
+                Full version control
+              </li>
+              <li class="flex items-center gap-3">
+                <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
+                Rollback any change
+              </li>
+              <li class="flex items-center gap-3">
+                <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
+                Branch-based workflows
+              </li>
+              <li class="flex items-center gap-3">
+                <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
+                CI/CD integration
+              </li>
+            </ul>
+          </div>
+          <div class="bg-[#111] border border-white/10 rounded-lg p-6 font-mono text-sm shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_4px_24px_rgba(0,0,0,0.5)]">
+            <div class="flex gap-2 mb-4">
+              <div class="w-3 h-3 rounded-full bg-white/20"></div>
+              <div class="w-3 h-3 rounded-full bg-white/20"></div>
+              <div class="w-3 h-3 rounded-full bg-white/20"></div>
+            </div>
+            <pre class="text-gray-400 overflow-x-auto"><code><span class="text-gray-600">// PR #142: Update hero headline</span>
+
+<span class="text-red-400">- </span><span class="text-gray-500">&lt;h1&gt;</span>Welcome to our site<span class="text-gray-500">&lt;/h1&gt;</span>
+<span class="text-green-400">+ </span><span class="text-gray-500">&lt;h1&gt;</span>Build faster with AI<span class="text-gray-500">&lt;/h1&gt;</span>
+
+<span class="text-gray-600">// Generated by AI-CMS</span>
+<span class="text-gray-600">// Edited by: sarah@company.com</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-24 border-t border-white/10">
+      <div class="max-w-2xl mx-auto px-6 text-center">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Start shipping content today.</h2>
+        <p class="text-gray-400 text-lg mb-10">
+          No credit card required. Works with any framework.
+        </p>
+        <a href="/dashboard" class="inline-flex items-center justify-center h-12 px-8 bg-white text-black font-medium rounded-md hover:bg-gray-200 transition-colors">
+          Get Started Free
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ml-2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 border-t border-white/10">
+      <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-2 text-sm text-gray-500">
+          <div class="w-5 h-5 bg-white rounded flex items-center justify-center">
+            <span class="text-black text-[8px] font-bold">AI</span>
+          </div>
+          <span>AI-CMS</span>
+        </div>
+        <div class="flex gap-6 text-sm text-gray-500">
+          <a href="#" class="hover:text-white transition-colors">Privacy</a>
+          <a href="#" class="hover:text-white transition-colors">Terms</a>
+          <a href="#" class="hover:text-white transition-colors">GitHub</a>
+        </div>
+        <div class="text-sm text-gray-600">
+          © 2025 AI-CMS
+        </div>
+      </div>
+    </footer>
+
+  </body>
+</html>
