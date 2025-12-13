@@ -99,3 +99,4 @@ export const analysisWorkflow = createWorkflow({
 
 export type AnalysisWorkflowInput = z.infer<typeof analysisInputSchema>;
 export type AnalysisWorkflowOutput = z.infer<typeof analysisOutputSchema>;
+

@@ -1,4 +1,4 @@
-import { GITHUB_API_VERSION } from "@ai-cms/shared";
+import { GITHUB_API_VERSION } from "../lib/constants";
 
 // GitHub API types
 interface GitHubUser {

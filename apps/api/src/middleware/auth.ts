@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
-import { prisma, validateSession } from "@ai-cms/db";
+import { prisma, validateSession } from "../db";
 import type { User, Session } from "@prisma/client";
 
 // Extend Hono context with user info

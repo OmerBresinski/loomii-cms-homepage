@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { prisma, createSession } from "@ai-cms/db";
-import { SESSION_MAX_AGE_SECONDS } from "@ai-cms/shared";
+import { prisma, createSession } from "../db";
+import { SESSION_MAX_AGE_SECONDS } from "../lib/constants";
 import {
   exchangeCodeForToken,
   getGitHubUser,

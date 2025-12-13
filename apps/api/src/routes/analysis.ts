@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { prisma } from "@ai-cms/db";
+import { prisma } from "../db";
 import { z } from "zod";
 import { requireAuth, requireProjectAccess } from "../middleware/auth";
-import { RATE_LIMIT_ANALYSIS_PER_HOUR } from "@ai-cms/shared";
+import { RATE_LIMIT_ANALYSIS_PER_HOUR } from "../lib/constants";
 
 const triggerAnalysisSchema = z.object({
   fullRescan: z.boolean().default(false),

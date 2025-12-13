@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { prisma } from "@ai-cms/db";
+import { prisma } from "../db";
 import {
   createEditSchema,
   submitEditSchema,
   paginationSchema,
-} from "@ai-cms/shared";
+} from "../lib/schemas";
 import { z } from "zod";
 import { requireAuth, requireProjectAccess } from "../middleware/auth";
 import {

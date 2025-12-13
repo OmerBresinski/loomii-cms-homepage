@@ -4,6 +4,13 @@ import { siteAnalyzerAgent } from "./agents/site-analyzer";
 import { codeGeneratorAgent } from "./agents/code-generator";
 import { analysisWorkflow } from "./workflows/analysis";
 
+// Re-export everything
+export * from "./agents/site-analyzer";
+export * from "./agents/code-generator";
+export * from "./tools/browser";
+export * from "./tools/github";
+export * from "./workflows/analysis";
+
 // Create the Mastra instance with all agents and workflows
 // Mastra uses the Vercel AI SDK under the hood, which reads from:
 // - AI_GATEWAY_API_KEY for Vercel AI Gateway access
@@ -19,3 +26,4 @@ export const mastra = new Mastra({
 });
 
 export type MastraInstance = typeof mastra;
+
