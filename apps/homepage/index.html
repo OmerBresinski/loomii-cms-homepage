@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
   </head>
-  <body class="bg-[#0a0a0a] text-white antialiased select-none">
+  <body class="bg-[#0a0a0a] text-white antialiased select-none overflow-x-hidden">
     
     <!-- Navigation -->
     <nav class="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-md">
@@ -121,7 +121,7 @@
                 </p>
               </div>
               <!-- Visual: Stacked AI tool stages (clickable) -->
-              <div id="scan-stack" class="absolute -bottom-6 left-20 right-8 h-48 cursor-pointer">
+              <div id="scan-stack" class="hidden md:block absolute -bottom-6 left-20 right-8 h-48 cursor-pointer">
                 <!-- Card 5: Complete -->
                 <div class="scan-card absolute inset-x-0 top-0 bg-[#111] rounded-lg border border-white/10 p-4 font-mono" data-index="4">
                   <div class="flex items-center justify-between mb-3">
@@ -428,7 +428,7 @@
           <div class="h-4 border-y border-white/10 bg-[#0a0a0a]"></div>
 
           <!-- Content as Code -->
-          <div class="border-t border-white/10 bg-[#0a0a0a]">
+          <div class="border-t border-white/10 bg-[#0a0a0a] overflow-hidden">
             <div class="grid grid-cols-1 lg:grid-cols-2">
               <div class="p-8 md:p-10 border-b lg:border-b-0 lg:border-r border-white/10">
                 <h2 class="text-2xl md:text-3xl font-bold mb-4">No Database. Just Git.</h2>
@@ -458,9 +458,9 @@
                   </div>
                 </div>
               </div>
-              <div class="p-8 md:p-10 flex items-center justify-center">
+              <div class="p-4 md:p-10 flex items-center justify-center overflow-hidden">
                 <!-- Stacking Cards Container -->
-                <div id="card-stack" class="relative w-full max-w-md h-56 cursor-pointer ml-8 mt-8">
+                <div id="card-stack" class="relative w-full max-w-md h-56 cursor-pointer ml-0 md:ml-8 mt-2 md:mt-8">
                   <!-- Card 10: SEO meta tags -->
                   <div class="code-card absolute top-0 left-0 right-0 bottom-0 bg-[#111] border border-white/10 rounded-lg overflow-hidden font-mono text-sm" data-index="9">
                     <div class="flex items-center gap-1.5 px-4 py-3 bg-[#0a0a0a] border-b border-white/10">
@@ -470,7 +470,7 @@
                       <span class="ml-3 text-xs text-gray-500">seo.tsx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">&lt;Head&gt;</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">&lt;Head&gt;</span>
 <span class="text-primary">-</span>  <span class="text-primary/70">&lt;title&gt;My Website&lt;/title&gt;</span>
 <span class="text-green-400">+</span>  <span class="text-green-400/70">&lt;title&gt;Loomii - AI CMS&lt;/title&gt;</span>
 <span class="text-primary">-</span>  <span class="text-primary/70">&lt;meta name="description" content="" /&gt;</span>
@@ -488,7 +488,7 @@
                       <span class="ml-3 text-xs text-gray-500">contact.tsx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">const contact = {</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">const contact = {</span>
 <span class="text-primary">-</span>  <span class="text-primary/70">email: "info@example.com",</span>
 <span class="text-green-400">+</span>  <span class="text-green-400/70">email: "hello@loomii.dev",</span>
 <span class="text-primary">-</span>  <span class="text-primary/70">phone: "+1 555-0100"</span>
@@ -506,7 +506,7 @@
                       <span class="ml-3 text-xs text-gray-500">faq.tsx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">const faqs = [</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">const faqs = [</span>
   <span class="text-gray-600">{ q: "How does it work?", a: "..." },</span>
 <span class="text-green-400">+</span> <span class="text-green-400/70">{ q: "Is it free?", a: "Yes, free tier available" },</span>
 <span class="text-gray-600">];</span></code></pre>
@@ -522,7 +522,7 @@
                       <span class="ml-3 text-xs text-gray-500">cta-banner.tsx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">&lt;Banner&gt;</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">&lt;Banner&gt;</span>
 <span class="text-primary">-</span>  <span class="text-primary/70">&lt;h2&gt;Sign up today&lt;/h2&gt;</span>
 <span class="text-green-400">+</span>  <span class="text-green-400/70">&lt;h2&gt;Start shipping content today&lt;/h2&gt;</span>
 <span class="text-primary">-</span>  <span class="text-primary/70">&lt;Button&gt;Learn more&lt;/Button&gt;</span>
@@ -540,7 +540,7 @@
                       <span class="ml-3 text-xs text-gray-500">testimonials.tsx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">const testimonials = [</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">const testimonials = [</span>
 <span class="text-green-400">+</span> <span class="text-green-400/70">{</span>
 <span class="text-green-400">+</span>   <span class="text-green-400/70">name: "Sarah Chen",</span>
 <span class="text-green-400">+</span>   <span class="text-green-400/70">role: "CTO at StartupXYZ",</span>
@@ -559,7 +559,7 @@
                       <span class="ml-3 text-xs text-gray-500">team.tsx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">const team = [</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">const team = [</span>
   <span class="text-gray-600">{ name: "Alex", role: "CEO" },</span>
 <span class="text-green-400">+</span> <span class="text-green-400/70">{ name: "Jordan", role: "CTO" },</span>
 <span class="text-green-400">+</span> <span class="text-green-400/70">{ name: "Sam", role: "Design Lead" },</span>
@@ -576,7 +576,7 @@
                       <span class="ml-3 text-xs text-gray-500">blog-post.mdx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">---</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">---</span>
 <span class="text-primary">-</span> <span class="text-primary/70">title: "Draft Post"</span>
 <span class="text-green-400">+</span> <span class="text-green-400/70">title: "Introducing Loomii CMS"</span>
 <span class="text-primary">-</span> <span class="text-primary/70">published: false</span>
@@ -594,7 +594,7 @@
                       <span class="ml-3 text-xs text-gray-500">pricing.tsx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">const plans = [{</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">const plans = [{</span>
   <span class="text-gray-600">name: "Pro",</span>
 <span class="text-primary">-</span>  <span class="text-primary/70">price: "$29/month",</span>
 <span class="text-green-400">+</span>  <span class="text-green-400/70">price: "$19/month",</span>
@@ -613,7 +613,7 @@
                       <span class="ml-3 text-xs text-gray-500">nav.tsx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">const navItems = [</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">const navItems = [</span>
   <span class="text-gray-600">{ label: "Features", href: "/features" },</span>
 <span class="text-green-400">+</span> <span class="text-green-400/70">{ label: "Pricing", href: "/pricing" },</span>
 <span class="text-green-400">+</span> <span class="text-green-400/70">{ label: "Docs", href: "/docs" },</span>
@@ -630,7 +630,7 @@
                       <span class="ml-3 text-xs text-gray-500">hero.tsx</span>
                     </div>
                     <div class="p-4">
-                      <pre class="text-gray-400 text-xs overflow-x-auto leading-relaxed"><code><span class="text-gray-600">&lt;section className="hero"&gt;</span>
+                      <pre class="text-gray-400 text-xs overflow-hidden leading-relaxed"><code><span class="text-gray-600">&lt;section className="hero"&gt;</span>
 <span class="text-primary">-</span>  <span class="text-primary/70">&lt;h1&gt;Welcome to our site&lt;/h1&gt;</span>
 <span class="text-green-400">+</span>  <span class="text-green-400/70">&lt;h1&gt;Edit content. Ship as code.&lt;/h1&gt;</span>
 <span class="text-primary">-</span>  <span class="text-primary/70">&lt;p&gt;We build things&lt;/p&gt;</span>
