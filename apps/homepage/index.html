@@ -281,34 +281,30 @@
           <div class="border-t border-white/10 bg-[#0a0a0a]">
             <div class="grid grid-cols-1 lg:grid-cols-2">
               <div class="p-8 md:p-10 border-b lg:border-b-0 lg:border-r border-white/10">
-                <h2 class="text-2xl md:text-3xl font-bold mb-4">Content as Code</h2>
-                <p class="text-gray-400 mb-6">
-                  Every change is a git commit. Every update is a pull request. Your content history is your git history.
+                <h2 class="text-2xl md:text-3xl font-bold mb-4">No Database. Just Git.</h2>
+                <p class="text-gray-400 mb-8">
+                  Your content lives in your repo. No external CMS, no vendor lock-in. You own everything.
                 </p>
-                <div class="grid grid-cols-2 gap-3 text-sm">
-                  <div class="flex items-center gap-2.5 text-gray-300">
-                    <span class="w-5 h-5 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <svg class="w-3 h-3 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    </span>
-                    Full version control
+                <!-- File in repo -->
+                <div class="bg-[#111] rounded border border-white/10 p-3 font-mono text-[11px]">
+                  <div class="flex items-center gap-2 text-gray-500 mb-2">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                    <span>your-repo</span>
                   </div>
-                  <div class="flex items-center gap-2.5 text-gray-300">
-                    <span class="w-5 h-5 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <svg class="w-3 h-3 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    </span>
-                    Rollback any change
-                  </div>
-                  <div class="flex items-center gap-2.5 text-gray-300">
-                    <span class="w-5 h-5 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <svg class="w-3 h-3 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    </span>
-                    Branch-based workflows
-                  </div>
-                  <div class="flex items-center gap-2.5 text-gray-300">
-                    <span class="w-5 h-5 rounded bg-white/10 flex items-center justify-center flex-shrink-0">
-                      <svg class="w-3 h-3 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                    </span>
-                    CI/CD integration
+                  <div class="pl-4 space-y-1.5 border-l border-white/10 ml-1.5">
+                    <div class="flex items-center gap-2 text-gray-600">
+                      <span>├</span>
+                      <span>pages/</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-gray-600">
+                      <span>├</span>
+                      <span>components/</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-gray-600">└</span>
+                      <span class="text-emerald-400">content/</span>
+                      <span class="text-[9px] text-emerald-400/60">← edited here</span>
+                    </div>
                   </div>
                 </div>
               </div>
