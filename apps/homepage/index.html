@@ -120,19 +120,167 @@
                   Security, speed, and AI included, so you can focus on your users.
                 </p>
               </div>
-              <!-- Visual: AI thinking animation -->
-              <div class="mt-6 p-4 bg-[#111] rounded-lg border border-white/10">
-                <div class="flex items-center gap-2 mb-3">
-                  <div class="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
-                    <svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+              <!-- Visual: Stacked AI tool stages (clickable) -->
+              <div id="scan-stack" class="mt-auto relative h-48 cursor-pointer ml-6">
+                <!-- Card 5: Complete -->
+                <div class="scan-card absolute inset-x-0 top-0 bg-[#111] rounded-lg border border-white/10 p-4 font-mono" data-index="4">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center">
+                        <svg class="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>
+                      </div>
+                      <span class="text-xs text-emerald-400 font-medium">Analysis Complete</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500">2.3s</span>
                   </div>
-                  <span class="text-sm text-gray-400">Analyzing page...</span>
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-gray-400">Editable elements</span>
+                      <span class="text-white">12</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-gray-400">Pages discovered</span>
+                      <span class="text-white">5</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-gray-400">Ready for editing</span>
+                      <span class="text-emerald-400">✓</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="space-y-2">
-                  <div class="h-2 bg-white/5 rounded w-full overflow-hidden"><div class="h-full w-3/4 bg-gradient-to-r from-violet-500/50 to-fuchsia-500/50 rounded"></div></div>
-                  <div class="h-2 bg-white/5 rounded w-2/3"></div>
+                <!-- Card 4: Discover Pages -->
+                <div class="scan-card absolute inset-x-0 top-0 bg-[#111] rounded-lg border border-white/10 p-4 font-mono" data-index="3">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center">
+                        <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
+                      </div>
+                      <span class="text-xs text-cyan-400 font-medium">Discover Pages</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500">Step 4/5</span>
+                  </div>
+                  <div class="space-y-1.5">
+                    <div class="flex items-center gap-2 text-xs text-gray-300">
+                      <span class="text-cyan-400">→</span> /about
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-gray-300">
+                      <span class="text-cyan-400">→</span> /pricing
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-gray-300">
+                      <span class="text-cyan-400">→</span> /blog
+                    </div>
+                  </div>
+                </div>
+                <!-- Card 3: Parse Structure -->
+                <div class="scan-card absolute inset-x-0 top-0 bg-[#111] rounded-lg border border-white/10 p-4 font-mono" data-index="2">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center">
+                        <div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+                      </div>
+                      <span class="text-xs text-amber-400 font-medium">Parse Structure</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500">Step 3/5</span>
+                  </div>
+                  <div class="space-y-1.5 text-[10px] text-gray-400">
+                    <div>&lt;h1&gt; <span class="text-amber-400">Hero Title</span>&lt;/h1&gt;</div>
+                    <div>&lt;p&gt; <span class="text-amber-400">Description</span>&lt;/p&gt;</div>
+                    <div>&lt;img&gt; <span class="text-amber-400">Hero Image</span>&lt;/img&gt;</div>
+                  </div>
+                </div>
+                <!-- Card 2: Capture Screenshot -->
+                <div class="scan-card absolute inset-x-0 top-0 bg-[#111] rounded-lg border border-white/10 p-4 font-mono" data-index="1">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-5 h-5 rounded-full bg-fuchsia-500/20 border border-fuchsia-500/50 flex items-center justify-center">
+                        <div class="w-2 h-2 rounded-full bg-fuchsia-400 animate-pulse"></div>
+                      </div>
+                      <span class="text-xs text-fuchsia-400 font-medium">Capture Screenshot</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500">Step 2/5</span>
+                  </div>
+                  <div class="rounded border border-white/10 h-14 flex items-center justify-center">
+                    <div class="flex items-center gap-2 text-xs text-gray-300">
+                      <svg class="w-4 h-4 text-fuchsia-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z"/><path d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z"/></svg>
+                      <span>Capturing viewport...</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Card 1: Navigate (front) -->
+                <div class="scan-card absolute inset-x-0 top-0 bg-[#111] rounded-lg border border-white/10 p-4 font-mono" data-index="0">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <div class="w-5 h-5 rounded-full bg-violet-500/20 border border-violet-500/50 flex items-center justify-center">
+                        <div class="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></div>
+                      </div>
+                      <span class="text-xs text-violet-400 font-medium">Navigate to Site</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500">Step 1/5</span>
+                  </div>
+                  <div class="rounded border border-white/10 px-3 py-2 flex items-center gap-2">
+                    <div class="flex gap-1">
+                      <div class="w-2 h-2 rounded-full bg-[#ff5f56]"></div>
+                      <div class="w-2 h-2 rounded-full bg-[#ffbd2e]"></div>
+                      <div class="w-2 h-2 rounded-full bg-[#27c93f]"></div>
+                    </div>
+                    <span class="text-xs text-white/80 ml-2">yoursite.com</span>
+                  </div>
+                  <div class="mt-2 flex items-center gap-2 text-[10px] text-gray-400">
+                    <div class="w-3 h-3 border border-violet-400/50 rounded-full border-t-transparent animate-spin"></div>
+                    <span>Establishing connection...</span>
+                  </div>
                 </div>
               </div>
+              <script>
+                (function() {
+                  const stack = document.getElementById('scan-stack');
+                  const cards = Array.from(stack.querySelectorAll('.scan-card'));
+                  const TOTAL = 5;
+                  let isAnimating = false;
+                  
+                  function getStyles(index) {
+                    const offset = index * -10;
+                    const brightness = 1 - (index * 0.05);
+                    return { offset, brightness: Math.max(0.5, brightness), zIndex: TOTAL - index };
+                  }
+                  
+                  function setPosition(card, index, animate) {
+                    const { offset, brightness, zIndex } = getStyles(index);
+                    card.style.transition = animate ? 'all 0.3s ease' : 'none';
+                    card.style.transform = `translate(${offset}px, ${offset}px)`;
+                    card.style.filter = `brightness(${brightness})`;
+                    card.style.zIndex = zIndex;
+                  }
+                  
+                  function cycle() {
+                    if (isAnimating) return;
+                    isAnimating = true;
+                    
+                    const front = cards.find(c => c.dataset.index === '0');
+                    const back = getStyles(TOTAL - 1);
+                    
+                    // Instantly move front card to back position with back brightness
+                    front.style.transition = 'none';
+                    front.dataset.index = String(TOTAL - 1);
+                    front.style.transform = `translate(${back.offset}px, ${back.offset}px)`;
+                    front.style.filter = `brightness(${back.brightness})`;
+                    front.style.zIndex = back.zIndex;
+                    
+                    // Animate other cards forward
+                    cards.forEach(card => {
+                      if (card === front) return;
+                      const curr = parseInt(card.dataset.index);
+                      card.dataset.index = curr - 1;
+                      setPosition(card, curr - 1, true);
+                    });
+                    
+                    setTimeout(() => { isAnimating = false; }, 300);
+                  }
+                  
+                  cards.forEach(card => setPosition(card, parseInt(card.dataset.index), false));
+                  stack.addEventListener('click', cycle);
+                })();
+              </script>
             </div>
             
             <!-- Feature 1: Site Analysis -->
@@ -169,9 +317,9 @@
             <div class="p-6 pb-0 border-b border-white/10 bg-[#0a0a0a] hover:bg-[#111] transition-colors group relative overflow-hidden">
               <div class="absolute top-0 left-0 w-full h-px bg-white/30 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
               <h3 class="text-lg font-semibold mb-2">Intuitive Editing</h3>
-              <p class="text-gray-400 text-xs leading-relaxed mb-4">WYSIWYG tools for text, images, and layouts. Non-devs make changes with ease.</p>
+              <p class="text-gray-400 text-xs leading-relaxed mb-2">WYSIWYG tools for text, images, and layouts. Non-devs make changes with ease.</p>
               <!-- Visual: Editor window popping from bottom -->
-              <div class="bg-[#161616] rounded-t-lg border border-b-0 border-white/10 translate-y-2">
+              <div class="bg-[#161616] rounded-t-lg border border-b-0 border-white/10">
                 <div class="flex items-center gap-1.5 px-3 py-2 border-b border-white/10">
                   <div class="w-2 h-2 rounded-full bg-white/20"></div>
                   <div class="w-2 h-2 rounded-full bg-white/20"></div>
