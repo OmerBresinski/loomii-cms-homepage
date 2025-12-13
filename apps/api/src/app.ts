@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import { prettyJSON } from "hono/pretty-json";
+import { clerkMiddleware } from "@hono/clerk-auth";
 
 import { authRoutes } from "./routes/auth";
 import { projectRoutes } from "./routes/projects";
@@ -30,6 +31,9 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// Clerk authentication middleware
+app.use("*", clerkMiddleware());
 
 // Mount routes
 const routes = app

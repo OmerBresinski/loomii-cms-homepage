@@ -16,6 +16,7 @@
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@clerk/clerk-react": "latest",
     "@tanstack/react-query": "^5.62.7",
     "@tanstack/react-router": "^1.93.0",
     "hono": "^4.6.14",

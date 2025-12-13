@@ -6,6 +6,10 @@ export default {
     extend: {
       colors: {
         // Custom color palette - dark mode first design
+        primary: {
+          DEFAULT: "#f45a5a",
+          hover: "#f06b6b",
+        },
         background: {
           DEFAULT: "#0a0a0b",
           secondary: "#111113",

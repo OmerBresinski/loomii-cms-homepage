@@ -24,6 +24,8 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@clerk/backend": "^2.27.0",
+    "@hono/clerk-auth": "^3.0.3",
     "@hono/zod-validator": "^0.4.2",
     "@mastra/core": "^0.10.1",
     "@prisma/client": "^6.1.0",

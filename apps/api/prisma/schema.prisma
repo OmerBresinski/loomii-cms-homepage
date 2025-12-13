@@ -59,11 +59,12 @@ enum TeamRole {
 // Models
 model User {
   id                String   @id @default(uuid())
+  clerkId           String   @unique
   email             String   @unique
   name              String?
   avatarUrl         String?
-  githubId          String   @unique
-  githubAccessToken String
+  githubId          String?  @unique
+  githubAccessToken String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
