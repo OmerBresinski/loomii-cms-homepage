@@ -252,7 +252,16 @@ async function runAnalysis(
       `✅ Analysis complete: found ${result.elements.length} elements in ${result.filesAnalyzed.length} files`
     );
 
+    // Log the first few elements for debugging
+    if (result.elements.length > 0) {
+      console.log("📝 Sample elements:");
+      result.elements.slice(0, 3).forEach((el, i) => {
+        console.log(`  ${i + 1}. [${el.type}] ${el.name}: "${el.currentValue?.slice(0, 50)}..."`);
+      });
+    }
+
     // Clear existing elements for this project (if doing a full rescan)
+    console.log("🗑️ Clearing existing elements...");
     await prisma.element.deleteMany({
       where: { projectId },
     });
@@ -271,7 +280,8 @@ async function runAnalysis(
 
     // Save the elements to the database
     if (result.elements.length > 0) {
-      await prisma.element.createMany({
+      console.log(`💾 Saving ${result.elements.length} elements to database...`);
+      const createResult = await prisma.element.createMany({
         data: result.elements.map((el) => ({
           projectId,
           name: el.name,
@@ -283,6 +293,9 @@ async function runAnalysis(
           pageUrl: el.filePath, // Use file path as page URL for now
         })),
       });
+      console.log(`✅ Saved ${createResult.count} elements to database`);
+    } else {
+      console.log("⚠️ No elements to save");
     }
 
     // Update job status

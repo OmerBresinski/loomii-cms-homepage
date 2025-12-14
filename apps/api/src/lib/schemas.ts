@@ -90,7 +90,7 @@ export const updateTeamMemberSchema = z.object({
 // Pagination
 export const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(1000).default(20),
 });
 
 // Analysis request

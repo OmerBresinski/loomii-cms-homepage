@@ -8,8 +8,21 @@ import { ArrowLeft, Play, Loader2, Search, AlertCircle, FileText, Type, Image, M
 export function ProjectDetailPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
   
-  const { data: projectData, isLoading: projectLoading } = useQuery(projectDetailQuery(projectId));
-  const { data: elementsData, isLoading: elementsLoading } = useQuery(elementListQuery(projectId));
+  const { data: projectData, isLoading: projectLoading } = useQuery({
+    ...projectDetailQuery(projectId),
+    refetchInterval: (query) => {
+      // Poll every 2 seconds while analyzing
+      const status = query.state.data?.project?.status;
+      return status === "analyzing" ? 2000 : false;
+    },
+  });
+  
+  const isAnalyzing = projectData?.project?.status === "analyzing";
+  
+  const { data: elementsData, isLoading: elementsLoading } = useQuery({
+    ...elementListQuery(projectId),
+    refetchInterval: isAnalyzing ? 5000 : false, // Refetch elements while analyzing
+  });
   
   const triggerAnalysis = useTriggerAnalysis(projectId);
   
@@ -17,7 +30,6 @@ export function ProjectDetailPage() {
   const elements = elementsData?.elements || [];
   
   const needsAnalysis = project?.status === "pending" || (!project?.lastAnalyzedAt && elements.length === 0);
-  const isAnalyzing = project?.status === "analyzing";
 
   if (projectLoading) {
     return (
@@ -96,26 +108,26 @@ export function ProjectDetailPage() {
           </div>
 
           <div className="lg:col-span-4">
-            <div className="border border-white/10 rounded-lg bg-[#111]">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                <h2 className="font-semibold">Elements ({elements.length})</h2>
+            <div className="border border-white/10 rounded-lg bg-[#111] flex flex-col max-h-[calc(100vh-320px)]">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
+                <h2 className="font-semibold text-sm">Elements ({elements.length})</h2>
                 <Button variant="outline" size="sm" onClick={() => triggerAnalysis.mutate({ fullRescan: true })} disabled={triggerAnalysis.isPending}>
-                  {triggerAnalysis.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                  {triggerAnalysis.isPending ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : <Play className="w-3 h-3 mr-1.5" />}
                   Re-analyze
                 </Button>
               </div>
               
               {elementsLoading ? (
-                <div className="p-6 space-y-3">
-                  {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-white/5 rounded animate-pulse" />)}
+                <div className="p-4 space-y-2">
+                  {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-10 bg-white/5 rounded animate-pulse" />)}
                 </div>
               ) : elements.length === 0 ? (
-                <div className="p-12 text-center text-gray-500">
-                  <LayoutGrid className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                  <p>No elements detected yet.</p>
+                <div className="p-8 text-center text-gray-500">
+                  <LayoutGrid className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No elements detected yet.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-white/10">
+                <div className="divide-y divide-white/5 overflow-y-auto flex-1">
                   {elements.map((element) => <ElementRow key={element.id} element={element} />)}
                 </div>
               )}
@@ -149,11 +161,12 @@ function StatusBadge({ status }: { status: string }) {
 
 function ElementRow({ element }: { element: any }) {
   const typeIcons: Record<string, React.ReactNode> = {
-    heading: <Type className="w-4 h-4" />,
-    paragraph: <FileText className="w-4 h-4" />,
-    text: <FileText className="w-4 h-4" />,
-    image: <Image className="w-4 h-4" />,
-    button: <MousePointer className="w-4 h-4" />,
+    heading: <Type className="w-3 h-3" />,
+    paragraph: <FileText className="w-3 h-3" />,
+    text: <FileText className="w-3 h-3" />,
+    image: <Image className="w-3 h-3" />,
+    button: <MousePointer className="w-3 h-3" />,
+    link: <MousePointer className="w-3 h-3" />,
   };
 
   const typeColors: Record<string, string> = {
@@ -162,25 +175,20 @@ function ElementRow({ element }: { element: any }) {
     text: "bg-green-500/20 text-green-400",
     button: "bg-purple-500/20 text-purple-400",
     image: "bg-orange-500/20 text-orange-400",
+    link: "bg-cyan-500/20 text-cyan-400",
   };
 
   return (
-    <div className="px-6 py-4 hover:bg-white/5 transition-colors cursor-pointer">
-      <div className="flex items-start gap-4">
-        <div className={`p-2 rounded ${typeColors[element.type] || "bg-gray-500/20 text-gray-400"}`}>
-          {typeIcons[element.type] || <LayoutGrid className="w-4 h-4" />}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-sm">{element.name}</span>
-            <span className="text-xs text-gray-500 px-1.5 py-0.5 rounded bg-white/5">{element.type}</span>
-          </div>
-          <p className="text-sm text-gray-400 truncate">{element.currentValue || "No content"}</p>
-        </div>
-        <div className="text-right">
-          <span className="text-xs text-gray-500">{Math.round(element.confidence * 100)}%</span>
-        </div>
+    <div className="px-4 py-2 hover:bg-white/5 transition-colors cursor-pointer flex items-center gap-3">
+      <div className={`p-1.5 rounded ${typeColors[element.type] || "bg-gray-500/20 text-gray-400"}`}>
+        {typeIcons[element.type] || <LayoutGrid className="w-3 h-3" />}
       </div>
+      <div className="flex-1 min-w-0 flex items-center gap-3">
+        <span className="text-xs text-gray-500 px-1.5 py-0.5 rounded bg-white/5 shrink-0">{element.type}</span>
+        <span className="text-sm truncate">{element.currentValue || element.name}</span>
+      </div>
+      <span className="text-xs text-gray-500 font-mono shrink-0">{element.sourceFile?.split('/').pop()}</span>
+      <span className="text-xs text-gray-500 shrink-0">{Math.round(element.confidence * 100)}%</span>
     </div>
   );
 }
