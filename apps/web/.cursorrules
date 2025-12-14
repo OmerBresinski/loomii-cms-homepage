@@ -9,7 +9,7 @@ UI
 	•	Ensure all UI is responsive (mobile-first) and styled with Tailwind CSS classes.
 	•	All tailwind classes should be used with clsx and cn from @/lib/utils.ts
 Routing
-	•	Use react-router-dom@latest for all routing.
+	•	NEVER USE FILE ROUTES, ONLY CODED ROUTES WITH TANSTACK ROUTER
 	•	If no router exists, implement (or for static hosting) in src/main.tsx wrapping the App.
 	•	Define routes in a centralized src/routes.tsx using createBrowserRouter for advanced features like 
 	code-splitting.

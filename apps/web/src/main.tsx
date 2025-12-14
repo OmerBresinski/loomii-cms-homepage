@@ -1,10 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 
-import { routeTree } from "./routeTree.gen";
+import { createAppRouter } from "./router";
 import { setAuthTokenGetter } from "./lib/api";
 import "./styles/globals.css";
 
@@ -25,21 +25,7 @@ const queryClient = new QueryClient({
 });
 
 // Create the router instance
-const router = createRouter({
-  routeTree,
-  context: {
-    queryClient,
-  },
-  defaultPreload: "intent",
-  defaultPreloadStaleTime: 0,
-});
-
-// Register the router for type safety
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
-}
+const router = createAppRouter(queryClient);
 
 // Component to set up auth token for API calls
 function AuthTokenSetup({ children }: { children: React.ReactNode }) {
@@ -72,4 +58,3 @@ if (!rootElement.innerHTML) {
     </React.StrictMode>
   );
 }
-

@@ -1,37 +1,19 @@
-import {
-  createRootRouteWithContext,
-  Outlet,
-  Link,
-  useNavigate,
-  useLocation,
-} from "@tanstack/react-router";
+import { Outlet, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
-import type { QueryClient } from "@tanstack/react-query";
 import {
   SignedIn,
   SignedOut,
   SignInButton,
-  UserButton,
-  OrganizationSwitcher,
   useAuth,
   useOrganization,
 } from "@clerk/clerk-react";
 import { useEffect } from "react";
 
-interface RouterContext {
-  queryClient: QueryClient;
-}
-
-export const Route = createRootRouteWithContext<RouterContext>()({
-  component: RootComponent,
-});
-
-function RootComponent() {
+export function RootLayout() {
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard");
   const isOnboarding = location.pathname === "/onboarding";
 
-  // Don't show the main nav on dashboard (it has its own layout)
   if (isDashboard) {
     return (
       <>
@@ -48,7 +30,6 @@ function RootComponent() {
     );
   }
 
-  // Minimal nav for onboarding
   if (isOnboarding) {
     return (
       <>
@@ -58,10 +39,8 @@ function RootComponent() {
     );
   }
 
-  // Public pages layout (landing page, etc.)
   return (
     <div className="min-h-screen">
-      {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link
@@ -94,7 +73,6 @@ function RootComponent() {
         </div>
       </nav>
 
-      {/* Main content with padding for fixed nav */}
       <main className="pt-16">
         <Outlet />
       </main>
@@ -104,7 +82,6 @@ function RootComponent() {
   );
 }
 
-// Wrapper to check if user has an organization selected
 function OrgCheckWrapper({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { isLoaded } = useAuth();
@@ -112,10 +89,6 @@ function OrgCheckWrapper({ children }: { children: React.ReactNode }) {
   const location = useLocation();
 
   useEffect(() => {
-    // Only redirect if:
-    // 1. Auth and org are loaded
-    // 2. No organization is selected
-    // 3. Not already on onboarding
     if (isLoaded && orgLoaded && !organization && location.pathname !== "/onboarding") {
       navigate({ to: "/onboarding" });
     }
@@ -123,3 +96,4 @@ function OrgCheckWrapper({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
+

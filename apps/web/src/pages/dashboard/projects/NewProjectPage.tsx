@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { currentOrgQuery, orgReposQuery } from "@/lib/queries";
@@ -20,11 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, Lock, Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/dashboard/projects/new")({
-  component: NewProjectPage,
-});
-
-function NewProjectPage() {
+export function NewProjectPage() {
   const navigate = useNavigate();
   const createProject = useCreateProject();
   const [open, setOpen] = useState(false);
@@ -57,10 +53,9 @@ function NewProjectPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       const result = await createProject.mutateAsync(formData);
-      navigate({ to: `/dashboard/projects/${result.project.id}` });
+      navigate({ to: "/dashboard/projects/$projectId", params: { projectId: result.project.id } });
     } catch (error) {
       console.error("Failed to create project:", error);
     }
@@ -72,27 +67,18 @@ function NewProjectPage() {
     <div className="p-8 animate-in">
       <div className="max-w-2xl">
         <h1 className="text-2xl font-bold mb-2">Create New Project</h1>
-        <p className="text-gray-400 mb-8">
-          Connect your GitHub repository and deployment URL to get started.
-        </p>
+        <p className="text-gray-400 mb-8">Connect your GitHub repository and deployment URL to get started.</p>
 
         {!hasGitHubConnected ? (
           <div className="p-6 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
             <h3 className="font-medium text-yellow-400 mb-2">GitHub Not Connected</h3>
-            <p className="text-sm text-gray-400 mb-4">
-              You need to connect GitHub to your organization before creating a project.
-            </p>
-            <Button onClick={() => navigate({ to: "/dashboard/settings" })}>
-              Connect GitHub
-            </Button>
+            <p className="text-sm text-gray-400 mb-4">You need to connect GitHub before creating a project.</p>
+            <Button onClick={() => navigate({ to: "/dashboard/settings" })}>Connect GitHub</Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Repository Selection */}
             <div>
-              <label className="block text-sm font-medium mb-2">
-                GitHub Repository
-              </label>
+              <label className="block text-sm font-medium mb-2">GitHub Repository</label>
               {reposLoading ? (
                 <div className="h-10 bg-white/5 rounded-md animate-pulse" />
               ) : (
@@ -110,9 +96,7 @@ function NewProjectPage() {
                       {selectedRepo ? (
                         <span className="flex items-center gap-2">
                           {selectedRepo.fullName}
-                          {selectedRepo.private && (
-                            <Lock className="h-3 w-3 text-gray-500" />
-                          )}
+                          {selectedRepo.private && <Lock className="h-3 w-3 text-gray-500" />}
                         </span>
                       ) : (
                         "Search repositories..."
@@ -127,32 +111,14 @@ function NewProjectPage() {
                         <CommandEmpty>No repository found.</CommandEmpty>
                         <CommandGroup>
                           {reposData?.repos.map((repo) => (
-                            <CommandItem
-                              key={repo.id}
-                              value={repo.fullName}
-                              onSelect={handleRepoSelect}
-                              className="font-mono text-sm"
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  formData.githubRepo === repo.fullName
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                )}
-                              />
+                            <CommandItem key={repo.id} value={repo.fullName} onSelect={handleRepoSelect} className="font-mono text-sm">
+                              <Check className={cn("mr-2 h-4 w-4", formData.githubRepo === repo.fullName ? "opacity-100" : "opacity-0")} />
                               <div className="flex flex-col flex-1 min-w-0">
                                 <span className="flex items-center gap-2">
                                   {repo.fullName}
-                                  {repo.private && (
-                                    <Lock className="h-3 w-3 text-gray-500" />
-                                  )}
+                                  {repo.private && <Lock className="h-3 w-3 text-gray-500" />}
                                 </span>
-                                {repo.description && (
-                                  <span className="text-xs text-gray-500 truncate font-sans">
-                                    {repo.description}
-                                  </span>
-                                )}
+                                {repo.description && <span className="text-xs text-gray-500 truncate font-sans">{repo.description}</span>}
                               </div>
                             </CommandItem>
                           ))}
@@ -162,22 +128,14 @@ function NewProjectPage() {
                   </PopoverContent>
                 </Popover>
               )}
-              {reposData?.repos.length === 0 && (
-                <p className="text-xs text-yellow-400 mt-2">
-                  No repositories found. Make sure you have access to at least one repository.
-                </p>
-              )}
             </div>
 
-            {/* Project Name */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium mb-2">
-                Project Name
-              </label>
+              <label htmlFor="name" className="block text-sm font-medium mb-2">Project Name</label>
               <input
                 type="text"
                 id="name"
-                className="w-full h-10 px-4 rounded-md bg-[#111] border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="w-full h-10 px-4 rounded-md bg-[#111] border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 placeholder="My Website"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -185,41 +143,32 @@ function NewProjectPage() {
               />
             </div>
 
-            {/* Branch */}
             <div>
-              <label htmlFor="githubBranch" className="block text-sm font-medium mb-2">
-                Branch
-              </label>
+              <label htmlFor="githubBranch" className="block text-sm font-medium mb-2">Branch</label>
               <input
                 type="text"
                 id="githubBranch"
-                className="w-full h-10 px-4 rounded-md bg-[#111] border border-white/10 text-white font-mono placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="w-full h-10 px-4 rounded-md bg-[#111] border border-white/10 text-white font-mono placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 placeholder="main"
                 value={formData.githubBranch}
                 onChange={(e) => setFormData({ ...formData, githubBranch: e.target.value })}
               />
             </div>
 
-            {/* Deployment URL */}
             <div>
-              <label htmlFor="deploymentUrl" className="block text-sm font-medium mb-2">
-                Deployment URL
-              </label>
+              <label htmlFor="deploymentUrl" className="block text-sm font-medium mb-2">Deployment URL</label>
               <input
                 type="url"
                 id="deploymentUrl"
-                className="w-full h-10 px-4 rounded-md bg-[#111] border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="w-full h-10 px-4 rounded-md bg-[#111] border border-white/10 text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
                 placeholder="https://your-site.vercel.app"
                 value={formData.deploymentUrl}
                 onChange={(e) => setFormData({ ...formData, deploymentUrl: e.target.value })}
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
-                The live URL where your site is deployed
-              </p>
+              <p className="text-xs text-gray-500 mt-1">The live URL where your site is deployed</p>
             </div>
 
-            {/* Actions */}
             <div className="flex gap-4 pt-4">
               <Button type="submit" disabled={createProject.isPending}>
                 {createProject.isPending ? (
@@ -231,23 +180,16 @@ function NewProjectPage() {
                   "Create Project"
                 )}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate({ to: "/dashboard/projects" })}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate({ to: "/dashboard/projects" })}>
                 Cancel
               </Button>
             </div>
 
-            {createProject.isError && (
-              <p className="text-sm text-red-400">
-                Failed to create project. Please try again.
-              </p>
-            )}
+            {createProject.isError && <p className="text-sm text-red-400">Failed to create project.</p>}
           </form>
         )}
       </div>
     </div>
   );
 }
+

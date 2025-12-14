@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useNavigate, Link } from "@tanstack/react-router";
 import {
   useAuth,
   useOrganization,
@@ -9,15 +9,11 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/onboarding")({
-  component: OnboardingPage,
-});
-
-function OnboardingPage() {
+export function OnboardingPage() {
   const navigate = useNavigate();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { organization, isLoaded: orgLoaded } = useOrganization();
-  const { userMemberships, isLoaded: membershipsLoaded } = useOrganizationList({
+  const { userMemberships, isLoaded: membershipsLoaded, setActive } = useOrganizationList({
     userMemberships: { infinite: true },
   });
   const [showCreateOrg, setShowCreateOrg] = useState(false);
@@ -29,14 +25,12 @@ function OnboardingPage() {
     return (userMemberships?.data?.length ?? 0) > 0;
   }, [userMemberships?.data]);
 
-  // Redirect to sign-in if not authenticated
   useEffect(() => {
     if (authLoaded && !isSignedIn) {
       navigate({ to: "/" });
     }
   }, [authLoaded, isSignedIn, navigate]);
 
-  // Sync organization when one is selected/created
   useEffect(() => {
     if (!organization || syncingRef.current) return;
     
@@ -60,12 +54,10 @@ function OnboardingPage() {
         console.error("Failed to sync organization:", error);
         setSyncError(error.message || "Failed to sync organization");
         setIsSyncing(false);
-        // Allow retry
         syncingRef.current = false;
       });
   }, [organization, navigate]);
 
-  // Loading state
   if (!authLoaded || !orgLoaded || !membershipsLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -74,7 +66,6 @@ function OnboardingPage() {
     );
   }
 
-  // Syncing state
   if (isSyncing) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -86,7 +77,6 @@ function OnboardingPage() {
     );
   }
 
-  // Sync error state
   if (syncError) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -111,7 +101,6 @@ function OnboardingPage() {
     );
   }
 
-  // Create org form
   if (showCreateOrg) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
@@ -125,19 +114,21 @@ function OnboardingPage() {
             </svg>
             Back
           </button>
-          <CreateOrganization
-            afterCreateOrganizationUrl="/onboarding"
-            skipInvitationScreen={true}
-          />
+          <CreateOrganization afterCreateOrganizationUrl="/onboarding" skipInvitationScreen={true} />
         </div>
       </div>
     );
   }
 
+  const handleSelectOrg = async (orgId: string) => {
+    if (setActive) {
+      await setActive({ organization: orgId });
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-md">
-        {/* Logo */}
         <div className="flex justify-center mb-8">
           <Link to="/" className="flex items-center gap-2 font-semibold text-lg">
             <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
@@ -147,7 +138,6 @@ function OnboardingPage() {
           </Link>
         </div>
 
-        {/* Card */}
         <div className="border border-white/10 rounded-lg bg-[#111] p-8">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold mb-2">Welcome to Loomii</h1>
@@ -159,21 +149,37 @@ function OnboardingPage() {
           </div>
 
           <div className="space-y-4">
-            {/* Existing organizations */}
             {hasOrganizations && (
               <div className="space-y-2">
                 <p className="text-sm text-gray-500 mb-3">Your organizations</p>
                 {userMemberships?.data?.map((membership) => (
-                  <OrgCard
+                  <button
                     key={membership.organization.id}
-                    organization={membership.organization}
-                    role={membership.role}
-                  />
+                    onClick={() => handleSelectOrg(membership.organization.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 p-4 rounded-lg",
+                      "border border-white/10 bg-white/5",
+                      "hover:bg-white/10 hover:border-white/20",
+                      "transition-all text-left"
+                    )}
+                  >
+                    <img
+                      src={membership.organization.imageUrl}
+                      alt={membership.organization.name}
+                      className="w-10 h-10 rounded-md"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{membership.organization.name}</p>
+                      <p className="text-sm text-gray-500 capitalize">{membership.role}</p>
+                    </div>
+                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 ))}
               </div>
             )}
 
-            {/* Divider */}
             {hasOrganizations && (
               <div className="relative py-2">
                 <div className="absolute inset-0 flex items-center">
@@ -185,7 +191,6 @@ function OnboardingPage() {
               </div>
             )}
 
-            {/* Create new org */}
             <button
               onClick={() => setShowCreateOrg(true)}
               className={cn(
@@ -196,7 +201,9 @@ function OnboardingPage() {
                   : "bg-primary text-white hover:bg-primary/90"
               )}
             >
-              <PlusIcon className="w-4 h-4" />
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
               Create new organization
             </button>
           </div>
@@ -206,61 +213,3 @@ function OnboardingPage() {
   );
 }
 
-interface OrgCardProps {
-  organization: {
-    id: string;
-    name: string;
-    slug: string | null;
-    imageUrl: string;
-  };
-  role: string;
-}
-
-function OrgCard({ organization, role }: OrgCardProps) {
-  const { setActive } = useOrganizationList();
-
-  const handleSelect = async () => {
-    if (setActive) {
-      await setActive({ organization: organization.id });
-    }
-  };
-
-  return (
-    <button
-      onClick={handleSelect}
-      className={cn(
-        "w-full flex items-center gap-3 p-4 rounded-lg",
-        "border border-white/10 bg-white/5",
-        "hover:bg-white/10 hover:border-white/20",
-        "transition-all text-left"
-      )}
-    >
-      <img
-        src={organization.imageUrl}
-        alt={organization.name}
-        className="w-10 h-10 rounded-md"
-      />
-      <div className="flex-1 min-w-0">
-        <p className="font-medium truncate">{organization.name}</p>
-        <p className="text-sm text-gray-500 capitalize">{role}</p>
-      </div>
-      <ChevronRightIcon className="w-5 h-5 text-gray-500" />
-    </button>
-  );
-}
-
-function PlusIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-    </svg>
-  );
-}

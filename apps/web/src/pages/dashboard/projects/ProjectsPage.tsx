@@ -1,14 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { projectListQuery } from "@/lib/queries";
 import { Button } from "@/components/ui/button";
 import { Plus, Folder, ChevronRight } from "lucide-react";
 
-export const Route = createFileRoute("/dashboard/projects/")({
-  component: ProjectsPage,
-});
-
-function ProjectsPage() {
+export function ProjectsPage() {
   const { data, isLoading } = useQuery(projectListQuery({ limit: 20 }));
   const projects = data?.projects || [];
 
@@ -37,9 +33,7 @@ function ProjectsPage() {
         <div className="border border-white/10 rounded-lg bg-[#111] text-center py-16">
           <Folder className="w-16 h-16 mx-auto mb-4 text-gray-600" />
           <h3 className="text-lg font-semibold mb-2">No projects yet</h3>
-          <p className="text-gray-400 mb-6">
-            Connect your first GitHub repository to start editing content.
-          </p>
+          <p className="text-gray-400 mb-6">Connect your first GitHub repository to start.</p>
           <Button asChild>
             <Link to="/dashboard/projects/new">Create your first project</Link>
           </Button>
@@ -59,9 +53,7 @@ function ProjectsPage() {
               </div>
               <div className="flex items-center gap-4">
                 <StatusBadge status={project.status} />
-                <span className="text-sm text-gray-500">
-                  {project.elementCount || 0} elements
-                </span>
+                <span className="text-sm text-gray-500">{project.elementCount || 0} elements</span>
                 <ChevronRight className="w-4 h-4 text-gray-500" />
               </div>
             </Link>
@@ -81,10 +73,9 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   return (
-    <span
-      className={`px-2 py-0.5 text-xs font-medium rounded border ${styles[status] || styles.pending}`}
-    >
+    <span className={`px-2 py-0.5 text-xs font-medium rounded border ${styles[status] || styles.pending}`}>
       {status}
     </span>
   );
 }
+
