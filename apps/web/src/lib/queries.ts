@@ -9,6 +9,8 @@ export const queryKeys = {
   organization: () => [...queryKeys.all, "organization"] as const,
   currentOrg: () => [...queryKeys.organization(), "current"] as const,
   orgRepos: (orgId: string) => [...queryKeys.organization(), orgId, "repos"] as const,
+  repoFolders: (orgId: string, repo: string, branch: string) =>
+    [...queryKeys.organization(), orgId, "repos", repo, "folders", branch] as const,
   orgMembers: (orgId: string) => [...queryKeys.organization(), orgId, "members"] as const,
   projects: () => [...queryKeys.all, "projects"] as const,
   projectList: (params: { page?: number; limit?: number }) =>
@@ -61,6 +63,12 @@ interface GitHubRepo {
   defaultBranch: string;
   url: string;
   updatedAt: string;
+}
+
+interface RepoFolder {
+  path: string;
+  name: string;
+  depth: number;
 }
 
 interface OrgMember {
@@ -141,6 +149,20 @@ export function orgMembersQuery(orgId: string) {
       return apiFetch<{ members: OrgMember[] }>(`/organizations/${orgId}/members`);
     },
     enabled: !!orgId,
+  });
+}
+
+export function repoFoldersQuery(orgId: string, repo: string, branch: string) {
+  const [owner, repoName] = repo.split("/");
+  return queryOptions({
+    queryKey: queryKeys.repoFolders(orgId, repo, branch),
+    queryFn: async () => {
+      return apiFetch<{ folders: RepoFolder[] }>(
+        `/organizations/${orgId}/github/repos/${owner}/${repoName}/folders?branch=${branch}`
+      );
+    },
+    enabled: !!orgId && !!repo && !!branch,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 }
 

@@ -127,7 +127,8 @@ model Project {
   name           String
   githubRepo     String
   githubBranch   String        @default("main")
-  deploymentUrl  String
+  rootPath       String        @default("") // Root path within the repo (for monorepos, e.g., "apps/web")
+  deploymentUrl  String?
   status         ProjectStatus @default(pending)
   lastAnalyzedAt DateTime?
   analysisError  String?
@@ -144,23 +145,23 @@ model Project {
 }
 
 model Element {
-  id           String      @id @default(uuid())
-  projectId    String
-  name         String
-  type         ElementType
-  selector     String
-  xpath        String?
-  sourceFile   String?
-  sourceLine   Int?
-  sourceColumn Int?
-  currentValue String?     @db.Text
-  schema       Json?
-  parentId     String?
-  pageUrl      String
+  id            String      @id @default(uuid())
+  projectId     String
+  name          String
+  type          ElementType
+  selector      String?     // Optional - only set for DOM-scraped elements
+  xpath         String?
+  sourceFile    String?     // File path in repo for source-analyzed elements
+  sourceLine    Int?        // Line number in source file
+  sourceColumn  Int?
+  currentValue  String?     @db.Text
+  schema        Json?
+  parentId      String?
+  pageUrl       String
   screenshotUrl String?
-  confidence   Float       @default(0)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  confidence    Float       @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   // Relations
   project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)

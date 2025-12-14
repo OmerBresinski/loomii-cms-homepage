@@ -283,7 +283,7 @@ export const organizationRoutes = new Hono()
         throw new Error("Failed to fetch repositories");
       }
 
-      const repos = await response.json();
+      const repos = (await response.json()) as any[];
 
       return c.json(
         {
@@ -303,6 +303,111 @@ export const organizationRoutes = new Hono()
     } catch (error) {
       console.error("GitHub API error:", error);
       return c.json({ error: "Failed to fetch repositories" }, 500);
+    }
+  })
+
+  // Get folders in a repository (for monorepo support)
+  .get("/:orgId/github/repos/:owner/:repo/folders", requireAuth, async (c) => {
+    const user = getCurrentUser(c);
+    const orgId = c.req.param("orgId");
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
+    const branch = c.req.query("branch") || "main";
+
+    // Check user has access
+    const membership = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: { organizationId: orgId, userId: user.id },
+      },
+      include: { organization: true },
+    });
+
+    if (!membership) {
+      throw new HTTPException(403, { message: "Access denied" });
+    }
+
+    const org = membership.organization;
+    if (!org.githubAccessToken) {
+      return c.json({ error: "GitHub not connected" }, 400);
+    }
+
+    try {
+      // Fetch the repository tree from GitHub API
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+        {
+          headers: {
+            Authorization: `Bearer ${org.githubAccessToken}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch repository tree");
+      }
+
+      const data = (await response.json()) as {
+        tree?: Array<{ type: string; path: string }>;
+      };
+
+      // Filter to only directories and extract unique folder paths
+      const folders = new Set<string>();
+      folders.add(""); // Root option
+
+      for (const item of data.tree || []) {
+        if (item.type === "tree") {
+          // Add the folder itself
+          folders.add(item.path);
+        } else if (item.type === "blob" && item.path.includes("/")) {
+          // Extract parent folders from file paths
+          const parts = item.path.split("/");
+          let currentPath = "";
+          for (let i = 0; i < parts.length - 1; i++) {
+            const part = parts[i];
+            if (part) {
+              currentPath = currentPath ? `${currentPath}/${part}` : part;
+              folders.add(currentPath);
+            }
+          }
+        }
+      }
+
+      // Convert to sorted array and filter out common non-source folders
+      const excludePatterns = [
+        /^\./, // Hidden folders
+        /^node_modules/,
+        /^dist/,
+        /^build/,
+        /^\.git/,
+        /^coverage/,
+        /^__pycache__/,
+        /^\.next/,
+        /^\.nuxt/,
+        /^\.cache/,
+      ];
+
+      const sortedFolders = Array.from(folders)
+        .filter((f) => !excludePatterns.some((p) => p.test(f)))
+        .sort((a, b) => {
+          if (a === "") return -1;
+          if (b === "") return 1;
+          return a.localeCompare(b);
+        });
+
+      return c.json(
+        {
+          folders: sortedFolders.map((path) => ({
+            path,
+            name: path === "" ? "(root)" : path.split("/").pop(),
+            depth: path === "" ? 0 : path.split("/").length,
+          })),
+        },
+        200
+      );
+    } catch (error) {
+      console.error("GitHub API error:", error);
+      return c.json({ error: "Failed to fetch folders" }, 500);
     }
   })
 

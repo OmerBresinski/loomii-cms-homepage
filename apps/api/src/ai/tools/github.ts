@@ -7,6 +7,7 @@ export interface GitHubContext {
   owner: string;
   repo: string;
   branch: string;
+  rootPath?: string; // Root path within the repo for monorepos (e.g., "apps/web")
 }
 
 // GitHub API response types
@@ -60,10 +61,10 @@ async function githubFetch<T>(
   return response.json() as Promise<T>;
 }
 
-// Tool schemas
+// Tool schemas - Note: Gemini doesn't support .default() values, so all fields must be explicit
 export const listFilesSchema = z.object({
-  path: z.string().default("").describe("Path to list (empty for root)"),
-  recursive: z.boolean().default(false).describe("Whether to list recursively"),
+  path: z.string().describe("Path to list (empty string for root)"),
+  recursive: z.boolean().describe("Whether to list recursively"),
 });
 
 export const readFileSchema = z.object({
@@ -74,8 +75,9 @@ export const searchCodeSchema = z.object({
   query: z.string().describe("The code or text to search for"),
   fileType: z
     .string()
-    .optional()
-    .describe("File extension to filter by (e.g., tsx, ts, jsx)"),
+    .describe(
+      "File extension to filter by (e.g., tsx, ts, jsx). Use empty string for all files."
+    ),
 });
 
 export const analyzeSourceFileSchema = z.object({
@@ -95,8 +97,8 @@ export const commitChangesSchema = z.object({
   changes: z
     .array(
       z.object({
-        filePath: z.string(),
-        content: z.string(),
+        filePath: z.string().describe("Path to the file"),
+        content: z.string().describe("New content for the file"),
       })
     )
     .describe("Files to create or modify"),
@@ -227,7 +229,7 @@ export function createToolExecutors(ctx: GitHubContext) {
 
       try {
         let searchQuery = `${query} repo:${ctx.owner}/${ctx.repo}`;
-        if (fileType) {
+        if (fileType && fileType.length > 0) {
           searchQuery += ` extension:${fileType}`;
         }
 
@@ -274,74 +276,93 @@ export function createToolExecutors(ctx: GitHubContext) {
         }> = [];
 
         const ext = path.split(".").pop()?.toLowerCase();
-        const isJsx = ["jsx", "tsx", "js", "ts"].includes(ext || "");
+        const isJsxOrHtml = [
+          "jsx",
+          "tsx",
+          "js",
+          "ts",
+          "html",
+          "astro",
+          "vue",
+          "svelte",
+        ].includes(ext || "");
 
-        if (isJsx) {
+        if (isJsxOrHtml) {
+          // First, do multi-line regex matching on the full content
+          const multiLinePatterns = [
+            // Headings (multi-line)
+            {
+              regex: /<(h[1-6])(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gm,
+              type: (m: RegExpMatchArray) => `heading-${m[1]}`,
+              group: 2,
+            },
+            // Paragraphs (multi-line)
+            {
+              regex: /<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gm,
+              type: () => "paragraph",
+              group: 1,
+            },
+            // Buttons
+            {
+              regex: /<[Bb]utton(?:\s[^>]*)?>([\s\S]*?)<\/[Bb]utton>/gm,
+              type: () => "button",
+              group: 1,
+            },
+            // Links
+            {
+              regex: /<(?:a|Link)(?:\s[^>]*)?>([\s\S]*?)<\/(?:a|Link)>/gm,
+              type: () => "link",
+              group: 1,
+            },
+            // Spans
+            {
+              regex: /<span(?:\s[^>]*)?>([\s\S]*?)<\/span>/gm,
+              type: () => "text",
+              group: 1,
+            },
+            // Divs with short text content (likely labels)
+            {
+              regex: /<div(?:\s[^>]*)?>\s*([^<]{3,50})\s*<\/div>/gm,
+              type: () => "text",
+              group: 1,
+            },
+          ];
+
+          for (const pattern of multiLinePatterns) {
+            const matches = [...content.matchAll(pattern.regex)];
+            for (const match of matches) {
+              const matchedContent = match[pattern.group];
+              if (matchedContent) {
+                // Clean up the content - remove nested tags and whitespace
+                const cleanContent = matchedContent
+                  .replace(/<[^>]+>/g, "") // Remove HTML tags
+                  .replace(/\s+/g, " ") // Normalize whitespace
+                  .trim();
+
+                // Only include if it has meaningful text content
+                if (
+                  cleanContent.length >= 2 &&
+                  cleanContent.length <= 500 &&
+                  !/^[\s\d.,!?;:]+$/.test(cleanContent)
+                ) {
+                  // Find the line number
+                  const beforeMatch = content.slice(0, match.index);
+                  const lineNum = (beforeMatch.match(/\n/g) || []).length + 1;
+
+                  elements.push({
+                    type: pattern.type(match),
+                    content: cleanContent,
+                    line: lineNum,
+                    context: match[0].slice(0, 100).trim(),
+                  });
+                }
+              }
+            }
+          }
+
+          // Also match single-line patterns
           lines.forEach((line, idx) => {
             const lineNum = idx + 1;
-
-            // Match heading elements
-            const headingMatch = line.match(
-              /<(h[1-6])(?:\s[^>]*)?>([^<]+)<\/\1>/
-            );
-            if (headingMatch && headingMatch[1] && headingMatch[2]) {
-              elements.push({
-                type: `heading-${headingMatch[1]}`,
-                content: headingMatch[2].trim(),
-                line: lineNum,
-                context: line.trim(),
-              });
-            }
-
-            // Match paragraph elements
-            const pMatch = line.match(/<p(?:\s[^>]*)?>([^<]+)<\/p>/);
-            if (pMatch && pMatch[1]) {
-              elements.push({
-                type: "paragraph",
-                content: pMatch[1].trim(),
-                line: lineNum,
-                context: line.trim(),
-              });
-            }
-
-            // Match button elements
-            const buttonMatch = line.match(
-              /<[Bb]utton(?:\s[^>]*)?>([^<]+)<\/[Bb]utton>/
-            );
-            if (buttonMatch && buttonMatch[1]) {
-              elements.push({
-                type: "button",
-                content: buttonMatch[1].trim(),
-                line: lineNum,
-                context: line.trim(),
-              });
-            }
-
-            // Match link elements
-            const linkMatch = line.match(
-              /<(?:a|Link)(?:\s[^>]*)?>([^<]+)<\/(?:a|Link)>/
-            );
-            if (linkMatch && linkMatch[1]) {
-              elements.push({
-                type: "link",
-                content: linkMatch[1].trim(),
-                line: lineNum,
-                context: line.trim(),
-              });
-            }
-
-            // Match span/label elements
-            const spanMatch = line.match(
-              /<(span|label)(?:\s[^>]*)?>([^<]+)<\/\1>/
-            );
-            if (spanMatch && spanMatch[2]) {
-              elements.push({
-                type: "text",
-                content: spanMatch[2].trim(),
-                line: lineNum,
-                context: line.trim(),
-              });
-            }
 
             // Match title/alt/placeholder props
             const propsMatches = [
@@ -350,7 +371,7 @@ export function createToolExecutors(ctx: GitHubContext) {
               ),
             ];
             for (const match of propsMatches) {
-              if (match[1] && match[2]) {
+              if (match[1] && match[2] && match[2].length >= 2) {
                 elements.push({
                   type: match[1] === "alt" ? "image-alt" : "attribute",
                   content: match[2],
@@ -360,7 +381,7 @@ export function createToolExecutors(ctx: GitHubContext) {
               }
             }
 
-            // Match JSX string expressions
+            // Match JSX string expressions like {"Some text"} or {'Some text'}
             const jsxMatches = [...line.matchAll(/\{["']([^"']{3,})["']\}/g)];
             for (const match of jsxMatches) {
               if (match[1]) {
@@ -372,10 +393,37 @@ export function createToolExecutors(ctx: GitHubContext) {
                 });
               }
             }
+
+            // Match text content directly in JSX (common pattern)
+            // Look for lines that are just text content between JSX
+            const directTextMatch = line.match(
+              /^\s*([A-Z][^<>{}\n]{10,100})\s*$/
+            );
+            if (directTextMatch && directTextMatch[1]) {
+              elements.push({
+                type: "text",
+                content: directTextMatch[1].trim(),
+                line: lineNum,
+                context: line.trim(),
+              });
+            }
           });
         }
 
-        const result = { path, elementsFound: elements.length, elements };
+        // Deduplicate elements by content
+        const seen = new Set<string>();
+        const uniqueElements = elements.filter((el) => {
+          const key = `${el.type}:${el.content}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        const result = {
+          path,
+          elementsFound: uniqueElements.length,
+          elements: uniqueElements,
+        };
         logger.tool.result("analyzeSourceFile", Date.now() - startTime, result);
         return result;
       } catch (error) {

@@ -51,12 +51,19 @@ export const createProjectSchema = z.object({
     .string()
     .regex(/^[\w-]+\/[\w.-]+$/, "Invalid GitHub repo format (owner/repo)"),
   githubBranch: z.string().default("main"),
-  deploymentUrl: z.string().url("Invalid deployment URL"),
+  rootPath: z
+    .string()
+    .default("")
+    .describe("Root path within the repo for monorepos (e.g., apps/web)"),
+  deploymentUrl: z
+    .union([z.string().url("Invalid deployment URL"), z.literal("")])
+    .optional(),
 });
 
 export const updateProjectSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   githubBranch: z.string().optional(),
+  rootPath: z.string().optional(),
   deploymentUrl: z.string().url().optional(),
 });
 
