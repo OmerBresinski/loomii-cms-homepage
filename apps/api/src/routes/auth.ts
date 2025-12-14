@@ -1,28 +1,22 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { prisma, createSession } from "../db";
-import { SESSION_MAX_AGE_SECONDS } from "../lib/constants";
+import { prisma } from "../db";
+import { requireAuth, getCurrentUser } from "../middleware/auth";
 import {
   exchangeCodeForToken,
   getGitHubUser,
   getUserEmail,
 } from "../services/github";
-import {
-  requireAuth,
-  setSessionCookie,
-  clearSessionCookie,
-} from "../middleware/auth";
 
-const githubCallbackSchema = z.object({
+const githubLinkSchema = z.object({
   code: z.string(),
-  state: z.string().optional(),
 });
 
 export const authRoutes = new Hono()
-  // Get current user session
+  // Get current user info
   .get("/me", requireAuth, async (c) => {
-    const user = c.get("user");
+    const user = getCurrentUser(c);
 
     return c.json({
       user: {
@@ -30,12 +24,13 @@ export const authRoutes = new Hono()
         email: user.email,
         name: user.name,
         avatarUrl: user.avatarUrl,
+        hasGitHubLinked: !!user.githubAccessToken,
       },
     });
   })
 
-  // Initiate GitHub OAuth flow
-  .get("/github", async (c) => {
+  // Initiate GitHub OAuth flow for linking GitHub account (not for auth)
+  .get("/github/link", requireAuth, async (c) => {
     const clientId = process.env.GITHUB_CLIENT_ID;
     if (!clientId) {
       return c.json({ error: "GitHub OAuth not configured" }, 500);
@@ -56,72 +51,94 @@ export const authRoutes = new Hono()
     return c.json({ url: authUrl.toString(), state });
   })
 
-  // Handle GitHub OAuth callback
-  .get(
-    "/github/callback",
-    zValidator("query", githubCallbackSchema),
+  // Handle GitHub OAuth callback for linking
+  .get("/github/callback", async (c) => {
+    const code = c.req.query("code");
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+    if (!code) {
+      return c.redirect(`${frontendUrl}/settings?error=no_code`);
+    }
+
+    try {
+      // Exchange code for access token
+      const accessToken = await exchangeCodeForToken(code);
+
+      // Get user info from GitHub
+      const githubUser = await getGitHubUser(accessToken);
+
+      // Get user email if not public
+      let email = githubUser.email;
+      if (!email) {
+        email = await getUserEmail(accessToken);
+      }
+
+      // Store the GitHub token temporarily - user will link it on the frontend
+      // We redirect with a success indicator, and the frontend will call the link endpoint
+      return c.redirect(
+        `${frontendUrl}/settings/github?github_id=${githubUser.id}&github_token=${encodeURIComponent(accessToken)}`
+      );
+    } catch (error) {
+      console.error("GitHub OAuth error:", error);
+      const message = error instanceof Error ? error.message : "link_failed";
+      return c.redirect(
+        `${frontendUrl}/settings?error=${encodeURIComponent(message)}`
+      );
+    }
+  })
+
+  // Link GitHub account to current user
+  .post(
+    "/github/link",
+    requireAuth,
+    zValidator(
+      "json",
+      z.object({
+        githubId: z.string(),
+        accessToken: z.string(),
+      })
+    ),
     async (c) => {
-      const { code } = c.req.valid("query");
-      const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+      const user = getCurrentUser(c);
+      const { githubId, accessToken } = c.req.valid("json");
 
+      // Verify the token is valid
       try {
-        // Exchange code for access token
-        const accessToken = await exchangeCodeForToken(code);
-
-        // Get user info from GitHub
         const githubUser = await getGitHubUser(accessToken);
-
-        // Get user email if not public
-        let email = githubUser.email;
-        if (!email) {
-          email = await getUserEmail(accessToken);
+        if (String(githubUser.id) !== githubId) {
+          return c.json({ error: "Invalid GitHub credentials" }, 400);
         }
 
-        if (!email) {
-          return c.redirect(`${frontendUrl}/auth/error?message=no_email`);
-        }
-
-        // Upsert user in database
-        const user = await prisma.user.upsert({
-          where: { githubId: String(githubUser.id) },
-          create: {
-            email,
-            name: githubUser.name,
-            avatarUrl: githubUser.avatar_url,
-            githubId: String(githubUser.id),
+        // Update user with GitHub info
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            githubId,
             githubAccessToken: accessToken,
-          },
-          update: {
-            email,
-            name: githubUser.name,
-            avatarUrl: githubUser.avatar_url,
-            githubAccessToken: accessToken,
+            avatarUrl: user.avatarUrl || githubUser.avatar_url,
+            name: user.name || githubUser.name,
           },
         });
 
-        // Create session
-        const session = await createSession(user.id);
-
-        // Set cookie and redirect
-        c.header("Set-Cookie", setSessionCookie(session.token, SESSION_MAX_AGE_SECONDS));
-        return c.redirect(`${frontendUrl}/dashboard`);
+        return c.json({ success: true });
       } catch (error) {
-        console.error("GitHub OAuth error:", error);
-        const message = error instanceof Error ? error.message : "auth_failed";
-        return c.redirect(`${frontendUrl}/auth/error?message=${encodeURIComponent(message)}`);
+        console.error("GitHub link error:", error);
+        return c.json({ error: "Failed to link GitHub account" }, 500);
       }
     }
   )
 
-  // Logout
-  .post("/logout", requireAuth, async (c) => {
-    const session = c.get("session");
+  // Unlink GitHub account
+  .delete("/github/link", requireAuth, async (c) => {
+    const user = getCurrentUser(c);
 
-    // Delete session from database
-    await prisma.session.delete({ where: { id: session.id } }).catch(() => null);
-
-    // Clear cookie
-    c.header("Set-Cookie", clearSessionCookie());
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        githubId: null,
+        githubAccessToken: null,
+      },
+    });
 
     return c.json({ success: true });
   });

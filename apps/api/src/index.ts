@@ -1,6 +1,6 @@
 import { app } from "./app";
 
-const port = parseInt(process.env.PORT || "3001", 10);
+const port = parseInt(process.env.PORT || "3010", 10);
 
 console.log(`🚀 API server starting on port ${port}`);
 
