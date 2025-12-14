@@ -1,18 +1,13 @@
 import { Outlet, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  useAuth,
-  useOrganization,
-} from "@clerk/clerk-react";
+import { SignedIn, SignedOut, SignInButton, useAuth, useOrganization } from "@clerk/clerk-react";
 import { useEffect } from "react";
 
 export function RootLayout() {
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard");
   const isOnboarding = location.pathname === "/onboarding";
+  const isHomePage = location.pathname === "/";
 
   if (isDashboard) {
     return (
@@ -30,7 +25,8 @@ export function RootLayout() {
     );
   }
 
-  if (isOnboarding) {
+  // Full-screen pages without nav (login page, onboarding)
+  if (isOnboarding || isHomePage) {
     return (
       <>
         <Outlet />
@@ -39,6 +35,7 @@ export function RootLayout() {
     );
   }
 
+  // Other public pages with nav
   return (
     <div className="min-h-screen">
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-md">
