@@ -2,6 +2,52 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./api";
 import { queryKeys } from "./queries";
 
+// Sync organization mutation
+export function useSyncOrganization() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      clerkOrgId: string;
+      name: string;
+      slug: string;
+      logoUrl?: string;
+    }) => {
+      return apiFetch<{
+        organization: {
+          id: string;
+          clerkOrgId: string;
+          name: string;
+          slug: string;
+        };
+      }>("/organizations/sync", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.organization() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.me() });
+    },
+  });
+}
+
+// Disconnect GitHub from organization
+export function useDisconnectGitHub(orgId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      return apiFetch<{ success: boolean }>(`/organizations/${orgId}/github`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.currentOrg() });
+    },
+  });
+}
+
 // Create project mutation
 export function useCreateProject() {
   const queryClient = useQueryClient();

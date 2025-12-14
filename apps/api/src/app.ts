@@ -4,8 +4,10 @@ import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import { prettyJSON } from "hono/pretty-json";
 import { clerkMiddleware } from "@hono/clerk-auth";
+import { HTTPException } from "hono/http-exception";
 
 import { authRoutes } from "./routes/auth";
+import { organizationRoutes } from "./routes/organizations";
 import { projectRoutes } from "./routes/projects";
 import { elementRoutes } from "./routes/elements";
 import { editRoutes } from "./routes/edits";
@@ -15,6 +17,17 @@ import { healthRoutes } from "./routes/health";
 
 // Create the main Hono app
 const app = new Hono();
+
+// Global error handler
+app.onError((err, c) => {
+  console.error("API Error:", err);
+  
+  if (err instanceof HTTPException) {
+    return c.json({ error: err.message }, err.status);
+  }
+  
+  return c.json({ error: "Internal server error" }, 500);
+});
 
 // Global middleware
 app.use("*", logger());
@@ -39,6 +52,7 @@ app.use("*", clerkMiddleware());
 const routes = app
   .route("/health", healthRoutes)
   .route("/auth", authRoutes)
+  .route("/organizations", organizationRoutes)
   .route("/projects", projectRoutes)
   .route("/projects/:projectId/elements", elementRoutes)
   .route("/projects/:projectId/edits", editRoutes)

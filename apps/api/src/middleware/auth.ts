@@ -10,7 +10,16 @@ export type AuthUser = {
   email: string;
   name: string | null;
   avatarUrl: string | null;
+};
+
+// Organization context type
+export type AuthOrg = {
+  id: string;
+  clerkOrgId: string;
+  name: string;
+  slug: string;
   githubAccessToken: string | null;
+  role: "owner" | "admin" | "member";
 };
 
 // Middleware to require authentication
@@ -27,8 +36,8 @@ export const requireAuth = createMiddleware(async (c, next) => {
   });
 
   if (!user) {
-    // User doesn't exist yet - they'll need to complete onboarding
-    // For now, create a minimal user record
+    // User doesn't exist yet - create a minimal user record
+    // Email and other details will be synced from Clerk
     user = await prisma.user.create({
       data: {
         clerkId: auth.userId,
@@ -46,16 +55,65 @@ export const requireAuth = createMiddleware(async (c, next) => {
     email: user.email,
     name: user.name,
     avatarUrl: user.avatarUrl,
-    githubAccessToken: user.githubAccessToken,
   } as AuthUser);
+
+  // If there's an organization context from Clerk, load it
+  if (auth.orgId) {
+    const org = await prisma.organization.findUnique({
+      where: { clerkOrgId: auth.orgId },
+      include: {
+        members: {
+          where: { userId: user.id },
+        },
+      },
+    });
+
+    if (org && org.members.length > 0) {
+      c.set("org", {
+        id: org.id,
+        clerkOrgId: org.clerkOrgId,
+        name: org.name,
+        slug: org.slug,
+        githubAccessToken: org.githubAccessToken,
+        role: org.members[0].role,
+      } as AuthOrg);
+    }
+  }
 
   await next();
 });
 
-// Middleware to require project access
+// Middleware to require organization context
+export const requireOrg = createMiddleware(async (c, next) => {
+  const org = c.get("org") as AuthOrg | undefined;
+
+  if (!org) {
+    throw new HTTPException(400, { message: "Organization context required" });
+  }
+
+  await next();
+});
+
+// Middleware to require organization admin/owner role
+export const requireOrgAdmin = createMiddleware(async (c, next) => {
+  const org = c.get("org") as AuthOrg | undefined;
+
+  if (!org) {
+    throw new HTTPException(400, { message: "Organization context required" });
+  }
+
+  if (!["owner", "admin"].includes(org.role)) {
+    throw new HTTPException(403, { message: "Admin access required" });
+  }
+
+  await next();
+});
+
+// Middleware to require project access (within organization context)
 export const requireProjectAccess = (requiredRole?: "admin" | "owner") => {
   return createMiddleware(async (c, next) => {
     const user = c.get("user") as AuthUser;
+    const org = c.get("org") as AuthOrg | undefined;
     const projectId = c.req.param("projectId");
 
     if (!user || !projectId) {
@@ -65,6 +123,7 @@ export const requireProjectAccess = (requiredRole?: "admin" | "owner") => {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: {
+        organization: true,
         teamMembers: {
           where: { userId: user.id },
         },
@@ -75,23 +134,45 @@ export const requireProjectAccess = (requiredRole?: "admin" | "owner") => {
       throw new HTTPException(404, { message: "Project not found" });
     }
 
-    const isOwner = project.userId === user.id;
-    const teamMember = project.teamMembers[0];
-    const isAdmin = teamMember?.role === "admin";
-
-    // Check access based on required role
-    if (requiredRole === "owner" && !isOwner) {
-      throw new HTTPException(403, { message: "Owner access required" });
+    // If org context is set, verify project belongs to that org
+    if (org && project.organizationId !== org.id) {
+      throw new HTTPException(404, { message: "Project not found" });
     }
 
-    if (requiredRole === "admin" && !isOwner && !isAdmin) {
-      throw new HTTPException(403, { message: "Admin access required" });
-    }
+    // Check organization membership
+    const orgMember = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: project.organizationId,
+          userId: user.id,
+        },
+      },
+    });
 
-    // Allow if user is owner or team member
-    if (!isOwner && !teamMember) {
+    if (!orgMember) {
       throw new HTTPException(403, { message: "Access denied" });
     }
+
+    const isOrgOwner = orgMember.role === "owner";
+    const isOrgAdmin = orgMember.role === "admin";
+    const teamMember = project.teamMembers[0];
+    const isProjectAdmin = teamMember?.role === "admin" || teamMember?.role === "owner";
+
+    // Check access based on required role
+    if (requiredRole === "owner") {
+      if (!isOrgOwner) {
+        throw new HTTPException(403, { message: "Owner access required" });
+      }
+    }
+
+    if (requiredRole === "admin") {
+      if (!isOrgOwner && !isOrgAdmin && !isProjectAdmin) {
+        throw new HTTPException(403, { message: "Admin access required" });
+      }
+    }
+
+    // Store project in context for later use
+    c.set("project", project);
 
     await next();
   });
@@ -104,4 +185,9 @@ export const getCurrentUser = (c: any): AuthUser => {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
   return user;
+};
+
+// Helper to get current organization from context
+export const getCurrentOrg = (c: any): AuthOrg | null => {
+  return c.get("org") || null;
 };

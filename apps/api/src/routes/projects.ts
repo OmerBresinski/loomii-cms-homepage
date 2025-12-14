@@ -1,29 +1,55 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
+import { getAuth } from "@hono/clerk-auth";
+import { HTTPException } from "hono/http-exception";
 import { prisma } from "../db";
 import {
   createProjectSchema,
   updateProjectSchema,
   paginationSchema,
 } from "../lib/schemas";
-import { requireAuth, requireProjectAccess } from "../middleware/auth";
+import { requireAuth, getCurrentUser } from "../middleware/auth";
 import { getRepository } from "../services/github";
 
+// Helper to get organization and check membership
+async function getOrgWithAccess(userId: string, clerkOrgId: string | null | undefined) {
+  if (!clerkOrgId) {
+    throw new HTTPException(400, { message: "Organization context required" });
+  }
+
+  const org = await prisma.organization.findUnique({
+    where: { clerkOrgId },
+    include: {
+      members: {
+        where: { userId },
+      },
+    },
+  });
+
+  if (!org) {
+    throw new HTTPException(404, { message: "Organization not found" });
+  }
+
+  if (org.members.length === 0) {
+    throw new HTTPException(403, { message: "Not a member of this organization" });
+  }
+
+  return { org, membership: org.members[0] };
+}
+
 export const projectRoutes = new Hono()
-  // List user's projects
+  // List organization's projects
   .get("/", requireAuth, zValidator("query", paginationSchema), async (c) => {
-    const user = c.get("user");
+    const user = getCurrentUser(c);
+    const auth = getAuth(c);
     const { page, limit } = c.req.valid("query");
     const skip = (page - 1) * limit;
 
+    const { org } = await getOrgWithAccess(user.id, auth?.orgId);
+
     const [projects, total] = await Promise.all([
       prisma.project.findMany({
-        where: {
-          OR: [
-            { userId: user.id },
-            { teamMembers: { some: { userId: user.id } } },
-          ],
-        },
+        where: { organizationId: org.id },
         orderBy: { updatedAt: "desc" },
         skip,
         take: limit,
@@ -34,12 +60,7 @@ export const projectRoutes = new Hono()
         },
       }),
       prisma.project.count({
-        where: {
-          OR: [
-            { userId: user.id },
-            { teamMembers: { some: { userId: user.id } } },
-          ],
-        },
+        where: { organizationId: org.id },
       }),
     ]);
 
@@ -66,8 +87,12 @@ export const projectRoutes = new Hono()
   })
 
   // Get single project
-  .get("/:projectId", requireAuth, requireProjectAccess(), async (c) => {
+  .get("/:projectId", requireAuth, async (c) => {
+    const user = getCurrentUser(c);
+    const auth = getAuth(c);
     const projectId = c.req.param("projectId");
+
+    const { org } = await getOrgWithAccess(user.id, auth?.orgId);
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -79,13 +104,13 @@ export const projectRoutes = new Hono()
             teamMembers: true,
           },
         },
-        user: {
-          select: { id: true, name: true, email: true, avatarUrl: true },
+        organization: {
+          select: { id: true, name: true, slug: true },
         },
       },
     });
 
-    if (!project) {
+    if (!project || project.organizationId !== org.id) {
       return c.json({ error: "Project not found" }, 404);
     }
 
@@ -99,7 +124,7 @@ export const projectRoutes = new Hono()
         status: project.status,
         lastAnalyzedAt: project.lastAnalyzedAt?.toISOString() || null,
         analysisError: project.analysisError,
-        owner: project.user,
+        organization: project.organization,
         counts: project._count,
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),
@@ -109,8 +134,21 @@ export const projectRoutes = new Hono()
 
   // Create new project
   .post("/", requireAuth, zValidator("json", createProjectSchema), async (c) => {
-    const user = c.get("user");
+    const user = getCurrentUser(c);
+    const auth = getAuth(c);
     const input = c.req.valid("json");
+
+    const { org, membership } = await getOrgWithAccess(user.id, auth?.orgId);
+
+    // Only admins/owners can create projects
+    if (!["owner", "admin"].includes(membership.role)) {
+      throw new HTTPException(403, { message: "Admin access required to create projects" });
+    }
+
+    // Check if org has GitHub connected
+    if (!org.githubAccessToken) {
+      return c.json({ error: "Please connect GitHub to your organization first" }, 400);
+    }
 
     // Parse owner/repo from the githubRepo input
     const [owner, repo] = input.githubRepo.split("/");
@@ -118,9 +156,9 @@ export const projectRoutes = new Hono()
       return c.json({ error: "Invalid GitHub repo format" }, 400);
     }
 
-    // Validate GitHub repo access
+    // Validate GitHub repo access using org's token
     try {
-      await getRepository(user.githubAccessToken, owner, repo);
+      await getRepository(org.githubAccessToken, owner, repo);
     } catch (error) {
       return c.json(
         { error: "Cannot access repository. Please check permissions." },
@@ -131,7 +169,8 @@ export const projectRoutes = new Hono()
     // Create project
     const project = await prisma.project.create({
       data: {
-        userId: user.id,
+        organizationId: org.id,
+        createdById: user.id,
         name: input.name,
         githubRepo: input.githubRepo,
         githubBranch: input.githubBranch,
@@ -158,11 +197,28 @@ export const projectRoutes = new Hono()
   .patch(
     "/:projectId",
     requireAuth,
-    requireProjectAccess("admin"),
     zValidator("json", updateProjectSchema),
     async (c) => {
+      const user = getCurrentUser(c);
+      const auth = getAuth(c);
       const projectId = c.req.param("projectId");
       const input = c.req.valid("json");
+
+      const { org, membership } = await getOrgWithAccess(user.id, auth?.orgId);
+
+      // Only admins/owners can update projects
+      if (!["owner", "admin"].includes(membership.role)) {
+        throw new HTTPException(403, { message: "Admin access required" });
+      }
+
+      // Verify project belongs to org
+      const existing = await prisma.project.findUnique({
+        where: { id: projectId },
+      });
+
+      if (!existing || existing.organizationId !== org.id) {
+        return c.json({ error: "Project not found" }, 404);
+      }
 
       const project = await prisma.project.update({
         where: { id: projectId },
@@ -187,15 +243,28 @@ export const projectRoutes = new Hono()
   )
 
   // Delete project
-  .delete(
-    "/:projectId",
-    requireAuth,
-    requireProjectAccess("owner"),
-    async (c) => {
-      const projectId = c.req.param("projectId");
+  .delete("/:projectId", requireAuth, async (c) => {
+    const user = getCurrentUser(c);
+    const auth = getAuth(c);
+    const projectId = c.req.param("projectId");
 
-      await prisma.project.delete({ where: { id: projectId } });
+    const { org, membership } = await getOrgWithAccess(user.id, auth?.orgId);
 
-      return c.json({ success: true, deletedId: projectId });
+    // Only owners can delete projects
+    if (membership.role !== "owner") {
+      throw new HTTPException(403, { message: "Owner access required to delete projects" });
     }
-  );
+
+    // Verify project belongs to org
+    const existing = await prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!existing || existing.organizationId !== org.id) {
+      return c.json({ error: "Project not found" }, 404);
+    }
+
+    await prisma.project.delete({ where: { id: projectId } });
+
+    return c.json({ success: true, deletedId: projectId });
+  });

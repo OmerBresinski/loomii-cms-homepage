@@ -6,6 +6,10 @@ export const queryKeys = {
   all: ["ai-cms"] as const,
   auth: () => [...queryKeys.all, "auth"] as const,
   me: () => [...queryKeys.auth(), "me"] as const,
+  organization: () => [...queryKeys.all, "organization"] as const,
+  currentOrg: () => [...queryKeys.organization(), "current"] as const,
+  orgRepos: (orgId: string) => [...queryKeys.organization(), orgId, "repos"] as const,
+  orgMembers: (orgId: string) => [...queryKeys.organization(), orgId, "members"] as const,
   projects: () => [...queryKeys.all, "projects"] as const,
   projectList: (params: { page?: number; limit?: number }) =>
     [...queryKeys.projects(), "list", params] as const,
@@ -25,6 +29,45 @@ interface User {
   email: string;
   name: string | null;
   avatarUrl: string | null;
+}
+
+interface Organization {
+  id: string;
+  clerkOrgId: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  hasGitHubConnected: boolean;
+  githubOrgName: string | null;
+  memberCount: number;
+  projectCount: number;
+  createdAt: string;
+}
+
+interface OrganizationContext {
+  id: string;
+  name: string;
+  slug: string;
+  role: "owner" | "admin" | "member";
+  hasGitHubConnected: boolean;
+}
+
+interface GitHubRepo {
+  id: number;
+  name: string;
+  fullName: string;
+  description: string | null;
+  private: boolean;
+  defaultBranch: string;
+  url: string;
+  updatedAt: string;
+}
+
+interface OrgMember {
+  id: string;
+  user: User;
+  role: "owner" | "admin" | "member";
+  createdAt: string;
 }
 
 interface Project {
@@ -64,9 +107,40 @@ export function meQuery() {
   return queryOptions({
     queryKey: queryKeys.me(),
     queryFn: async () => {
-      return apiFetch<{ user: User }>("/auth/me");
+      return apiFetch<{ user: User; organization: OrganizationContext | null }>("/auth/me");
     },
     retry: false,
+  });
+}
+
+// Organization queries
+export function currentOrgQuery() {
+  return queryOptions({
+    queryKey: queryKeys.currentOrg(),
+    queryFn: async () => {
+      return apiFetch<{ organization: Organization | null; needsSync?: boolean }>("/organizations/current");
+    },
+    retry: false,
+  });
+}
+
+export function orgReposQuery(orgId: string) {
+  return queryOptions({
+    queryKey: queryKeys.orgRepos(orgId),
+    queryFn: async () => {
+      return apiFetch<{ repos: GitHubRepo[] }>(`/organizations/${orgId}/github/repos`);
+    },
+    enabled: !!orgId,
+  });
+}
+
+export function orgMembersQuery(orgId: string) {
+  return queryOptions({
+    queryKey: queryKeys.orgMembers(orgId),
+    queryFn: async () => {
+      return apiFetch<{ members: OrgMember[] }>(`/organizations/${orgId}/members`);
+    },
+    enabled: !!orgId,
   });
 }
 

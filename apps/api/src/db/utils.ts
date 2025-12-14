@@ -101,6 +101,13 @@ export async function checkProjectAccess(
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
+      organization: {
+        include: {
+          members: {
+            where: { userId },
+          },
+        },
+      },
       teamMembers: {
         where: { userId },
       },
@@ -109,19 +116,28 @@ export async function checkProjectAccess(
 
   if (!project) return null;
 
-  // Owner always has access
-  if (project.userId === userId) {
+  // Check organization membership
+  const orgMember = project.organization.members[0];
+  if (!orgMember) return null;
+
+  // Org owners have full access
+  if (orgMember.role === "owner") {
     return { project, role: "owner" as const };
   }
 
-  // Check team membership
-  const membership = project.teamMembers[0];
-  if (!membership) return null;
+  // Org admins have admin access
+  if (orgMember.role === "admin") {
+    return { project, role: "admin" as const };
+  }
+
+  // Check project-specific team membership
+  const teamMember = project.teamMembers[0];
+  const effectiveRole = teamMember?.role || "viewer";
 
   // Check role hierarchy if required
   if (requiredRole) {
     const roleHierarchy = ["viewer", "editor", "admin", "owner"];
-    const userRoleIndex = roleHierarchy.indexOf(membership.role);
+    const userRoleIndex = roleHierarchy.indexOf(effectiveRole);
     const requiredRoleIndex = roleHierarchy.indexOf(requiredRole);
 
     if (userRoleIndex < requiredRoleIndex) {
@@ -129,6 +145,6 @@ export async function checkProjectAccess(
     }
   }
 
-  return { project, role: membership.role };
+  return { project, role: effectiveRole };
 }
 

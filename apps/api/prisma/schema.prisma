@@ -56,6 +56,12 @@ enum TeamRole {
   viewer
 }
 
+enum OrgRole {
+  owner
+  admin
+  member
+}
+
 // Models
 model User {
   id                String   @id @default(uuid())
@@ -63,25 +69,61 @@ model User {
   email             String   @unique
   name              String?
   avatarUrl         String?
-  githubId          String?  @unique
-  githubAccessToken String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   // Relations
-  projects        Project[]
-  edits           Edit[]
-  pullRequests    PullRequest[]
-  teamMemberships TeamMember[]
-  invitedMembers  TeamMember[]  @relation("InvitedBy")
-  sessions        Session[]
+  edits              Edit[]
+  pullRequests       PullRequest[]
+  teamMemberships    TeamMember[]
+  invitedMembers     TeamMember[]        @relation("InvitedBy")
+  sessions           Session[]
+  orgMemberships     OrganizationMember[]
 
   @@map("users")
 }
 
+// Organization - synced with Clerk Organizations
+model Organization {
+  id                String   @id @default(uuid())
+  clerkOrgId        String   @unique // Clerk organization ID
+  name              String
+  slug              String   @unique
+  logoUrl           String?
+  // GitHub integration at org level
+  githubInstallationId String?  // GitHub App installation ID
+  githubAccessToken    String?  // OAuth token for GitHub API
+  githubOrgName        String?  // GitHub organization/user name
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  members  OrganizationMember[]
+  projects Project[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  role           OrgRole  @default(member)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
 model Project {
   id             String        @id @default(uuid())
-  userId         String
+  organizationId String
+  createdById    String        // User who created the project
   name           String
   githubRepo     String
   githubBranch   String        @default("main")
@@ -93,7 +135,7 @@ model Project {
   updatedAt      DateTime      @updatedAt
 
   // Relations
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   elements     Element[]
   pullRequests PullRequest[]
   teamMembers  TeamMember[]

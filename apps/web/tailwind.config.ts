@@ -1,46 +1,66 @@
 import type { Config } from "tailwindcss";
 
 export default {
+  darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
-        // Custom color palette - dark mode first design
+        // Match homepage styling
         primary: {
-          DEFAULT: "#f45a5a",
-          hover: "#f06b6b",
+          DEFAULT: "rgb(244 90 90)",
+          foreground: "#ffffff",
         },
         background: {
-          DEFAULT: "#0a0a0b",
-          secondary: "#111113",
-          tertiary: "#18181b",
+          DEFAULT: "#0a0a0a",
+          secondary: "#111111",
+          tertiary: "#161616",
         },
         foreground: {
-          DEFAULT: "#fafafa",
+          DEFAULT: "#ffffff",
           muted: "#a1a1aa",
           subtle: "#71717a",
         },
-        accent: {
-          DEFAULT: "#6366f1",
-          hover: "#818cf8",
-          muted: "#4f46e5",
+        card: {
+          DEFAULT: "#111111",
+          foreground: "#ffffff",
         },
-        border: {
+        popover: {
+          DEFAULT: "#111111",
+          foreground: "#ffffff",
+        },
+        muted: {
           DEFAULT: "#27272a",
-          hover: "#3f3f46",
+          foreground: "#a1a1aa",
         },
+        accent: {
+          DEFAULT: "#1a1a1a",
+          foreground: "#ffffff",
+        },
+        destructive: {
+          DEFAULT: "#ef4444",
+          foreground: "#ffffff",
+        },
+        border: "rgba(255, 255, 255, 0.1)",
+        input: "rgba(255, 255, 255, 0.1)",
+        ring: "rgb(244 90 90)",
+        // Status colors
         success: "#22c55e",
         warning: "#f59e0b",
         error: "#ef4444",
       },
       fontFamily: {
-        sans: ["IBM Plex Sans", "system-ui", "sans-serif"],
-        mono: ["IBM Plex Mono", "Menlo", "monospace"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "Menlo", "monospace"],
+      },
+      borderRadius: {
+        lg: "0.5rem",
+        md: "0.375rem",
+        sm: "0.25rem",
       },
       animation: {
         "fade-in": "fadeIn 0.3s ease-out",
         "slide-up": "slideUp 0.4s ease-out",
-        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       keyframes: {
         fadeIn: {
@@ -54,6 +74,5 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 } satisfies Config;
-

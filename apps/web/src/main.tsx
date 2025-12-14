@@ -2,9 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider } from "@clerk/clerk-react";
+import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 
 import { routeTree } from "./routeTree.gen";
+import { setAuthTokenGetter } from "./lib/api";
 import "./styles/globals.css";
 
 // Clerk publishable key
@@ -40,6 +41,20 @@ declare module "@tanstack/react-router" {
   }
 }
 
+// Component to set up auth token for API calls
+function AuthTokenSetup({ children }: { children: React.ReactNode }) {
+  const { getToken } = useAuth();
+
+  // Set the token getter for API calls
+  React.useEffect(() => {
+    setAuthTokenGetter(async () => {
+      return getToken();
+    });
+  }, [getToken]);
+
+  return <>{children}</>;
+}
+
 // Render the app
 const rootElement = document.getElementById("root")!;
 
@@ -48,9 +63,11 @@ if (!rootElement.innerHTML) {
   root.render(
     <React.StrictMode>
       <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
-        <QueryClientProvider client={queryClient}>
-          <RouterProvider router={router} />
-        </QueryClientProvider>
+        <AuthTokenSetup>
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
+        </AuthTokenSetup>
       </ClerkProvider>
     </React.StrictMode>
   );
