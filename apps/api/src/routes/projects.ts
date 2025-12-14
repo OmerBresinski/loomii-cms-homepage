@@ -83,7 +83,7 @@ export const projectRoutes = new Hono()
         total,
         totalPages: Math.ceil(total / limit),
       },
-    });
+    }, 200);
   })
 
   // Get single project
@@ -129,7 +129,7 @@ export const projectRoutes = new Hono()
         createdAt: project.createdAt.toISOString(),
         updatedAt: project.updatedAt.toISOString(),
       },
-    });
+    }, 200);
   })
 
   // Create new project
@@ -238,7 +238,7 @@ export const projectRoutes = new Hono()
           status: project.status,
           updatedAt: project.updatedAt.toISOString(),
         },
-      });
+      }, 200);
     }
   )
 
@@ -266,5 +266,5 @@ export const projectRoutes = new Hono()
 
     await prisma.project.delete({ where: { id: projectId } });
 
-    return c.json({ success: true, deletedId: projectId });
+    return c.json({ success: true, deletedId: projectId }, 200);
   });
