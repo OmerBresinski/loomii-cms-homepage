@@ -132,6 +132,40 @@ export const elementRoutes = new Hono()
     }
   )
 
+  // Update element
+  .patch(
+    "/:elementId",
+    requireAuth,
+    requireProjectAccess(),
+    zValidator("json", z.object({
+      currentValue: z.string().optional(),
+      visible: z.boolean().optional(),
+    })),
+    async (c) => {
+      const projectId = c.req.param("projectId");
+      const elementId = c.req.param("elementId");
+      const updates = c.req.valid("json");
+
+      const element = await prisma.element.findFirst({
+        where: { id: elementId, projectId },
+      });
+
+      if (!element) {
+        return c.json({ error: "Element not found" }, 404);
+      }
+
+      const updated = await prisma.element.update({
+        where: { id: elementId },
+        data: {
+          ...(updates.currentValue !== undefined && { currentValue: updates.currentValue }),
+          // Note: 'visible' field doesn't exist in schema yet, we can add it later
+        },
+      });
+
+      return c.json({ element: updated }, 200);
+    }
+  )
+
   // Get pages summary (grouped elements by page)
   .get(
     "/pages/summary",
