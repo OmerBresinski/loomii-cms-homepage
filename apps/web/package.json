@@ -38,7 +38,6 @@
     "@ai-cms/api": "workspace:*",
     "@playwright/test": "^1.49.0",
     "@tanstack/router-devtools": "^1.93.0",
-    "@tanstack/router-plugin": "^1.91.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^18.3.17",
