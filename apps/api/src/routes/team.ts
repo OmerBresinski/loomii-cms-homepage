@@ -34,16 +34,19 @@ export const teamRoutes = new Hono()
       return c.json({ error: "Project not found" }, 404);
     }
 
-    return c.json({
-      owner: { ...project.user, role: "owner" },
-      members: project.teamMembers.map((m) => ({
-        id: m.id,
-        user: m.user,
-        role: m.role,
-        invitedBy: m.inviter,
-        createdAt: m.createdAt.toISOString(),
-      })),
-    });
+    return c.json(
+      {
+        owner: { ...project.user, role: "owner" },
+        members: project.teamMembers.map((m) => ({
+          id: m.id,
+          user: m.user,
+          role: m.role,
+          invitedBy: m.inviter,
+          createdAt: m.createdAt.toISOString(),
+        })),
+      },
+      200
+    );
   })
 
   // Invite team member
@@ -143,14 +146,17 @@ export const teamRoutes = new Hono()
         },
       });
 
-      return c.json({
-        member: {
-          id: updated.id,
-          user: updated.user,
-          role: updated.role,
-          updatedAt: updated.updatedAt.toISOString(),
+      return c.json(
+        {
+          member: {
+            id: updated.id,
+            user: updated.user,
+            role: updated.role,
+            updatedAt: updated.updatedAt.toISOString(),
+          },
         },
-      });
+        200
+      );
     }
   )
 
@@ -173,7 +179,7 @@ export const teamRoutes = new Hono()
 
       await prisma.teamMember.delete({ where: { id: memberId } });
 
-      return c.json({ success: true, deletedId: memberId });
+      return c.json({ success: true, deletedId: memberId }, 200);
     }
   );
 

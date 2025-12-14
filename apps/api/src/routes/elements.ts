@@ -45,26 +45,29 @@ export const elementRoutes = new Hono()
         prisma.element.count({ where }),
       ]);
 
-      return c.json({
-        elements: elements.map((e) => ({
-          id: e.id,
-          name: e.name,
-          type: e.type,
-          selector: e.selector,
-          currentValue: e.currentValue,
-          pageUrl: e.pageUrl,
-          confidence: e.confidence,
-          sourceFile: e.sourceFile,
-          createdAt: e.createdAt.toISOString(),
-          updatedAt: e.updatedAt.toISOString(),
-        })),
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
+      return c.json(
+        {
+          elements: elements.map((e) => ({
+            id: e.id,
+            name: e.name,
+            type: e.type,
+            selector: e.selector,
+            currentValue: e.currentValue,
+            pageUrl: e.pageUrl,
+            confidence: e.confidence,
+            sourceFile: e.sourceFile,
+            createdAt: e.createdAt.toISOString(),
+            updatedAt: e.updatedAt.toISOString(),
+          })),
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
         },
-      });
+        200
+      );
     }
   )
 
@@ -96,33 +99,36 @@ export const elementRoutes = new Hono()
         return c.json({ error: "Element not found" }, 404);
       }
 
-      return c.json({
-        element: {
-          id: element.id,
-          name: element.name,
-          type: element.type,
-          selector: element.selector,
-          xpath: element.xpath,
-          sourceFile: element.sourceFile,
-          sourceLine: element.sourceLine,
-          sourceColumn: element.sourceColumn,
-          currentValue: element.currentValue,
-          schema: element.schema,
-          pageUrl: element.pageUrl,
-          screenshotUrl: element.screenshotUrl,
-          confidence: element.confidence,
-          recentEdits: element.edits.map((e) => ({
-            id: e.id,
-            oldValue: e.oldValue,
-            newValue: e.newValue,
-            status: e.status,
-            user: e.user,
-            createdAt: e.createdAt.toISOString(),
-          })),
-          createdAt: element.createdAt.toISOString(),
-          updatedAt: element.updatedAt.toISOString(),
+      return c.json(
+        {
+          element: {
+            id: element.id,
+            name: element.name,
+            type: element.type,
+            selector: element.selector,
+            xpath: element.xpath,
+            sourceFile: element.sourceFile,
+            sourceLine: element.sourceLine,
+            sourceColumn: element.sourceColumn,
+            currentValue: element.currentValue,
+            schema: element.schema,
+            pageUrl: element.pageUrl,
+            screenshotUrl: element.screenshotUrl,
+            confidence: element.confidence,
+            recentEdits: element.edits.map((e) => ({
+              id: e.id,
+              oldValue: e.oldValue,
+              newValue: e.newValue,
+              status: e.status,
+              user: e.user,
+              createdAt: e.createdAt.toISOString(),
+            })),
+            createdAt: element.createdAt.toISOString(),
+            updatedAt: element.updatedAt.toISOString(),
+          },
         },
-      });
+        200
+      );
     }
   )
 
@@ -141,12 +147,15 @@ export const elementRoutes = new Hono()
         _avg: { confidence: true },
       });
 
-      return c.json({
-        pages: pages.map((p) => ({
-          url: p.pageUrl,
-          elementCount: p._count.id,
-          avgConfidence: p._avg.confidence,
-        })),
-      });
+      return c.json(
+        {
+          pages: pages.map((p) => ({
+            url: p.pageUrl,
+            elementCount: p._count.id,
+            avgConfidence: p._avg.confidence,
+          })),
+        },
+        200
+      );
     }
   );

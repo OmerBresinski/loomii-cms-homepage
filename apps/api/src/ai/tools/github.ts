@@ -1,256 +1,514 @@
-import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import { logger } from "../logger";
 
-// GitHub context that will be provided at runtime
-interface GitHubContext {
-  octokit: {
-    repos: {
-      getContent: (params: {
-        owner: string;
-        repo: string;
-        path: string;
-        ref?: string;
-      }) => Promise<{ data: { content?: string; encoding?: string } }>;
-    };
-    search: {
-      code: (params: {
-        q: string;
-        per_page?: number;
-      }) => Promise<{ data: { items: Array<{ path: string; sha: string }> } }>;
-    };
-    pulls: {
-      create: (params: {
-        owner: string;
-        repo: string;
-        title: string;
-        body: string;
-        head: string;
-        base: string;
-      }) => Promise<{ data: { number: number; html_url: string } }>;
-    };
-  };
+// GitHub context type
+export interface GitHubContext {
+  accessToken: string;
   owner: string;
   repo: string;
   branch: string;
 }
 
-// Read a file from the repository
-export const readFileTool = createTool({
-  id: "read-file",
-  description: "Read the contents of a file from the connected GitHub repository.",
-  inputSchema: z.object({
-    path: z.string().describe("Path to the file in the repository"),
-  }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    content: z.string().optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { path } = context as unknown as { path: string };
-    const runtimeContext = (context as any).runtimeContext;
-    const github = runtimeContext?.get("github") as GitHubContext | undefined;
-    
-    if (!github) {
-      return { success: false, error: "GitHub not initialized" };
-    }
+// GitHub API response types
+interface GitHubTreeResponse {
+  tree: Array<{ path: string; type: string }>;
+}
 
-    try {
-      const response = await github.octokit.repos.getContent({
-        owner: github.owner,
-        repo: github.repo,
-        path,
-        ref: github.branch,
-      });
+interface GitHubContentResponse {
+  name: string;
+  path: string;
+  type: string;
+  content?: string;
+  sha?: string;
+}
 
-      if (!response.data.content) {
-        return { success: false, error: "File has no content" };
-      }
+interface GitHubSearchResponse {
+  items: Array<{ path: string; sha: string }>;
+}
 
-      const content = Buffer.from(response.data.content, "base64").toString("utf-8");
-      return { success: true, content };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Failed to read file" 
-      };
-    }
-  },
+interface GitHubRefResponse {
+  object: { sha: string };
+}
+
+interface GitHubPRResponse {
+  number: number;
+  html_url: string;
+}
+
+// GitHub API helper with generic type
+async function githubFetch<T>(
+  accessToken: string,
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const response = await fetch(`https://api.github.com${endpoint}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `GitHub API error: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return response.json() as Promise<T>;
+}
+
+// Tool schemas
+export const listFilesSchema = z.object({
+  path: z.string().default("").describe("Path to list (empty for root)"),
+  recursive: z.boolean().default(false).describe("Whether to list recursively"),
 });
 
-// Search for code in the repository
-export const searchCodeTool = createTool({
-  id: "search-code",
-  description: "Search for code patterns in the repository to find where content is defined.",
-  inputSchema: z.object({
-    query: z.string().describe("The code or text to search for"),
-    fileType: z.string().optional().describe("File extension to filter by (e.g., tsx, ts, jsx)"),
-  }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    results: z.array(z.object({
-      path: z.string(),
-      sha: z.string(),
-    })).optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { query, fileType } = context as unknown as { query: string; fileType?: string };
-    const runtimeContext = (context as any).runtimeContext;
-    const github = runtimeContext?.get("github") as GitHubContext | undefined;
-    
-    if (!github) {
-      return { success: false, error: "GitHub not initialized" };
-    }
-
-    try {
-      let searchQuery = `${query} repo:${github.owner}/${github.repo}`;
-      if (fileType) {
-        searchQuery += ` extension:${fileType}`;
-      }
-
-      const response = await github.octokit.search.code({
-        q: searchQuery,
-        per_page: 10,
-      });
-
-      const results = response.data.items.map(item => ({
-        path: item.path,
-        sha: item.sha,
-      }));
-
-      return { success: true, results };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Search failed" 
-      };
-    }
-  },
+export const readFileSchema = z.object({
+  path: z.string().describe("Path to the file in the repository"),
 });
 
-// Generate a diff for a file change
-export const generateDiffTool = createTool({
-  id: "generate-diff",
-  description: "Generate a diff for replacing content in a file.",
-  inputSchema: z.object({
-    filePath: z.string().describe("Path to the file to modify"),
-    oldContent: z.string().describe("The exact content to find and replace"),
-    newContent: z.string().describe("The new content to insert"),
-  }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    diff: z.object({
-      filePath: z.string(),
-      oldContent: z.string(),
-      newContent: z.string(),
-      unified: z.string(),
-    }).optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { filePath, oldContent, newContent } = context as unknown as { 
-      filePath: string; 
-      oldContent: string; 
-      newContent: string; 
-    };
+export const searchCodeSchema = z.object({
+  query: z.string().describe("The code or text to search for"),
+  fileType: z
+    .string()
+    .optional()
+    .describe("File extension to filter by (e.g., tsx, ts, jsx)"),
+});
 
-    try {
-      // Generate a simple unified diff representation
-      const oldLines = oldContent.split('\n');
-      const newLines = newContent.split('\n');
-      
-      let unified = `--- a/${filePath}\n+++ b/${filePath}\n`;
-      unified += `@@ -1,${oldLines.length} +1,${newLines.length} @@\n`;
-      
-      for (const line of oldLines) {
-        unified += `-${line}\n`;
-      }
-      for (const line of newLines) {
-        unified += `+${line}\n`;
-      }
+export const analyzeSourceFileSchema = z.object({
+  path: z.string().describe("Path to the source file to analyze"),
+});
 
-      return {
-        success: true,
-        diff: {
+export const generateDiffSchema = z.object({
+  filePath: z.string().describe("Path to the file to modify"),
+  oldContent: z.string().describe("The exact content to find and replace"),
+  newContent: z.string().describe("The new content to insert"),
+});
+
+export const commitChangesSchema = z.object({
+  branchName: z.string().describe("Name for the new branch"),
+  title: z.string().describe("Title of the pull request"),
+  description: z.string().describe("Description of the pull request"),
+  changes: z
+    .array(
+      z.object({
+        filePath: z.string(),
+        content: z.string(),
+      })
+    )
+    .describe("Files to create or modify"),
+});
+
+// Tool definitions for AI SDK
+export const toolDefinitions = {
+  listFiles: {
+    description:
+      "List files and directories in a path of the GitHub repository. Use this to explore the project structure.",
+    parameters: listFilesSchema,
+  },
+  readFile: {
+    description: "Read the contents of a file from the GitHub repository.",
+    parameters: readFileSchema,
+  },
+  searchCode: {
+    description:
+      "Search for code patterns in the repository to find where content is defined.",
+    parameters: searchCodeSchema,
+  },
+  analyzeSourceFile: {
+    description: `Analyze a source file to extract editable content. 
+      Parses JSX/TSX files to find text content, headings, paragraphs, 
+      button labels, image alt text, and other user-facing strings.`,
+    parameters: analyzeSourceFileSchema,
+  },
+  generateDiff: {
+    description: "Generate a diff for replacing content in a file.",
+    parameters: generateDiffSchema,
+  },
+  commitChanges: {
+    description:
+      "Commit file changes to a new branch and create a pull request.",
+    parameters: commitChangesSchema,
+  },
+};
+
+// Tool executors
+export function createToolExecutors(ctx: GitHubContext) {
+  return {
+    async listFiles(
+      params: z.infer<typeof listFilesSchema>
+    ): Promise<Array<{ name: string; path: string; type: string }>> {
+      const { path, recursive } = params;
+      const startTime = Date.now();
+      logger.tool.call("listFiles", { path, recursive });
+
+      try {
+        let result: Array<{ name: string; path: string; type: string }>;
+        if (recursive) {
+          const data = await githubFetch<GitHubTreeResponse>(
+            ctx.accessToken,
+            `/repos/${ctx.owner}/${ctx.repo}/git/trees/${ctx.branch}?recursive=1`
+          );
+
+          result = data.tree
+            .filter((item) => !path || item.path.startsWith(path))
+            .slice(0, 100)
+            .map((item) => ({
+              name: item.path.split("/").pop() || "",
+              path: item.path,
+              type: item.type === "blob" ? "file" : "dir",
+            }));
+        } else {
+          const endpoint = path
+            ? `/repos/${ctx.owner}/${ctx.repo}/contents/${path}?ref=${ctx.branch}`
+            : `/repos/${ctx.owner}/${ctx.repo}/contents?ref=${ctx.branch}`;
+
+          const data = await githubFetch<
+            GitHubContentResponse | GitHubContentResponse[]
+          >(ctx.accessToken, endpoint);
+          const items = Array.isArray(data) ? data : [data];
+
+          result = items.map((item) => ({
+            name: item.name,
+            path: item.path,
+            type: item.type === "file" ? "file" : "dir",
+          }));
+        }
+
+        logger.tool.result("listFiles", Date.now() - startTime, result);
+        return result;
+      } catch (error) {
+        logger.tool.error("listFiles", error as Error);
+        throw error;
+      }
+    },
+
+    async readFile(
+      params: z.infer<typeof readFileSchema>
+    ): Promise<{ path: string; length: number; preview: string }> {
+      const { path } = params;
+      const startTime = Date.now();
+      logger.tool.call("readFile", { path });
+
+      try {
+        const data = await githubFetch<GitHubContentResponse>(
+          ctx.accessToken,
+          `/repos/${ctx.owner}/${ctx.repo}/contents/${path}?ref=${ctx.branch}`
+        );
+
+        if (!data.content) {
+          throw new Error("File has no content");
+        }
+
+        const content = Buffer.from(data.content, "base64").toString("utf-8");
+        const result = {
+          path,
+          length: content.length,
+          preview: content.slice(0, 200),
+        };
+
+        logger.tool.result("readFile", Date.now() - startTime, result);
+        return result;
+      } catch (error) {
+        logger.tool.error("readFile", error as Error);
+        throw error;
+      }
+    },
+
+    async searchCode(
+      params: z.infer<typeof searchCodeSchema>
+    ): Promise<Array<{ path: string; sha: string }>> {
+      const { query, fileType } = params;
+      const startTime = Date.now();
+      logger.tool.call("searchCode", { query, fileType });
+
+      try {
+        let searchQuery = `${query} repo:${ctx.owner}/${ctx.repo}`;
+        if (fileType) {
+          searchQuery += ` extension:${fileType}`;
+        }
+
+        const data = await githubFetch<GitHubSearchResponse>(
+          ctx.accessToken,
+          `/search/code?q=${encodeURIComponent(searchQuery)}&per_page=10`
+        );
+
+        const result = data.items.map((item) => ({
+          path: item.path,
+          sha: item.sha,
+        }));
+
+        logger.tool.result("searchCode", Date.now() - startTime, result);
+        return result;
+      } catch (error) {
+        logger.tool.error("searchCode", error as Error);
+        throw error;
+      }
+    },
+
+    async analyzeSourceFile(params: z.infer<typeof analyzeSourceFileSchema>) {
+      const { path } = params;
+      const startTime = Date.now();
+      logger.tool.call("analyzeSourceFile", { path });
+
+      try {
+        const data = await githubFetch<GitHubContentResponse>(
+          ctx.accessToken,
+          `/repos/${ctx.owner}/${ctx.repo}/contents/${path}?ref=${ctx.branch}`
+        );
+
+        if (!data.content) {
+          throw new Error("File has no content");
+        }
+
+        const content = Buffer.from(data.content, "base64").toString("utf-8");
+        const lines = content.split("\n");
+        const elements: Array<{
+          type: string;
+          content: string;
+          line: number;
+          context: string;
+        }> = [];
+
+        const ext = path.split(".").pop()?.toLowerCase();
+        const isJsx = ["jsx", "tsx", "js", "ts"].includes(ext || "");
+
+        if (isJsx) {
+          lines.forEach((line, idx) => {
+            const lineNum = idx + 1;
+
+            // Match heading elements
+            const headingMatch = line.match(
+              /<(h[1-6])(?:\s[^>]*)?>([^<]+)<\/\1>/
+            );
+            if (headingMatch && headingMatch[1] && headingMatch[2]) {
+              elements.push({
+                type: `heading-${headingMatch[1]}`,
+                content: headingMatch[2].trim(),
+                line: lineNum,
+                context: line.trim(),
+              });
+            }
+
+            // Match paragraph elements
+            const pMatch = line.match(/<p(?:\s[^>]*)?>([^<]+)<\/p>/);
+            if (pMatch && pMatch[1]) {
+              elements.push({
+                type: "paragraph",
+                content: pMatch[1].trim(),
+                line: lineNum,
+                context: line.trim(),
+              });
+            }
+
+            // Match button elements
+            const buttonMatch = line.match(
+              /<[Bb]utton(?:\s[^>]*)?>([^<]+)<\/[Bb]utton>/
+            );
+            if (buttonMatch && buttonMatch[1]) {
+              elements.push({
+                type: "button",
+                content: buttonMatch[1].trim(),
+                line: lineNum,
+                context: line.trim(),
+              });
+            }
+
+            // Match link elements
+            const linkMatch = line.match(
+              /<(?:a|Link)(?:\s[^>]*)?>([^<]+)<\/(?:a|Link)>/
+            );
+            if (linkMatch && linkMatch[1]) {
+              elements.push({
+                type: "link",
+                content: linkMatch[1].trim(),
+                line: lineNum,
+                context: line.trim(),
+              });
+            }
+
+            // Match span/label elements
+            const spanMatch = line.match(
+              /<(span|label)(?:\s[^>]*)?>([^<]+)<\/\1>/
+            );
+            if (spanMatch && spanMatch[2]) {
+              elements.push({
+                type: "text",
+                content: spanMatch[2].trim(),
+                line: lineNum,
+                context: line.trim(),
+              });
+            }
+
+            // Match title/alt/placeholder props
+            const propsMatches = [
+              ...line.matchAll(
+                /(title|alt|placeholder|aria-label)=["']([^"']+)["']/g
+              ),
+            ];
+            for (const match of propsMatches) {
+              if (match[1] && match[2]) {
+                elements.push({
+                  type: match[1] === "alt" ? "image-alt" : "attribute",
+                  content: match[2],
+                  line: lineNum,
+                  context: line.trim(),
+                });
+              }
+            }
+
+            // Match JSX string expressions
+            const jsxMatches = [...line.matchAll(/\{["']([^"']{3,})["']\}/g)];
+            for (const match of jsxMatches) {
+              if (match[1]) {
+                elements.push({
+                  type: "text",
+                  content: match[1],
+                  line: lineNum,
+                  context: line.trim(),
+                });
+              }
+            }
+          });
+        }
+
+        const result = { path, elementsFound: elements.length, elements };
+        logger.tool.result("analyzeSourceFile", Date.now() - startTime, result);
+        return result;
+      } catch (error) {
+        logger.tool.error("analyzeSourceFile", error as Error);
+        throw error;
+      }
+    },
+
+    async generateDiff(params: z.infer<typeof generateDiffSchema>) {
+      const { filePath, oldContent, newContent } = params;
+      const startTime = Date.now();
+      logger.tool.call("generateDiff", { filePath, oldContent, newContent });
+
+      try {
+        const oldLines = oldContent.split("\n");
+        const newLines = newContent.split("\n");
+
+        let unified = `--- a/${filePath}\n+++ b/${filePath}\n`;
+        unified += `@@ -1,${oldLines.length} +1,${newLines.length} @@\n`;
+
+        for (const line of oldLines) {
+          unified += `-${line}\n`;
+        }
+        for (const line of newLines) {
+          unified += `+${line}\n`;
+        }
+
+        const result = {
           filePath,
           oldContent,
           newContent,
           unified,
-        },
-      };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Diff generation failed" 
-      };
-    }
-  },
-});
+        };
 
-// Create a pull request
-export const createPullRequestTool = createTool({
-  id: "create-pull-request",
-  description: "Create a pull request with the specified changes.",
-  inputSchema: z.object({
-    title: z.string().describe("Title of the pull request"),
-    description: z.string().describe("Description/body of the pull request"),
-    branchName: z.string().describe("Name for the new branch"),
-    changes: z.array(z.object({
-      filePath: z.string(),
-      content: z.string(),
-    })).describe("Files to create or modify"),
-  }),
-  outputSchema: z.object({
-    success: z.boolean(),
-    pullRequest: z.object({
-      number: z.number(),
-      url: z.string(),
-    }).optional(),
-    error: z.string().optional(),
-  }),
-  execute: async ({ context }) => {
-    const { title, description, branchName } = context as unknown as { 
-      title: string; 
-      description: string; 
-      branchName: string;
-      changes: Array<{ filePath: string; content: string }>;
-    };
-    const runtimeContext = (context as any).runtimeContext;
-    const github = runtimeContext?.get("github") as GitHubContext | undefined;
-    
-    if (!github) {
-      return { success: false, error: "GitHub not initialized" };
-    }
+        logger.tool.result("generateDiff", Date.now() - startTime, result);
+        return result;
+      } catch (error) {
+        logger.tool.error("generateDiff", error as Error);
+        throw error;
+      }
+    },
 
-    try {
-      // In a real implementation, we would:
-      // 1. Create a new branch from the base branch
-      // 2. Commit all the changes to the new branch
-      // 3. Create a pull request
-
-      const response = await github.octokit.pulls.create({
-        owner: github.owner,
-        repo: github.repo,
+    async commitChanges(params: z.infer<typeof commitChangesSchema>) {
+      const { branchName, title, description, changes } = params;
+      const startTime = Date.now();
+      logger.tool.call("commitChanges", {
+        branchName,
         title,
-        body: description,
-        head: branchName,
-        base: github.branch,
+        changesCount: changes.length,
       });
 
-      return {
-        success: true,
-        pullRequest: {
-          number: response.data.number,
-          url: response.data.html_url,
-        },
-      };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "PR creation failed" 
-      };
-    }
-  },
-});
+      try {
+        // Get base branch SHA
+        const refData = await githubFetch<GitHubRefResponse>(
+          ctx.accessToken,
+          `/repos/${ctx.owner}/${ctx.repo}/git/ref/heads/${ctx.branch}`
+        );
+        const baseSha = refData.object.sha;
 
+        // Create new branch
+        await githubFetch<unknown>(
+          ctx.accessToken,
+          `/repos/${ctx.owner}/${ctx.repo}/git/refs`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ref: `refs/heads/${branchName}`,
+              sha: baseSha,
+            }),
+          }
+        );
+
+        // Commit each file change
+        for (const change of changes) {
+          let fileSha: string | undefined;
+          try {
+            const fileData = await githubFetch<GitHubContentResponse>(
+              ctx.accessToken,
+              `/repos/${ctx.owner}/${ctx.repo}/contents/${change.filePath}?ref=${branchName}`
+            );
+            fileSha = fileData.sha;
+          } catch {
+            // File doesn't exist
+          }
+
+          await githubFetch<unknown>(
+            ctx.accessToken,
+            `/repos/${ctx.owner}/${ctx.repo}/contents/${change.filePath}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: `Update ${change.filePath}`,
+                content: Buffer.from(change.content).toString("base64"),
+                branch: branchName,
+                sha: fileSha,
+              }),
+            }
+          );
+        }
+
+        // Create pull request
+        const prData = await githubFetch<GitHubPRResponse>(
+          ctx.accessToken,
+          `/repos/${ctx.owner}/${ctx.repo}/pulls`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title,
+              body: description,
+              head: branchName,
+              base: ctx.branch,
+            }),
+          }
+        );
+
+        const result = {
+          pullRequest: {
+            number: prData.number,
+            url: prData.html_url,
+          },
+        };
+
+        logger.tool.result("commitChanges", Date.now() - startTime, result);
+        return result;
+      } catch (error) {
+        logger.tool.error("commitChanges", error as Error);
+        throw error;
+      }
+    },
+  };
+}
+
+export type ToolExecutors = ReturnType<typeof createToolExecutors>;

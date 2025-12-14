@@ -16,7 +16,9 @@ import {
 } from "../services/pr-generator";
 
 const editFilterSchema = paginationSchema.extend({
-  status: z.enum(["draft", "pending_review", "approved", "rejected"]).optional(),
+  status: z
+    .enum(["draft", "pending_review", "approved", "rejected"])
+    .optional(),
   elementId: z.string().uuid().optional(),
 });
 
@@ -52,33 +54,41 @@ export const editRoutes = new Hono()
               select: { id: true, name: true, avatarUrl: true },
             },
             pullRequest: {
-              select: { id: true, githubPrNumber: true, githubPrUrl: true, status: true },
+              select: {
+                id: true,
+                githubPrNumber: true,
+                githubPrUrl: true,
+                status: true,
+              },
             },
           },
         }),
         prisma.edit.count({ where }),
       ]);
 
-      return c.json({
-        edits: edits.map((e) => ({
-          id: e.id,
-          elementId: e.elementId,
-          element: e.element,
-          oldValue: e.oldValue,
-          newValue: e.newValue,
-          status: e.status,
-          user: e.user,
-          pullRequest: e.pullRequest,
-          createdAt: e.createdAt.toISOString(),
-          updatedAt: e.updatedAt.toISOString(),
-        })),
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
+      return c.json(
+        {
+          edits: edits.map((e) => ({
+            id: e.id,
+            elementId: e.elementId,
+            element: e.element,
+            oldValue: e.oldValue,
+            newValue: e.newValue,
+            status: e.status,
+            user: e.user,
+            pullRequest: e.pullRequest,
+            createdAt: e.createdAt.toISOString(),
+            updatedAt: e.updatedAt.toISOString(),
+          })),
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
         },
-      });
+        200
+      );
     }
   )
 
@@ -159,13 +169,16 @@ export const editRoutes = new Hono()
         data: { newValue: input.newValue },
       });
 
-      return c.json({
-        edit: {
-          id: updated.id,
-          newValue: updated.newValue,
-          updatedAt: updated.updatedAt.toISOString(),
+      return c.json(
+        {
+          edit: {
+            id: updated.id,
+            newValue: updated.newValue,
+            updatedAt: updated.updatedAt.toISOString(),
+          },
         },
-      });
+        200
+      );
     }
   )
 
@@ -189,7 +202,7 @@ export const editRoutes = new Hono()
 
       await prisma.edit.delete({ where: { id: editId } });
 
-      return c.json({ success: true, deletedId: editId });
+      return c.json({ success: true, deletedId: editId }, 200);
     }
   )
 
@@ -222,7 +235,10 @@ export const editRoutes = new Hono()
       }
 
       if (edits.length !== input.editIds.length) {
-        return c.json({ error: "Some edits not found or not in draft status" }, 400);
+        return c.json(
+          { error: "Some edits not found or not in draft status" },
+          400
+        );
       }
 
       // Parse owner/repo
@@ -248,8 +264,14 @@ export const editRoutes = new Hono()
         }
 
         // Use provided title/description or generate defaults
-        const prTitle = input.prTitle || generatePRTitle(edits.map((e) => ({ element: e.element })));
-        const prDescription = input.prDescription || generatePRDescription(edits.map((e) => ({ edit: e, element: e.element })));
+        const prTitle =
+          input.prTitle ||
+          generatePRTitle(edits.map((e) => ({ element: e.element })));
+        const prDescription =
+          input.prDescription ||
+          generatePRDescription(
+            edits.map((e) => ({ edit: e, element: e.element }))
+          );
 
         // Create the PR
         const { prNumber, prUrl, branchName } = await createContentPR(
@@ -286,22 +308,28 @@ export const editRoutes = new Hono()
           },
         });
 
-        return c.json({
-          pullRequest: {
-            id: pullRequest.id,
-            githubPrNumber: prNumber,
-            githubPrUrl: prUrl,
-            title: prTitle,
-            branchName,
-            status: "open",
-            editCount: edits.length,
-            createdAt: pullRequest.createdAt.toISOString(),
+        return c.json(
+          {
+            pullRequest: {
+              id: pullRequest.id,
+              githubPrNumber: prNumber,
+              githubPrUrl: prUrl,
+              title: prTitle,
+              branchName,
+              status: "open",
+              editCount: edits.length,
+              createdAt: pullRequest.createdAt.toISOString(),
+            },
           },
-        });
+          201
+        );
       } catch (error) {
         console.error("Failed to create PR:", error);
         return c.json(
-          { error: error instanceof Error ? error.message : "Failed to create PR" },
+          {
+            error:
+              error instanceof Error ? error.message : "Failed to create PR",
+          },
           500
         );
       }
@@ -309,27 +337,24 @@ export const editRoutes = new Hono()
   )
 
   // Get PR status for project
-  .get(
-    "/pull-requests",
-    requireAuth,
-    requireProjectAccess(),
-    async (c) => {
-      const projectId = c.req.param("projectId");
+  .get("/pull-requests", requireAuth, requireProjectAccess(), async (c) => {
+    const projectId = c.req.param("projectId");
 
-      const pullRequests = await prisma.pullRequest.findMany({
-        where: { projectId },
-        orderBy: { createdAt: "desc" },
-        include: {
-          user: {
-            select: { id: true, name: true, avatarUrl: true },
-          },
-          _count: {
-            select: { edits: true },
-          },
+    const pullRequests = await prisma.pullRequest.findMany({
+      where: { projectId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        user: {
+          select: { id: true, name: true, avatarUrl: true },
         },
-      });
+        _count: {
+          select: { edits: true },
+        },
+      },
+    });
 
-      return c.json({
+    return c.json(
+      {
         pullRequests: pullRequests.map((pr) => ({
           id: pr.id,
           githubPrNumber: pr.githubPrNumber,
@@ -341,6 +366,7 @@ export const editRoutes = new Hono()
           mergedAt: pr.mergedAt?.toISOString() || null,
           createdAt: pr.createdAt.toISOString(),
         })),
-      });
-    }
-  );
+      },
+      200
+    );
+  });

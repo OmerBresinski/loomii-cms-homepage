@@ -31,21 +31,24 @@ export const analysisRoutes = new Hono()
         select: { status: true, lastAnalyzedAt: true, analysisError: true },
       });
 
-      return c.json({
-        projectStatus: project?.status || "pending",
-        lastAnalyzedAt: project?.lastAnalyzedAt?.toISOString() || null,
-        lastError: project?.analysisError || null,
-        currentJob: job
-          ? {
-              id: job.id,
-              status: job.status,
-              progress: job.progress,
-              totalPages: job.totalPages,
-              startedAt: job.startedAt?.toISOString() || null,
-              error: job.error,
-            }
-          : null,
-      });
+      return c.json(
+        {
+          projectStatus: project?.status || "pending",
+          lastAnalyzedAt: project?.lastAnalyzedAt?.toISOString() || null,
+          lastError: project?.analysisError || null,
+          currentJob: job
+            ? {
+                id: job.id,
+                status: job.status,
+                progress: job.progress,
+                totalPages: job.totalPages,
+                startedAt: job.startedAt?.toISOString() || null,
+                error: job.error,
+              }
+            : null,
+        },
+        200
+      );
     }
   )
 
@@ -107,11 +110,14 @@ export const analysisRoutes = new Hono()
       // For now, we'll return the job ID for polling
       // TODO: Implement actual background job processing with Mastra workflows
 
-      return c.json({
-        jobId: job.id,
-        status: "queued",
-        message: "Analysis job has been queued",
-      });
+      return c.json(
+        {
+          jobId: job.id,
+          status: "queued",
+          message: "Analysis job has been queued",
+        },
+        201
+      );
     }
   )
 
@@ -152,7 +158,7 @@ export const analysisRoutes = new Hono()
         })
       );
 
-      return c.json({ pages: elementsByPage });
+      return c.json({ pages: elementsByPage }, 200);
     }
   )
 
@@ -190,10 +196,13 @@ export const analysisRoutes = new Hono()
         data: { status: "ready" },
       });
 
-      return c.json({
-        success: true,
-        message: "Analysis cancelled",
-        jobId: job.id,
-      });
+      return c.json(
+        {
+          success: true,
+          message: "Analysis cancelled",
+          jobId: job.id,
+        },
+        200
+      );
     }
   );
