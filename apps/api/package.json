@@ -10,6 +10,7 @@
   },
   "scripts": {
     "build": "prisma generate && bun build src/index.ts --outdir dist --target bun --minify",
+    "predev": "lsof -ti:3001 | xargs kill -9 2>/dev/null || true",
     "dev": "bun run --watch src/index.ts",
     "start": "bun run dist/index.js",
     "type-check": "tsc --noEmit",

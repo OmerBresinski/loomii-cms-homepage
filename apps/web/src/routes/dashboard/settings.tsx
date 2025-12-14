@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { useOrganization, useUser } from "@clerk/clerk-react";
+import { useOrganization, useUser, useAuth } from "@clerk/clerk-react";
 import { useQuery } from "@tanstack/react-query";
 import { currentOrgQuery } from "@/lib/queries";
 import { useDisconnectGitHub } from "@/lib/mutations";
@@ -17,6 +17,7 @@ export const Route = createFileRoute("/dashboard/settings")({
 function SettingsPage() {
   const { user } = useUser();
   const { organization } = useOrganization();
+  const { getToken } = useAuth();
   const search = useSearch({ from: "/dashboard/settings" });
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
@@ -38,9 +39,14 @@ function SettingsPage() {
     if (!orgData?.organization?.id) return;
 
     try {
+      const token = await getToken();
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/organizations/${orgData.organization.id}/github/connect`,
-        { credentials: "include" }
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
       const data = await response.json();
       if (data.url) {

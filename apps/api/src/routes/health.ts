@@ -6,7 +6,7 @@ export const healthRoutes = new Hono()
       status: "healthy",
       timestamp: new Date().toISOString(),
       version: process.env.npm_package_version || "0.0.1",
-    });
+    }, 200);
   })
   .get("/ready", async (c) => {
     // Add database connectivity check here once DB is set up

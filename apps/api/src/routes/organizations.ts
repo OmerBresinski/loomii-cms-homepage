@@ -5,10 +5,8 @@ import { getAuth } from "@hono/clerk-auth";
 import { HTTPException } from "hono/http-exception";
 import { prisma } from "../db";
 import { requireAuth, getCurrentUser } from "../middleware/auth";
-import {
-  exchangeCodeForToken,
-  getGitHubUser,
-} from "../services/github";
+import { exchangeCodeForToken, getGitHubUser } from "../services/github";
+import { keyframes } from "hono/css";
 
 // Schemas
 const createOrgSchema = z.object({
@@ -51,20 +49,23 @@ export const organizationRoutes = new Hono()
       return c.json({ organization: null, needsSync: true }, 200);
     }
 
-    return c.json({
-      organization: {
-        id: org.id,
-        clerkOrgId: org.clerkOrgId,
-        name: org.name,
-        slug: org.slug,
-        logoUrl: org.logoUrl,
-        hasGitHubConnected: !!org.githubAccessToken,
-        githubOrgName: org.githubOrgName,
-        memberCount: org._count.members,
-        projectCount: org._count.projects,
-        createdAt: org.createdAt.toISOString(),
+    return c.json(
+      {
+        organization: {
+          id: org.id,
+          clerkOrgId: org.clerkOrgId,
+          name: org.name,
+          slug: org.slug,
+          logoUrl: org.logoUrl,
+          hasGitHubConnected: !!org.githubAccessToken,
+          githubOrgName: org.githubOrgName,
+          memberCount: org._count.members,
+          projectCount: org._count.projects,
+          createdAt: org.createdAt.toISOString(),
+        },
       },
-    }, 200);
+      200
+    );
   })
 
   // Sync/create organization from Clerk
@@ -114,15 +115,18 @@ export const organizationRoutes = new Hono()
         update: {},
       });
 
-      return c.json({
-        organization: {
-          id: org.id,
-          clerkOrgId: org.clerkOrgId,
-          name: org.name,
-          slug: org.slug,
-          logoUrl: org.logoUrl,
+      return c.json(
+        {
+          organization: {
+            id: org.id,
+            clerkOrgId: org.clerkOrgId,
+            name: org.name,
+            slug: org.slug,
+            logoUrl: org.logoUrl,
+          },
         },
-      }, 200);
+        200
+      );
     }
   )
 
@@ -152,14 +156,17 @@ export const organizationRoutes = new Hono()
         data: input,
       });
 
-      return c.json({
-        organization: {
-          id: org.id,
-          name: org.name,
-          slug: org.slug,
-          logoUrl: org.logoUrl,
+      return c.json(
+        {
+          organization: {
+            id: org.id,
+            name: org.name,
+            slug: org.slug,
+            logoUrl: org.logoUrl,
+          },
         },
-      }, 200);
+        200
+      );
     }
   )
 
@@ -180,7 +187,9 @@ export const organizationRoutes = new Hono()
     });
 
     if (!membership || !["owner", "admin"].includes(membership.role)) {
-      throw new HTTPException(403, { message: "Admin access required to connect GitHub" });
+      throw new HTTPException(403, {
+        message: "Admin access required to connect GitHub",
+      });
     }
 
     const clientId = process.env.GITHUB_CLIENT_ID;
@@ -188,11 +197,14 @@ export const organizationRoutes = new Hono()
       return c.json({ error: "GitHub OAuth not configured" }, 500);
     }
 
-    const redirectUri = `${process.env.API_URL || "http://localhost:3001"}/organizations/${orgId}/github/callback`;
+    // Use a single callback URL - pass orgId in state
+    const redirectUri = `${process.env.API_URL || "http://localhost:3001"}/github/callback`;
     const scope = "read:user user:email repo read:org";
-    const state = crypto.randomUUID();
 
-    // TODO: Store state in cache for CSRF protection
+    // Encode orgId in state for CSRF protection and to identify the org
+    const state = Buffer.from(
+      JSON.stringify({ orgId, nonce: crypto.randomUUID() })
+    ).toString("base64url");
 
     const authUrl = new URL("https://github.com/login/oauth/authorize");
     authUrl.searchParams.set("client_id", clientId);
@@ -200,43 +212,9 @@ export const organizationRoutes = new Hono()
     authUrl.searchParams.set("scope", scope);
     authUrl.searchParams.set("state", state);
 
+    console.log({ clientId, authUrl: authUrl.toString() });
+
     return c.json({ url: authUrl.toString(), state }, 200);
-  })
-
-  // Handle GitHub OAuth callback for organization
-  .get("/:orgId/github/callback", async (c) => {
-    const orgId = c.req.param("orgId");
-    const code = c.req.query("code");
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-
-    if (!code) {
-      return c.redirect(`${frontendUrl}/org/${orgId}/settings?error=no_code`);
-    }
-
-    try {
-      // Exchange code for access token
-      const accessToken = await exchangeCodeForToken(code);
-
-      // Get GitHub user/org info
-      const githubUser = await getGitHubUser(accessToken);
-
-      // Update organization with GitHub connection
-      await prisma.organization.update({
-        where: { id: orgId },
-        data: {
-          githubAccessToken: accessToken,
-          githubOrgName: githubUser.login,
-        },
-      });
-
-      return c.redirect(`${frontendUrl}/org/${orgId}/settings?github=connected`);
-    } catch (error) {
-      console.error("GitHub OAuth error:", error);
-      const message = error instanceof Error ? error.message : "connection_failed";
-      return c.redirect(
-        `${frontendUrl}/org/${orgId}/settings?error=${encodeURIComponent(message)}`
-      );
-    }
   })
 
   // Disconnect GitHub from organization
@@ -291,12 +269,15 @@ export const organizationRoutes = new Hono()
 
     try {
       // Fetch repos from GitHub API
-      const response = await fetch("https://api.github.com/user/repos?per_page=100&sort=updated", {
-        headers: {
-          Authorization: `Bearer ${org.githubAccessToken}`,
-          Accept: "application/vnd.github.v3+json",
-        },
-      });
+      const response = await fetch(
+        "https://api.github.com/user/repos?per_page=100&sort=updated",
+        {
+          headers: {
+            Authorization: `Bearer ${org.githubAccessToken}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to fetch repositories");
@@ -304,18 +285,21 @@ export const organizationRoutes = new Hono()
 
       const repos = await response.json();
 
-      return c.json({
-        repos: repos.map((repo: any) => ({
-          id: repo.id,
-          name: repo.name,
-          fullName: repo.full_name,
-          description: repo.description,
-          private: repo.private,
-          defaultBranch: repo.default_branch,
-          url: repo.html_url,
-          updatedAt: repo.updated_at,
-        })),
-      }, 200);
+      return c.json(
+        {
+          repos: repos.map((repo: any) => ({
+            id: repo.id,
+            name: repo.name,
+            fullName: repo.full_name,
+            description: repo.description,
+            private: repo.private,
+            defaultBranch: repo.default_branch,
+            url: repo.html_url,
+            updatedAt: repo.updated_at,
+          })),
+        },
+        200
+      );
     } catch (error) {
       console.error("GitHub API error:", error);
       return c.json({ error: "Failed to fetch repositories" }, 500);
@@ -348,13 +332,15 @@ export const organizationRoutes = new Hono()
       orderBy: { createdAt: "asc" },
     });
 
-    return c.json({
-      members: members.map((m) => ({
-        id: m.id,
-        user: m.user,
-        role: m.role,
-        createdAt: m.createdAt.toISOString(),
-      })),
-    }, 200);
+    return c.json(
+      {
+        members: members.map((m) => ({
+          id: m.id,
+          user: m.user,
+          role: m.role,
+          createdAt: m.createdAt.toISOString(),
+        })),
+      },
+      200
+    );
   });
-

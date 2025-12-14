@@ -8,6 +8,7 @@ import { HTTPException } from "hono/http-exception";
 
 import { authRoutes } from "./routes/auth";
 import { organizationRoutes } from "./routes/organizations";
+import { githubRoutes } from "./routes/github";
 import { projectRoutes } from "./routes/projects";
 import { elementRoutes } from "./routes/elements";
 import { editRoutes } from "./routes/edits";
@@ -53,6 +54,7 @@ const routes = app
   .route("/health", healthRoutes)
   .route("/auth", authRoutes)
   .route("/organizations", organizationRoutes)
+  .route("/github", githubRoutes)
   .route("/projects", projectRoutes)
   .route("/projects/:projectId/elements", elementRoutes)
   .route("/projects/:projectId/edits", editRoutes)
