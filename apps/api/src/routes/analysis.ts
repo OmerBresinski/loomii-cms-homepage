@@ -224,6 +224,18 @@ export const analysisRoutes = new Hono()
     );
   });
 
+// Map analysis types to valid ElementType enum values
+const mapToElementType = (type: string): string => {
+  if (type.startsWith("heading")) return "heading";
+  if (type === "paragraph") return "paragraph";
+  if (type === "button") return "button";
+  if (type === "link") return "link";
+  if (type === "image-alt") return "image";
+  if (type === "text") return "text";
+  if (type === "attribute") return "text";
+  return "custom";
+};
+
 // Background analysis function
 async function runAnalysis(
   jobId: string,
@@ -248,54 +260,73 @@ async function runAnalysis(
       rootPath,
     });
 
+    const totalElements = result.sections.reduce(
+      (acc, s) => acc + s.elements.length,
+      0
+    );
     console.log(
-      `✅ Analysis complete: found ${result.elements.length} elements in ${result.filesAnalyzed.length} files`
+      `✅ Analysis complete: found ${result.sections.length} sections with ${totalElements} elements in ${result.filesAnalyzed.length} files`
     );
 
-    // Log the first few elements for debugging
-    if (result.elements.length > 0) {
-      console.log("📝 Sample elements:");
-      result.elements.slice(0, 3).forEach((el, i) => {
-        console.log(`  ${i + 1}. [${el.type}] ${el.name}: "${el.currentValue?.slice(0, 50)}..."`);
+    // Log sample sections for debugging
+    if (result.sections.length > 0) {
+      console.log("📝 Sample sections:");
+      result.sections.slice(0, 3).forEach((section, i) => {
+        console.log(
+          `  ${i + 1}. "${section.name}" (${section.elements.length} elements)`
+        );
       });
     }
 
-    // Clear existing elements for this project (if doing a full rescan)
-    console.log("🗑️ Clearing existing elements...");
+    // Clear existing sections and elements for this project
+    console.log("🗑️ Clearing existing sections and elements...");
     await prisma.element.deleteMany({
       where: { projectId },
     });
+    await prisma.section.deleteMany({
+      where: { projectId },
+    });
 
-    // Map analysis types to valid ElementType enum values
-    const mapToElementType = (type: string): string => {
-      if (type.startsWith("heading")) return "heading";
-      if (type === "paragraph") return "paragraph";
-      if (type === "button") return "button";
-      if (type === "link") return "link";
-      if (type === "image-alt") return "image";
-      if (type === "text") return "text";
-      if (type === "attribute") return "text";
-      return "custom";
-    };
+    // Save sections and elements
+    if (result.sections.length > 0) {
+      console.log(
+        `💾 Saving ${result.sections.length} sections with ${totalElements} elements...`
+      );
 
-    // Save the elements to the database
-    if (result.elements.length > 0) {
-      console.log(`💾 Saving ${result.elements.length} elements to database...`);
-      const createResult = await prisma.element.createMany({
-        data: result.elements.map((el) => ({
-          projectId,
-          name: el.name,
-          type: mapToElementType(el.type) as any,
-          sourceFile: el.filePath,
-          sourceLine: el.line,
-          currentValue: el.currentValue,
-          confidence: el.confidence,
-          pageUrl: el.filePath, // Use file path as page URL for now
-        })),
-      });
-      console.log(`✅ Saved ${createResult.count} elements to database`);
+      for (const section of result.sections) {
+        // Create section
+        const createdSection = await prisma.section.create({
+          data: {
+            projectId,
+            name: section.name,
+            description: section.description,
+            sourceFile: section.sourceFile,
+            startLine: section.startLine,
+            endLine: section.endLine,
+          },
+        });
+
+        // Create elements for this section
+        if (section.elements.length > 0) {
+          await prisma.element.createMany({
+            data: section.elements.map((el) => ({
+              projectId,
+              sectionId: createdSection.id,
+              name: el.name,
+              type: mapToElementType(el.type) as any,
+              sourceFile: el.filePath,
+              sourceLine: el.line,
+              currentValue: el.currentValue,
+              confidence: el.confidence,
+              pageUrl: el.filePath,
+            })),
+          });
+        }
+      }
+
+      console.log(`✅ Saved all sections and elements to database`);
     } else {
-      console.log("⚠️ No elements to save");
+      console.log("⚠️ No sections to save");
     }
 
     // Update job status

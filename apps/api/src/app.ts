@@ -11,6 +11,7 @@ import { organizationRoutes } from "./routes/organizations";
 import { githubRoutes } from "./routes/github";
 import { projectRoutes } from "./routes/projects";
 import { elementRoutes } from "./routes/elements";
+import { sectionRoutes } from "./routes/sections";
 import { editRoutes } from "./routes/edits";
 import { analysisRoutes } from "./routes/analysis";
 import { teamRoutes } from "./routes/team";
@@ -57,6 +58,7 @@ const routes = app
   .route("/github", githubRoutes)
   .route("/projects", projectRoutes)
   .route("/projects/:projectId/elements", elementRoutes)
+  .route("/projects/:projectId/sections", sectionRoutes)
   .route("/projects/:projectId/edits", editRoutes)
   .route("/projects/:projectId/analysis", analysisRoutes)
   .route("/projects/:projectId/team", teamRoutes);

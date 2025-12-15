@@ -137,6 +137,7 @@ model Project {
 
   // Relations
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sections     Section[]
   elements     Element[]
   pullRequests PullRequest[]
   teamMembers  TeamMember[]
@@ -144,9 +145,28 @@ model Project {
   @@map("projects")
 }
 
+model Section {
+  id          String   @id @default(uuid())
+  projectId   String
+  name        String   // AI-generated name like "Hero Section"
+  description String?
+  sourceFile  String?  // Primary file this section is from
+  startLine   Int?     // Approximate line range
+  endLine     Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  elements Element[]
+
+  @@map("sections")
+}
+
 model Element {
   id            String      @id @default(uuid())
   projectId     String
+  sectionId     String?     // Group elements into sections
   name          String
   type          ElementType
   selector      String?     // Optional - only set for DOM-scraped elements
@@ -165,6 +185,7 @@ model Element {
 
   // Relations
   project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section  Section?  @relation(fields: [sectionId], references: [id])
   parent   Element?  @relation("ElementHierarchy", fields: [parentId], references: [id])
   children Element[] @relation("ElementHierarchy")
   edits    Edit[]

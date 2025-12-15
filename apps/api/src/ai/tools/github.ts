@@ -1,5 +1,8 @@
 import { z } from "zod";
+import { generateText } from "ai";
 import { logger } from "../logger";
+
+const MODEL = "xai/grok-code-fast-1";
 
 // GitHub context type
 export interface GitHubContext {
@@ -268,161 +271,108 @@ export function createToolExecutors(ctx: GitHubContext) {
 
         const content = Buffer.from(data.content, "base64").toString("utf-8");
         const lines = content.split("\n");
-        const elements: Array<{
+
+        // Add line numbers to content for AI reference
+        const numberedContent = lines
+          .map((line, idx) => `${idx + 1}|${line}`)
+          .join("\n");
+
+        // For large files, we need to handle truncation
+        const MAX_CONTENT_SIZE = 100000; // 100K chars to handle larger files
+        const contentToAnalyze = numberedContent.slice(0, MAX_CONTENT_SIZE);
+        const isTruncated = numberedContent.length > MAX_CONTENT_SIZE;
+
+        if (isTruncated) {
+          console.log(
+            `  ⚠️ File ${path} truncated from ${numberedContent.length} to ${MAX_CONTENT_SIZE} chars`
+          );
+        }
+
+        console.log(
+          `  📄 Analyzing ${path} (${numberedContent.length} chars${isTruncated ? ", truncated" : ""})`
+        );
+
+        // Use AI to extract editable content elements
+        const prompt = `Analyze this source file and extract ALL editable text content elements.
+
+FILE: ${path}${isTruncated ? " (truncated - analyze what you can see)" : ""}
+\`\`\`
+${contentToAnalyze}
+\`\`\`
+
+Extract every piece of user-facing text content that could be edited by a content manager:
+- Headings (h1-h6)
+- Paragraphs
+- Button text
+- Link text (EACH link separately, not grouped together)
+- Span text
+- Labels
+- Placeholders
+- Alt text
+- Any other visible text
+
+IMPORTANT RULES:
+1. Each text element must be SEPARATE - do NOT combine multiple links/buttons/items into one
+2. For navigation menus, each menu item is a SEPARATE element
+3. Include the exact line number where the text appears
+4. Only include actual text content, not code/variables/expressions
+5. Skip CSS classes, JavaScript code, and HTML attributes (except alt/placeholder/title text)
+
+Return ONLY a JSON array in this exact format:
+[
+  { "type": "heading", "content": "Welcome to our site", "line": 15 },
+  { "type": "link", "content": "Features", "line": 42 },
+  { "type": "link", "content": "How it Works", "line": 45 },
+  { "type": "button", "content": "Get Started", "line": 58 },
+  { "type": "paragraph", "content": "Some description text here", "line": 72 }
+]
+
+Types: heading, paragraph, button, link, text, label, placeholder, alt`;
+
+        const response = await (generateText as any)({
+          model: MODEL,
+          prompt,
+          system: `You are an expert at analyzing HTML/JSX source code to identify editable text content.
+Your job is to find every piece of text that a content manager might want to edit.
+Be thorough and precise - extract EACH element separately, never combine multiple items.
+Return valid JSON only.`,
+        });
+
+        let elements: Array<{
           type: string;
           content: string;
           line: number;
           context: string;
         }> = [];
 
-        const ext = path.split(".").pop()?.toLowerCase();
-        const isJsxOrHtml = [
-          "jsx",
-          "tsx",
-          "js",
-          "ts",
-          "html",
-          "astro",
-          "vue",
-          "svelte",
-        ].includes(ext || "");
-
-        if (isJsxOrHtml) {
-          // First, do multi-line regex matching on the full content
-          const multiLinePatterns = [
-            // Headings (multi-line)
-            {
-              regex: /<(h[1-6])(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gm,
-              type: (m: RegExpMatchArray) => `heading-${m[1]}`,
-              group: 2,
-            },
-            // Paragraphs (multi-line)
-            {
-              regex: /<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gm,
-              type: () => "paragraph",
-              group: 1,
-            },
-            // Buttons
-            {
-              regex: /<[Bb]utton(?:\s[^>]*)?>([\s\S]*?)<\/[Bb]utton>/gm,
-              type: () => "button",
-              group: 1,
-            },
-            // Links
-            {
-              regex: /<(?:a|Link)(?:\s[^>]*)?>([\s\S]*?)<\/(?:a|Link)>/gm,
-              type: () => "link",
-              group: 1,
-            },
-            // Spans
-            {
-              regex: /<span(?:\s[^>]*)?>([\s\S]*?)<\/span>/gm,
-              type: () => "text",
-              group: 1,
-            },
-            // Divs with short text content (likely labels)
-            {
-              regex: /<div(?:\s[^>]*)?>\s*([^<]{3,50})\s*<\/div>/gm,
-              type: () => "text",
-              group: 1,
-            },
-          ];
-
-          for (const pattern of multiLinePatterns) {
-            const matches = [...content.matchAll(pattern.regex)];
-            for (const match of matches) {
-              const matchedContent = match[pattern.group];
-              if (matchedContent) {
-                // Clean up the content - remove nested tags and whitespace
-                const cleanContent = matchedContent
-                  .replace(/<[^>]+>/g, "") // Remove HTML tags
-                  .replace(/\s+/g, " ") // Normalize whitespace
-                  .trim();
-
-                // Only include if it has meaningful text content
-                if (
-                  cleanContent.length >= 2 &&
-                  cleanContent.length <= 500 &&
-                  !/^[\s\d.,!?;:]+$/.test(cleanContent)
-                ) {
-                  // Find the line number
-                  const beforeMatch = content.slice(0, match.index);
-                  const lineNum = (beforeMatch.match(/\n/g) || []).length + 1;
-
-                  elements.push({
-                    type: pattern.type(match),
-                    content: cleanContent,
-                    line: lineNum,
-                    context: match[0].slice(0, 100).trim(),
-                  });
-                }
-              }
-            }
+        try {
+          const jsonMatch = response.text?.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            elements = parsed.map((el: any) => ({
+              type: el.type || "text",
+              content: el.content || "",
+              line: el.line || 1,
+              context: lines[Math.max(0, (el.line || 1) - 1)]?.trim() || "",
+            }));
           }
-
-          // Also match single-line patterns
-          lines.forEach((line, idx) => {
-            const lineNum = idx + 1;
-
-            // Match title/alt/placeholder props
-            const propsMatches = [
-              ...line.matchAll(
-                /(title|alt|placeholder|aria-label)=["']([^"']+)["']/g
-              ),
-            ];
-            for (const match of propsMatches) {
-              if (match[1] && match[2] && match[2].length >= 2) {
-                elements.push({
-                  type: match[1] === "alt" ? "image-alt" : "attribute",
-                  content: match[2],
-                  line: lineNum,
-                  context: line.trim(),
-                });
-              }
-            }
-
-            // Match JSX string expressions like {"Some text"} or {'Some text'}
-            const jsxMatches = [...line.matchAll(/\{["']([^"']{3,})["']\}/g)];
-            for (const match of jsxMatches) {
-              if (match[1]) {
-                elements.push({
-                  type: "text",
-                  content: match[1],
-                  line: lineNum,
-                  context: line.trim(),
-                });
-              }
-            }
-
-            // Match text content directly in JSX (common pattern)
-            // Look for lines that are just text content between JSX
-            const directTextMatch = line.match(
-              /^\s*([A-Z][^<>{}\n]{10,100})\s*$/
-            );
-            if (directTextMatch && directTextMatch[1]) {
-              elements.push({
-                type: "text",
-                content: directTextMatch[1].trim(),
-                line: lineNum,
-                context: line.trim(),
-              });
-            }
-          });
+        } catch (parseError) {
+          console.log(`  Warning: Failed to parse AI response for ${path}`);
         }
 
-        // Deduplicate elements by content
-        const seen = new Set<string>();
-        const uniqueElements = elements.filter((el) => {
-          const key = `${el.type}:${el.content}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+        // Filter out invalid elements
+        elements = elements.filter(
+          (el) =>
+            el.content &&
+            el.content.length >= 2 &&
+            el.content.length <= 500 &&
+            !/^[\s\d.,!?;:]+$/.test(el.content)
+        );
 
         const result = {
           path,
-          elementsFound: uniqueElements.length,
-          elements: uniqueElements,
+          elementsFound: elements.length,
+          elements,
         };
         logger.tool.result("analyzeSourceFile", Date.now() - startTime, result);
         return result;
