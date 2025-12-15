@@ -1,7 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { projectDetailQuery, elementListQuery } from "@/lib/queries";
+import {
+  projectDetailQuery,
+  sectionListQuery,
+  sectionDetailQuery,
+} from "@/lib/queries";
 import { useTriggerAnalysis } from "@/lib/mutations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +24,7 @@ import {
   ChevronDown,
   ChevronRight,
   GitPullRequest,
+  Layers,
 } from "lucide-react";
 
 // Track local changes before publishing
@@ -31,46 +36,78 @@ interface ElementChange {
 
 export function ProjectDetailPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
-  const [expandedElementId, setExpandedElementId] = useState<string | null>(
+  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(
     null
   );
   const [pendingChanges, setPendingChanges] = useState<
     Record<string, ElementChange>
   >({});
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [wasAnalyzing, setWasAnalyzing] = useState(false);
 
   const { data: projectData, isLoading: projectLoading } = useQuery({
     ...projectDetailQuery(projectId),
     refetchInterval: (query) => {
-      // Poll every 2 seconds while analyzing
       const status = query.state.data?.project?.status;
-      return status === "analyzing" ? 2000 : false;
+      return status === "analyzing" || isReanalyzing ? 10000 : false;
     },
   });
 
   const isAnalyzing = projectData?.project?.status === "analyzing";
 
-  const { data: elementsData, isLoading: elementsLoading } = useQuery({
-    ...elementListQuery(projectId),
-    refetchInterval: isAnalyzing ? 5000 : false, // Refetch elements while analyzing
+  // Track when we enter analyzing state
+  useEffect(() => {
+    if (isAnalyzing) {
+      setWasAnalyzing(true);
+    }
+  }, [isAnalyzing]);
+
+  // Stop the reanalyze spinner when analysis completes (was analyzing, now ready)
+  useEffect(() => {
+    if (
+      wasAnalyzing &&
+      !isAnalyzing &&
+      projectData?.project?.status === "ready"
+    ) {
+      setIsReanalyzing(false);
+      setWasAnalyzing(false);
+    }
+  }, [wasAnalyzing, isAnalyzing, projectData?.project?.status]);
+
+  // Show spinner if user clicked reanalyze OR if backend is analyzing
+  const showReanalyzeSpinner = isReanalyzing || isAnalyzing;
+
+  const { data: sectionsData, isLoading: sectionsLoading } = useQuery({
+    ...sectionListQuery(projectId),
+    refetchInterval: showReanalyzeSpinner ? 10000 : false,
   });
 
   const triggerAnalysis = useTriggerAnalysis(projectId);
 
+  // Handle re-analyze click
+  const handleReanalyze = () => {
+    setIsReanalyzing(true);
+    setWasAnalyzing(false);
+    setExpandedSectionId(null);
+    setPendingChanges({}); // Clear pending changes since element IDs will change
+    triggerAnalysis.mutate({ fullRescan: true });
+  };
+
   const project = projectData?.project;
-  const elements = elementsData?.elements || [];
+  const sections = sectionsData?.sections || [];
+
+  const totalElements = sections.reduce((acc, s) => acc + s.elementCount, 0);
 
   const needsAnalysis =
     project?.status === "pending" ||
-    (!project?.lastAnalyzedAt && elements.length === 0);
+    (!project?.lastAnalyzedAt && sections.length === 0);
 
   const pendingCount = Object.keys(pendingChanges).length;
 
   const handleSaveChange = (elementId: string, change: ElementChange) => {
-    // Only save if value actually changed
     if (change.newValue !== change.originalValue || !change.visible) {
       setPendingChanges((prev) => ({ ...prev, [elementId]: change }));
     } else {
-      // Remove from pending if reverted to original
       setPendingChanges((prev) => {
         const next = { ...prev };
         delete next[elementId];
@@ -80,7 +117,6 @@ export function ProjectDetailPage() {
   };
 
   const handlePublish = () => {
-    // TODO: Create PR with all pending changes
     console.log("Publishing changes:", pendingChanges);
   };
 
@@ -138,7 +174,7 @@ export function ProjectDetailPage() {
             Analyzing your website...
           </h2>
           <p className="text-gray-400 mb-4">
-            We're scanning {project.deploymentUrl} to detect editable content.
+            We're scanning your repository to detect editable content.
           </p>
           <p className="text-sm text-gray-500">This may take a few minutes.</p>
         </div>
@@ -147,7 +183,7 @@ export function ProjectDetailPage() {
           <Search className="w-16 h-16 mx-auto mb-4 text-gray-600" />
           <h2 className="text-xl font-semibold mb-2">Ready to analyze</h2>
           <p className="text-gray-400 mb-6 max-w-md mx-auto">
-            Start the analysis to scan your website and detect all editable
+            Start the analysis to scan your repository and detect all editable
             content.
           </p>
           <Button
@@ -167,15 +203,13 @@ export function ProjectDetailPage() {
               </>
             )}
           </Button>
-          <p className="text-sm text-gray-500 mt-4">
-            Target: {project.deploymentUrl}
-          </p>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Elements" value={String(elements.length)} />
-            <StatCard label="Pages" value="1" />
+        <div className="space-y-6">
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Sections" value={String(sections.length)} />
+            <StatCard label="Elements" value={String(totalElements)} />
             <StatCard
               label="Pending Edits"
               value={String(pendingCount)}
@@ -191,79 +225,85 @@ export function ProjectDetailPage() {
             />
           </div>
 
-          <div className="lg:col-span-4">
-            <div className="border border-white/10 rounded-lg bg-[#111] flex flex-col max-h-[calc(100vh-320px)]">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 shrink-0">
-                <h2 className="font-semibold text-sm">
-                  Elements ({elements.length})
-                </h2>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => triggerAnalysis.mutate({ fullRescan: true })}
-                    disabled={triggerAnalysis.isPending}
-                  >
-                    {triggerAnalysis.isPending ? (
-                      <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                    ) : (
-                      <Play className="w-3 h-3 mr-1.5" />
-                    )}
-                    Re-analyze
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePublish}
-                    disabled={pendingCount === 0}
-                    className={
-                      pendingCount > 0
-                        ? "border-primary text-primary hover:bg-primary/10"
-                        : ""
-                    }
-                  >
-                    <GitPullRequest className="w-3 h-3 mr-1.5" />
-                    Publish {pendingCount > 0 && `(${pendingCount})`}
-                  </Button>
-                </div>
-              </div>
-
-              {elementsLoading ? (
-                <div className="p-4 space-y-2">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div
-                      key={i}
-                      className="h-10 bg-white/5 rounded animate-pulse"
-                    />
-                  ))}
-                </div>
-              ) : elements.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  <LayoutGrid className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No elements detected yet.</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-white/5 overflow-y-auto flex-1">
-                  {elements.map((element) => (
-                    <ElementRow
-                      key={element.id}
-                      element={element}
-                      isExpanded={expandedElementId === element.id}
-                      onToggle={() =>
-                        setExpandedElementId(
-                          expandedElementId === element.id ? null : element.id
-                        )
-                      }
-                      pendingChange={pendingChanges[element.id]}
-                      onSaveChange={(change) =>
-                        handleSaveChange(element.id, change)
-                      }
-                    />
-                  ))}
-                </div>
-              )}
+          {/* Header with actions */}
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">
+              Content Sections ({showReanalyzeSpinner ? "..." : sections.length}
+              )
+            </h2>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReanalyze}
+                disabled={showReanalyzeSpinner}
+              >
+                {showReanalyzeSpinner ? (
+                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                ) : (
+                  <Play className="w-3 h-3 mr-1.5" />
+                )}
+                {showReanalyzeSpinner ? "Analyzing..." : "Re-analyze"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePublish}
+                disabled={pendingCount === 0 || showReanalyzeSpinner}
+                className={
+                  pendingCount > 0
+                    ? "border-primary text-primary hover:bg-primary/10"
+                    : ""
+                }
+              >
+                <GitPullRequest className="w-3 h-3 mr-1.5" />
+                Publish {pendingCount > 0 && `(${pendingCount})`}
+              </Button>
             </div>
           </div>
+
+          {/* Sections */}
+          {showReanalyzeSpinner ? (
+            <div className="border border-white/10 rounded-lg bg-[#111] p-12 text-center">
+              <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin" />
+              <h3 className="text-lg font-semibold mb-2">Re-analyzing...</h3>
+              <p className="text-gray-400 text-sm">
+                Scanning your repository for content changes.
+              </p>
+            </div>
+          ) : sectionsLoading ? (
+            <div className="space-y-2.5">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="h-16 bg-white/5 rounded-lg animate-pulse"
+                />
+              ))}
+            </div>
+          ) : sections.length === 0 ? (
+            <div className="border border-white/10 rounded-lg bg-[#111] p-12 text-center">
+              <Layers className="w-12 h-12 mx-auto mb-4 text-gray-600" />
+              <p className="text-gray-400">No content sections detected yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {sections.map((section) => (
+                <SectionRow
+                  key={section.id}
+                  projectId={projectId}
+                  section={section}
+                  isExpanded={expandedSectionId === section.id}
+                  onToggle={() =>
+                    setExpandedSectionId(
+                      expandedSectionId === section.id ? null : section.id
+                    )
+                  }
+                  pendingChanges={pendingChanges}
+                  onSaveChange={handleSaveChange}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -308,24 +348,143 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ElementRow({
-  element,
-  isExpanded,
-  onToggle,
-  pendingChange,
-  onSaveChange,
-}: {
-  element: any;
+interface SectionProps {
+  projectId: string;
+  section: {
+    id: string;
+    name: string;
+    description: string | null;
+    sourceFile: string | null;
+    elementCount: number;
+  };
   isExpanded: boolean;
   onToggle: () => void;
+  pendingChanges: Record<string, ElementChange>;
+  onSaveChange: (elementId: string, change: ElementChange) => void;
+}
+
+function SectionRow({
+  projectId,
+  section,
+  isExpanded,
+  onToggle,
+  pendingChanges,
+  onSaveChange,
+}: SectionProps) {
+  // Fetch section elements when expanded
+  const { data: sectionData, isLoading: elementsLoading } = useQuery({
+    ...sectionDetailQuery(projectId, section.id),
+    enabled: isExpanded,
+  });
+
+  const elements = sectionData?.section?.elements || [];
+  const pendingInSection = elements.filter((e) => pendingChanges[e.id]).length;
+
+  return (
+    <div className="border border-white/10 rounded-lg bg-[#111] overflow-hidden">
+      {/* Section header */}
+      <div
+        className="px-4 py-4 hover:bg-white/5 transition-colors cursor-pointer flex items-center gap-3"
+        onClick={onToggle}
+      >
+        <div className="text-gray-500">
+          {isExpanded ? (
+            <ChevronDown className="w-4 h-4" />
+          ) : (
+            <ChevronRight className="w-4 h-4" />
+          )}
+        </div>
+        <div className="p-2 rounded bg-violet-500/20 text-violet-400">
+          <Layers className="w-4 h-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{section.name}</span>
+            {pendingInSection > 0 && (
+              <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                {pendingInSection} modified
+              </span>
+            )}
+          </div>
+          {section.description && (
+            <p className="text-xs text-gray-500 truncate mt-0.5">
+              {section.description}
+            </p>
+          )}
+        </div>
+        <span className="text-sm text-gray-500">
+          {section.elementCount} elements
+        </span>
+        {section.sourceFile && (
+          <span className="text-xs text-gray-500 font-mono">
+            {section.sourceFile.split("/").pop()}
+          </span>
+        )}
+      </div>
+
+      {/* Expanded section content */}
+      {isExpanded && (
+        <div className="border-t border-white/10 bg-[#0a0a0a]">
+          {elementsLoading ? (
+            <div className="p-4 space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-10 bg-white/5 rounded animate-pulse"
+                />
+              ))}
+            </div>
+          ) : elements.length === 0 ? (
+            <div className="p-6 text-center text-gray-500 text-sm">
+              No elements in this section
+            </div>
+          ) : (
+            <div className="p-4 space-y-3">
+              {elements.map((element) => (
+                <ElementInput
+                  key={element.id}
+                  element={element}
+                  pendingChange={pendingChanges[element.id]}
+                  onSaveChange={(change) => onSaveChange(element.id, change)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ElementInputProps {
+  element: {
+    id: string;
+    name: string;
+    type: string;
+    sourceFile: string | null;
+    sourceLine: number | null;
+    currentValue: string | null;
+  };
   pendingChange?: ElementChange;
   onSaveChange: (change: ElementChange) => void;
-}) {
+}
+
+function ElementInput({
+  element,
+  pendingChange,
+  onSaveChange,
+}: ElementInputProps) {
   const [editValue, setEditValue] = useState(
     pendingChange?.newValue ?? element.currentValue ?? ""
   );
   const [isVisible, setIsVisible] = useState(pendingChange?.visible ?? true);
   const hasChanges = pendingChange !== undefined;
+
+  // Sync with pendingChange when it changes
+  useEffect(() => {
+    setEditValue(pendingChange?.newValue ?? element.currentValue ?? "");
+    setIsVisible(pendingChange?.visible ?? true);
+  }, [pendingChange, element.currentValue]);
 
   const typeIcons: Record<string, React.ReactNode> = {
     heading: <Type className="w-3 h-3" />,
@@ -345,8 +504,7 @@ function ElementRow({
     link: "bg-cyan-500/20 text-cyan-400",
   };
 
-  const handleSave = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleSave = () => {
     onSaveChange({
       newValue: editValue,
       visible: isVisible,
@@ -354,82 +512,51 @@ function ElementRow({
     });
   };
 
-  // Display value: show pending change if exists, otherwise original
-  const displayValue =
-    pendingChange?.newValue ?? element.currentValue ?? element.name;
-
   return (
     <div
-      className={`${isExpanded ? "bg-white/5" : ""} ${hasChanges ? "border-l-2 border-l-primary" : ""}`}
+      className={`flex items-center gap-3 p-3 rounded-lg border ${hasChanges ? "border-primary/50 bg-primary/5" : "border-white/5 bg-white/[0.02]"}`}
     >
       <div
-        className="px-4 py-2 hover:bg-white/5 transition-colors cursor-pointer flex items-center gap-3"
-        onClick={onToggle}
+        className={`p-1.5 rounded shrink-0 ${typeColors[element.type] || "bg-gray-500/20 text-gray-400"}`}
       >
-        <div className="text-gray-500">
-          {isExpanded ? (
-            <ChevronDown className="w-3 h-3" />
-          ) : (
-            <ChevronRight className="w-3 h-3" />
-          )}
-        </div>
-        <div
-          className={`p-1.5 rounded ${typeColors[element.type] || "bg-gray-500/20 text-gray-400"}`}
-        >
-          {typeIcons[element.type] || <LayoutGrid className="w-3 h-3" />}
-        </div>
-        <div className="flex-1 min-w-0 flex items-center gap-3">
-          <span className="text-xs text-gray-500 px-1.5 py-0.5 rounded bg-white/5 shrink-0">
-            {element.type}
-          </span>
-          <span
-            className={`text-sm truncate ${hasChanges ? "text-primary" : ""}`}
-          >
-            {displayValue}
-          </span>
-          {hasChanges && <span className="text-xs text-primary">modified</span>}
-        </div>
-        <span className="text-xs text-gray-500 font-mono shrink-0">
-          {element.sourceFile?.split("/").pop()}
-        </span>
+        {typeIcons[element.type] || <LayoutGrid className="w-3 h-3" />}
       </div>
 
-      {isExpanded && (
-        <div className="px-4 py-2 border-t border-white/5 flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={`visible-${element.id}`}
-              checked={isVisible}
-              onCheckedChange={(checked) => setIsVisible(checked === true)}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <label
-              htmlFor={`visible-${element.id}`}
-              className="text-sm text-gray-400 cursor-pointer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              is visible
-            </label>
-          </div>
-          <Input
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            className="w-[400px] bg-[#0a0a0a] border-white/10 text-sm h-7"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs"
-            onClick={handleSave}
-          >
-            Save
-          </Button>
-          <span className="text-xs text-gray-500 ml-auto">
-            {element.sourceFile}:{element.sourceLine}
-          </span>
-        </div>
-      )}
+      <div className="flex-1 min-w-0">
+        <Input
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          className="bg-[#111] border-white/10 text-sm h-8"
+          placeholder={element.name}
+        />
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+        <Checkbox
+          id={`visible-${element.id}`}
+          checked={isVisible}
+          onCheckedChange={(checked) => setIsVisible(checked === true)}
+        />
+        <label
+          htmlFor={`visible-${element.id}`}
+          className="text-xs text-gray-400 cursor-pointer"
+        >
+          visible
+        </label>
+      </div>
+
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 text-xs shrink-0"
+        onClick={handleSave}
+      >
+        Save
+      </Button>
+
+      <span className="text-[10px] text-gray-500 font-mono shrink-0 w-24 truncate text-right">
+        {element.sourceFile?.split("/").pop()}:{element.sourceLine}
+      </span>
     </div>
   );
 }

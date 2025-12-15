@@ -8,21 +8,39 @@ export const queryKeys = {
   me: () => [...queryKeys.auth(), "me"] as const,
   organization: () => [...queryKeys.all, "organization"] as const,
   currentOrg: () => [...queryKeys.organization(), "current"] as const,
-  orgRepos: (orgId: string) => [...queryKeys.organization(), orgId, "repos"] as const,
+  orgRepos: (orgId: string) =>
+    [...queryKeys.organization(), orgId, "repos"] as const,
   repoFolders: (orgId: string, repo: string, branch: string) =>
-    [...queryKeys.organization(), orgId, "repos", repo, "folders", branch] as const,
-  orgMembers: (orgId: string) => [...queryKeys.organization(), orgId, "members"] as const,
+    [
+      ...queryKeys.organization(),
+      orgId,
+      "repos",
+      repo,
+      "folders",
+      branch,
+    ] as const,
+  orgMembers: (orgId: string) =>
+    [...queryKeys.organization(), orgId, "members"] as const,
   projects: () => [...queryKeys.all, "projects"] as const,
   projectList: (params: { page?: number; limit?: number }) =>
     [...queryKeys.projects(), "list", params] as const,
-  projectDetail: (id: string) => [...queryKeys.projects(), "detail", id] as const,
-  elements: (projectId: string) => [...queryKeys.all, "elements", projectId] as const,
-  elementList: (projectId: string, params: { page?: number }) =>
+  projectDetail: (id: string) =>
+    [...queryKeys.projects(), "detail", id] as const,
+  elements: (projectId: string) =>
+    [...queryKeys.all, "elements", projectId] as const,
+  elementList: (projectId: string, params: { page?: number; limit?: number }) =>
     [...queryKeys.elements(projectId), "list", params] as const,
+  sections: (projectId: string) =>
+    [...queryKeys.all, "sections", projectId] as const,
+  sectionList: (projectId: string) =>
+    [...queryKeys.sections(projectId), "list"] as const,
+  sectionDetail: (projectId: string, sectionId: string) =>
+    [...queryKeys.sections(projectId), "detail", sectionId] as const,
   edits: (projectId: string) => [...queryKeys.all, "edits", projectId] as const,
   editList: (projectId: string, params: { page?: number; status?: string }) =>
     [...queryKeys.edits(projectId), "list", params] as const,
-  analysis: (projectId: string) => [...queryKeys.all, "analysis", projectId] as const,
+  analysis: (projectId: string) =>
+    [...queryKeys.all, "analysis", projectId] as const,
 } as const;
 
 // Types
@@ -96,11 +114,28 @@ interface Element {
   name: string;
   type: string;
   selector: string;
+  sourceFile: string | null;
+  sourceLine: number | null;
   currentValue: string | null;
   pageUrl: string;
   confidence: number;
   createdAt: string;
   updatedAt: string;
+}
+
+interface Section {
+  id: string;
+  name: string;
+  description: string | null;
+  sourceFile: string | null;
+  startLine: number | null;
+  endLine: number | null;
+  elementCount: number;
+  createdAt: string;
+}
+
+interface SectionWithElements extends Section {
+  elements: Element[];
 }
 
 interface Pagination {
@@ -115,7 +150,9 @@ export function meQuery() {
   return queryOptions({
     queryKey: queryKeys.me(),
     queryFn: async () => {
-      return apiFetch<{ user: User; organization: OrganizationContext | null }>("/auth/me");
+      return apiFetch<{ user: User; organization: OrganizationContext | null }>(
+        "/auth/me"
+      );
     },
     retry: false,
   });
@@ -126,7 +163,10 @@ export function currentOrgQuery() {
   return queryOptions({
     queryKey: queryKeys.currentOrg(),
     queryFn: async () => {
-      return apiFetch<{ organization: Organization | null; needsSync?: boolean }>("/organizations/current");
+      return apiFetch<{
+        organization: Organization | null;
+        needsSync?: boolean;
+      }>("/organizations/current");
     },
     retry: false,
   });
@@ -136,7 +176,9 @@ export function orgReposQuery(orgId: string) {
   return queryOptions({
     queryKey: queryKeys.orgRepos(orgId),
     queryFn: async () => {
-      return apiFetch<{ repos: GitHubRepo[] }>(`/organizations/${orgId}/github/repos`);
+      return apiFetch<{ repos: GitHubRepo[] }>(
+        `/organizations/${orgId}/github/repos`
+      );
     },
     enabled: !!orgId,
   });
@@ -146,7 +188,9 @@ export function orgMembersQuery(orgId: string) {
   return queryOptions({
     queryKey: queryKeys.orgMembers(orgId),
     queryFn: async () => {
-      return apiFetch<{ members: OrgMember[] }>(`/organizations/${orgId}/members`);
+      return apiFetch<{ members: OrgMember[] }>(
+        `/organizations/${orgId}/members`
+      );
     },
     enabled: !!orgId,
   });
@@ -167,7 +211,9 @@ export function repoFoldersQuery(orgId: string, repo: string, branch: string) {
 }
 
 // Project queries
-export function projectListQuery(params: { page?: number; limit?: number } = {}) {
+export function projectListQuery(
+  params: { page?: number; limit?: number } = {}
+) {
   const { page = 1, limit = 20 } = params;
 
   return queryOptions({
@@ -188,21 +234,24 @@ export function projectDetailQuery(id: string) {
   return queryOptions({
     queryKey: queryKeys.projectDetail(id),
     queryFn: async () => {
-      return apiFetch<{ project: Project & { owner: User; counts: Record<string, number> } }>(
-        `/projects/${id}`
-      );
+      return apiFetch<{
+        project: Project & { owner: User; counts: Record<string, number> };
+      }>(`/projects/${id}`);
     },
   });
 }
 
 // Element queries
-export function elementListQuery(projectId: string, params: { page?: number; limit?: number } = {}) {
+export function elementListQuery(
+  projectId: string,
+  params: { page?: number; limit?: number } = {}
+) {
   const { page = 1, limit = 500 } = params;
 
   return queryOptions({
     queryKey: queryKeys.elementList(projectId, { page, limit }),
     queryFn: async () => {
-      const searchParams = new URLSearchParams({ 
+      const searchParams = new URLSearchParams({
         page: String(page),
         limit: String(limit),
       });
@@ -210,6 +259,30 @@ export function elementListQuery(projectId: string, params: { page?: number; lim
         `/projects/${projectId}/elements?${searchParams}`
       );
     },
+  });
+}
+
+// Section queries
+export function sectionListQuery(projectId: string) {
+  return queryOptions({
+    queryKey: queryKeys.sectionList(projectId),
+    queryFn: async () => {
+      return apiFetch<{ sections: Section[] }>(
+        `/projects/${projectId}/sections`
+      );
+    },
+  });
+}
+
+export function sectionDetailQuery(projectId: string, sectionId: string) {
+  return queryOptions({
+    queryKey: queryKeys.sectionDetail(projectId, sectionId),
+    queryFn: async () => {
+      return apiFetch<{ section: SectionWithElements }>(
+        `/projects/${projectId}/sections/${sectionId}`
+      );
+    },
+    enabled: !!sectionId,
   });
 }
 
