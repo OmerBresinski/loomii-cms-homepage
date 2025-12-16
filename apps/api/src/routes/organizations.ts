@@ -77,6 +77,53 @@ export const organizationRoutes = new Hono()
       const user = getCurrentUser(c);
       const input = c.req.valid("json");
 
+      // Check if organization already exists
+      const existingOrg = await prisma.organization.findUnique({
+        where: { clerkOrgId: input.clerkOrgId },
+      });
+
+      // If slug is being changed and conflicts with another org, skip slug update
+      let updateData: {
+        name: string;
+        slug?: string;
+        logoUrl: string | null;
+      } = {
+        name: input.name,
+        logoUrl: input.logoUrl,
+      };
+
+      if (existingOrg) {
+        // Only update slug if it's different and doesn't conflict
+        if (existingOrg.slug !== input.slug) {
+          const slugConflict = await prisma.organization.findUnique({
+            where: { slug: input.slug },
+          });
+          // Only update slug if there's no conflict or if the conflict is the same org
+          if (!slugConflict || slugConflict.id === existingOrg.id) {
+            updateData.slug = input.slug;
+          }
+        }
+      } else {
+        // For create, check if slug exists
+        const slugConflict = await prisma.organization.findUnique({
+          where: { slug: input.slug },
+        });
+        if (slugConflict) {
+          // Generate a unique slug by appending a suffix
+          let uniqueSlug = input.slug;
+          let counter = 1;
+          while (
+            await prisma.organization.findUnique({
+              where: { slug: uniqueSlug },
+            })
+          ) {
+            uniqueSlug = `${input.slug}-${counter}`;
+            counter++;
+          }
+          input.slug = uniqueSlug;
+        }
+      }
+
       // Upsert organization
       const org = await prisma.organization.upsert({
         where: { clerkOrgId: input.clerkOrgId },
@@ -92,11 +139,7 @@ export const organizationRoutes = new Hono()
             },
           },
         },
-        update: {
-          name: input.name,
-          slug: input.slug,
-          logoUrl: input.logoUrl,
-        },
+        update: updateData,
       });
 
       // Ensure user is a member
