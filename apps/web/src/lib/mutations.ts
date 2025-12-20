@@ -144,6 +144,24 @@ export function useSubmitEdits(projectId: string) {
   });
 }
 
+// Update element mutation (e.g. visibility)
+export function useUpdateElement(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ elementId, ...data }: { elementId: string; [key: string]: any }) => {
+      return apiFetch<{ success: boolean }>(`/projects/${projectId}/elements/${elementId}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.sections(projectId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.elements(projectId) });
+    },
+  });
+}
+
 // Trigger analysis mutation
 export function useTriggerAnalysis(projectId: string) {
   const queryClient = useQueryClient();

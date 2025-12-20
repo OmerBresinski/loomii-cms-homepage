@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { projectDetailQuery, updateElementMutation } from "@/lib/queries";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { projectDetailQuery } from "@/lib/queries";
+import { useUpdateElement } from "@/lib/mutations";
 import { 
   Sheet, 
   SheetContent, 
@@ -35,6 +36,9 @@ export function ElementEditor({ projectId, elementId, onClose }: ElementEditorPr
   const [alt, setAlt] = useState("");
   const [isDirty, setIsDirty] = useState(false);
 
+  // Mutations
+  const updateElement = useUpdateElement(projectId);
+
   useEffect(() => {
     if (element) {
       setContent(element.content || "");
@@ -43,17 +47,16 @@ export function ElementEditor({ projectId, elementId, onClose }: ElementEditorPr
     }
   }, [element]);
 
-  const update = useMutation({
-    mutationFn: (data: { content: string; alt?: string }) => 
-      updateElementMutation(projectId, elementId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      onClose();
-    }
-  });
-
   const handleSave = () => {
-    update.mutate({ content, alt });
+    updateElement.mutate({ 
+      elementId, 
+      content, 
+      alt: element?.type === "image" ? alt : undefined // Only send alt for images
+    }, {
+      onSuccess: () => {
+        onClose();
+      }
+    });
   };
 
   if (isLoading || !element) return null;
@@ -151,10 +154,10 @@ export function ElementEditor({ projectId, elementId, onClose }: ElementEditorPr
           </Button>
           <Button 
              className="flex-1" 
-             disabled={!isDirty || update.isPending} 
+             disabled={!isDirty || updateElement.isPending} 
              onClick={handleSave}
           >
-            {update.isPending ? (
+            {updateElement.isPending ? (
               <IconRefresh className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <IconDeviceFloppy className="w-4 h-4 mr-2" />
