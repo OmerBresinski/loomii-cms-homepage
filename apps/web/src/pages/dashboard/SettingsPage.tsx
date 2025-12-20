@@ -4,6 +4,8 @@ import { useSearch } from "@tanstack/react-router";
 import { currentOrgQuery } from "@/lib/queries";
 import { useDisconnectGitHub } from "@/lib/mutations";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { Github, Check, X } from "lucide-react";
 
@@ -52,116 +54,113 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="p-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-2">Settings</h1>
-        <p className="text-gray-400">Manage your organization and integrations.</p>
+    <div className="p-6 max-w-2xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <p className="text-muted-foreground">Manage your organization and integrations.</p>
       </div>
 
       {showSuccessMessage && (
-        <div className="mb-6 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-          <div className="flex items-center gap-2">
+        <Card className="bg-emerald-500/10 border-emerald-500/30">
+          <CardContent className="py-4 flex items-center gap-2 text-emerald-500">
             <Check className="w-5 h-5" />
             <span>GitHub connected successfully!</span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {search?.error && (
-        <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400">
-          <div className="flex items-center gap-2">
+        <Card className="bg-destructive/10 border-destructive/30">
+          <CardContent className="py-4 flex items-center gap-2 text-destructive">
             <X className="w-5 h-5" />
             <span>Failed to connect GitHub: {search.error}</span>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="space-y-6">
-        <section className="border border-white/10 rounded-lg bg-[#111]">
-          <div className="px-6 py-4 border-b border-white/10">
-            <h2 className="font-semibold">Organization</h2>
-          </div>
-          <div className="p-6">
-            {organization ? (
-              <div className="flex items-center gap-4">
-                <img src={organization.imageUrl} alt={organization.name} className="w-12 h-12 rounded-lg" />
-                <div>
-                  <p className="font-medium">{organization.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {orgData?.organization?.memberCount || 0} members · {orgData?.organization?.projectCount || 0} projects
-                  </p>
-                </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Organization</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {organization ? (
+            <div className="flex items-center gap-4">
+              <img src={organization.imageUrl} alt={organization.name} className="w-12 h-12 rounded-lg" />
+              <div>
+                <p className="font-medium">{organization.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {orgData?.organization?.memberCount || 0} members · {orgData?.organization?.projectCount || 0} projects
+                </p>
               </div>
-            ) : (
-              <p className="text-gray-500">No organization selected</p>
-            )}
-          </div>
-        </section>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">No organization selected</p>
+          )}
+        </CardContent>
+      </Card>
 
-        <section className="border border-white/10 rounded-lg bg-[#111]">
-          <div className="px-6 py-4 border-b border-white/10">
-            <h2 className="font-semibold">GitHub Integration</h2>
-          </div>
-          <div className="p-6">
-            {orgLoading ? (
-              <div className="animate-pulse h-16 bg-white/5 rounded-lg" />
-            ) : orgData?.organization?.hasGitHubConnected ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-white/5">
+      <Card>
+        <CardHeader>
+          <CardTitle>GitHub Integration</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {orgLoading ? (
+            <div className="animate-pulse h-16 bg-muted rounded-lg" />
+          ) : orgData?.organization?.hasGitHubConnected ? (
+            <div className="space-y-4">
+              <Card className="bg-secondary">
+                <CardContent className="py-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Github className="w-8 h-8" />
                     <div>
                       <p className="font-medium">GitHub Connected</p>
-                      <p className="text-sm text-gray-500">@{orgData.organization.githubOrgName}</p>
+                      <p className="text-sm text-muted-foreground">@{orgData.organization.githubOrgName}</p>
                     </div>
                   </div>
-                  <span className="px-2 py-1 text-xs font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                    Active
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={handleDisconnectGitHub}
-                  disabled={disconnectGitHub.isPending}
-                  className="text-red-400 border-red-500/30 hover:bg-red-500/10"
-                >
-                  {disconnectGitHub.isPending ? "Disconnecting..." : "Disconnect GitHub"}
-                </Button>
-              </div>
+                  <Badge variant="success">Active</Badge>
+                </CardContent>
+              </Card>
+              <Button
+                variant="outline"
+                onClick={handleDisconnectGitHub}
+                disabled={disconnectGitHub.isPending}
+                className="text-destructive border-destructive/30 hover:bg-destructive/10"
+              >
+                {disconnectGitHub.isPending ? "Disconnecting..." : "Disconnect GitHub"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Connect your GitHub account to enable repository access.</p>
+              <Button onClick={handleConnectGitHub}>
+                <Github className="w-4 h-4 mr-2" />
+                Connect GitHub
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Profile</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            {user?.imageUrl ? (
+              <img src={user.imageUrl} alt={user.fullName || "User"} className="w-12 h-12 rounded-full" />
             ) : (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-400">Connect your GitHub account to enable repository access.</p>
-                <Button onClick={handleConnectGitHub}>
-                  <Github className="w-4 h-4 mr-2" />
-                  Connect GitHub
-                </Button>
+              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary text-lg font-medium">
+                {user?.firstName?.[0] || "U"}
               </div>
             )}
-          </div>
-        </section>
-
-        <section className="border border-white/10 rounded-lg bg-[#111]">
-          <div className="px-6 py-4 border-b border-white/10">
-            <h2 className="font-semibold">Profile</h2>
-          </div>
-          <div className="p-6">
-            <div className="flex items-center gap-4">
-              {user?.imageUrl ? (
-                <img src={user.imageUrl} alt={user.fullName || "User"} className="w-12 h-12 rounded-full" />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary text-lg font-medium">
-                  {user?.firstName?.[0] || "U"}
-                </div>
-              )}
-              <div>
-                <p className="font-medium">{user?.fullName || "User"}</p>
-                <p className="text-sm text-gray-500">{user?.primaryEmailAddress?.emailAddress}</p>
-              </div>
+            <div>
+              <p className="font-medium">{user?.fullName || "User"}</p>
+              <p className="text-sm text-muted-foreground">{user?.primaryEmailAddress?.emailAddress}</p>
             </div>
           </div>
-        </section>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

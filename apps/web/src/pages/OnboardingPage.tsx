@@ -8,6 +8,10 @@ import {
 import { useEffect, useMemo, useState, useRef } from "react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 
 export function OnboardingPage() {
   const navigate = useNavigate();
@@ -60,18 +64,18 @@ export function OnboardingPage() {
 
   if (!authLoaded || !orgLoaded || !membershipsLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
 
   if (isSyncing) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Setting up your workspace...</p>
+          <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-primary" />
+          <p className="text-muted-foreground">Setting up your workspace...</p>
         </div>
       </div>
     );
@@ -79,41 +83,40 @@ export function OnboardingPage() {
 
   if (syncError) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-          <p className="text-red-400 mb-4">{syncError}</p>
-          <button
-            onClick={() => {
-              syncingRef.current = false;
-              setSyncError(null);
-            }}
-            className="text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            Try again
-          </button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="pt-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+              <X className="w-6 h-6 text-destructive" />
+            </div>
+            <p className="text-destructive mb-4">{syncError}</p>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                syncingRef.current = false;
+                setSyncError(null);
+              }}
+            >
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (showCreateOrg) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-md">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setShowCreateOrg(false)}
-            className="mb-6 text-sm text-gray-500 hover:text-white transition-colors flex items-center gap-1.5"
+            className="mb-6"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
+            <ChevronLeft className="w-4 h-4 mr-1" />
             Back
-          </button>
+          </Button>
           <CreateOrganization afterCreateOrganizationUrl="/onboarding" skipInvitationScreen={true} />
         </div>
       </div>
@@ -127,39 +130,38 @@ export function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Link to="/" className="flex items-center gap-2 font-semibold text-lg">
             <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-              <span className="text-white text-sm font-bold">L</span>
+              <span className="text-primary-foreground text-sm font-bold">L</span>
             </div>
             <span>Loomii</span>
           </Link>
         </div>
 
-        <div className="border border-white/10 rounded-lg bg-[#111] p-8">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold mb-2">Welcome to Loomii</h1>
-            <p className="text-gray-400">
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Welcome to Loomii</CardTitle>
+            <CardDescription>
               {hasOrganizations
                 ? "Select an organization to continue, or create a new one."
                 : "Create your first organization to get started."}
-            </p>
-          </div>
-
-          <div className="space-y-4">
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             {hasOrganizations && (
               <div className="space-y-2">
-                <p className="text-sm text-gray-500 mb-3">Your organizations</p>
+                <p className="text-sm text-muted-foreground mb-3">Your organizations</p>
                 {userMemberships?.data?.map((membership) => (
                   <button
                     key={membership.organization.id}
                     onClick={() => handleSelectOrg(membership.organization.id)}
                     className={cn(
                       "w-full flex items-center gap-3 p-4 rounded-lg",
-                      "border border-white/10 bg-white/5",
-                      "hover:bg-white/10 hover:border-white/20",
+                      "border border-border bg-secondary",
+                      "hover:bg-accent",
                       "transition-all text-left"
                     )}
                   >
@@ -170,11 +172,9 @@ export function OnboardingPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{membership.organization.name}</p>
-                      <p className="text-sm text-gray-500 capitalize">{membership.role}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{membership.role}</p>
                     </div>
-                    <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
                   </button>
                 ))}
               </div>
@@ -182,34 +182,24 @@ export function OnboardingPage() {
 
             {hasOrganizations && (
               <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/10" />
-                </div>
-                <div className="relative flex justify-center">
-                  <span className="px-3 text-xs text-gray-500 bg-[#111]">or</span>
+                <Separator />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="px-3 text-xs text-muted-foreground bg-card">or</span>
                 </div>
               </div>
             )}
 
-            <button
+            <Button
               onClick={() => setShowCreateOrg(true)}
-              className={cn(
-                "w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg",
-                "font-medium text-sm transition-all",
-                hasOrganizations
-                  ? "border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white hover:border-white/20"
-                  : "bg-primary text-white hover:bg-primary/90"
-              )}
+              variant={hasOrganizations ? "outline" : "default"}
+              className="w-full"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
+              <Plus className="w-4 h-4 mr-2" />
               Create new organization
-            </button>
-          </div>
-        </div>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
-
