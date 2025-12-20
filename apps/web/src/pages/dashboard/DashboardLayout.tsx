@@ -6,21 +6,49 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 
+import { useEffect } from "react";
+import { useSyncOrganization } from "@/lib/mutations";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
+
 export function DashboardLayout() {
   const { organization } = useOrganization();
   const { data: orgData } = useQuery(currentOrgQuery());
+  const { mutate: syncOrg } = useSyncOrganization();
 
   const hasGitHub = orgData?.organization?.hasGitHubConnected;
+
+  useEffect(() => {
+    if (orgData?.needsSync && organization) {
+      console.log("Syncing organization...", organization);
+      syncOrg({
+        clerkOrgId: organization.id,
+        name: organization.name,
+        slug: organization.slug || organization.id,
+        logoUrl: organization.imageUrl,
+      });
+    }
+  }, [orgData?.needsSync, organization, syncOrg]);
+
+  const handleConnect = async () => {
+    if (!orgData?.organization?.id) {
+      console.error("Missing organization ID:", orgData);
+      toast.error("Organization data not loaded. Please try again.");
+      return;
+    }
+    try {
+      const { url } = await apiFetch<{ url: string }>(`/organizations/${orgData.organization.id}/github/connect`);
+      window.location.href = url;
+    } catch (error) {
+      console.error("GitHub connect error:", error);
+      toast.error("Failed to initiate connection");
+    }
+  };
 
   return (
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-          </div>
-        </header>
 
         <div className="flex flex-col flex-1 min-w-0">
           {!hasGitHub && organization && (
@@ -29,9 +57,9 @@ export function DashboardLayout() {
                 <p className="text-sm text-amber-500">
                   <span className="font-medium">GitHub not connected.</span> Connect GitHub to start creating projects.
                 </p>
-                <Link to="/dashboard/settings" search={{ github: undefined, error: undefined }} className="text-sm font-medium text-amber-500 hover:underline">
+                <button onClick={handleConnect} className="text-sm font-medium text-amber-500 hover:underline cursor-pointer bg-transparent border-none p-0">
                   Connect now →
-                </Link>
+                </button>
               </CardContent>
             </Card>
           )}

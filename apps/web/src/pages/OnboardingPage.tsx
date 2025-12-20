@@ -87,7 +87,7 @@ export function OnboardingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 border-t">
-            {organizationList.length === 0 ? (
+            {(organizationList || []).length === 0 ? (
               <Empty className="py-20 border-none">
                 <EmptyMedia>
                   <IconBuilding className="w-16 h-16 text-muted-foreground opacity-10" />
@@ -99,7 +99,7 @@ export function OnboardingPage() {
               </Empty>
             ) : (
               <ItemGroup className="gap-0">
-                {organizationList.map((membership) => (
+                {(organizationList || []).map((membership) => (
                   <Item 
                     key={membership.organization.id} 
                     className="px-8 py-6 border-b last:border-0 rounded-none hover:bg-primary/5 transition-all group"

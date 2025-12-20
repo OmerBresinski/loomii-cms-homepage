@@ -9,6 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/components/ui/item";
 import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 
+
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
+
 export function DashboardHome() {
   const { organization } = useOrganization();
   const { data: projectsData, isLoading } = useQuery(projectListQuery());
@@ -16,6 +20,21 @@ export function DashboardHome() {
   const { data: orgData } = useQuery(currentOrgQuery());
 
   const hasGitHub = orgData?.organization?.hasGitHubConnected;
+
+  const handleConnect = async () => {
+    if (!orgData?.organization?.id) {
+      console.error("Missing organization ID:", orgData);
+      toast.error("Organization data not loaded. Please try again.");
+      return;
+    }
+    try {
+      const { url } = await apiFetch<{ url: string }>(`/organizations/${orgData.organization.id}/github/connect`);
+      window.location.href = url;
+    } catch (error) {
+      console.error("GitHub connect error:", error);
+      toast.error("Failed to initiate connection");
+    }
+  };
 
   if (!organization) return null;
 
@@ -38,7 +57,7 @@ export function DashboardHome() {
                 <p className="text-sm text-amber-500/80 mb-4 max-w-lg">
                   Loomii needs access to your GitHub repositories to analyze and manage your project content.
                 </p>
-                <Button variant="outline" className="border-amber-500/30 hover:bg-amber-500/10 text-amber-500" render={<Link to="/dashboard/settings" search={{ github: undefined, error: undefined }} />} nativeButton={false}>
+                <Button variant="outline" className="border-amber-500/30 hover:bg-amber-500/10 text-amber-500" onClick={handleConnect}>
                   Connect Account
                 </Button>
               </div>

@@ -2,6 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useOrganization } from "@clerk/clerk-react";
 import { useQuery } from "@tanstack/react-query";
 import { currentOrgQuery } from "@/lib/queries";
+import { apiFetch } from "@/lib/api";
 import { IconBrandGithub, IconSettings, IconShield, IconCheck, IconAlertCircle, IconRefresh } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -30,9 +31,20 @@ export function SettingsPage() {
     }
   }, [search.github, search.error, navigate]);
 
-  const handleConnectGitHub = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3001";
-    window.location.href = `${apiUrl}/auth/github?clerkOrgId=${organization?.id}`;
+
+  const handleConnectGitHub = async () => {
+    if (!orgData?.organization?.id) {
+      console.error("Missing organization ID:", orgData);
+      toast.error("Organization data not loaded. Please try again.");
+      return;
+    }
+    try {
+      const { url } = await apiFetch<{ url: string }>(`/organizations/${orgData.organization.id}/github/connect`);
+      window.location.href = url;
+    } catch (error) {
+      console.error("GitHub connect error:", error);
+      toast.error("Failed to initiate connection");
+    }
   };
 
   if (!organization) return null;

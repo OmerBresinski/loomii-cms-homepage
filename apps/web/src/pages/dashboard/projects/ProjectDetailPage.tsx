@@ -116,7 +116,7 @@ export function ProjectDetailPage() {
               <HoverCard>
                 <HoverCardTrigger 
                   render={
-                    <div className="flex items-center gap-2 cursor-help group" />
+                    <button className="flex items-center gap-2 cursor-help group bg-transparent border-none p-0 text-inherit focus:outline-none" />
                   }
                 >
                   <IconBrandGithub className="w-4 h-4 group-hover:text-primary transition-colors" />
@@ -241,9 +241,7 @@ export function ProjectDetailPage() {
                 className="group border border-border/60 rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm"
               >
                 <CollapsibleTrigger 
-                  // @ts-ignore - nativeButton is missing from types but required by Base UI
-                  nativeButton={false}
-                  render={<div className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-accent/5 transition-all" />}
+                  render={<button className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-accent/5 transition-all bg-transparent border-none text-inherit text-left focus:outline-none" />}
                 >
                   <div className="flex items-center gap-4">
                     <div className={cn(
@@ -302,9 +300,7 @@ export function ProjectDetailPage() {
                             <div className="flex items-center gap-6 pr-2">
                               <HoverCard>
                                 <HoverCardTrigger 
-                                  // @ts-ignore - nativeButton is missing from types but required by Base UI
-                                  nativeButton={false}
-                                  render={<div className="flex flex-col items-center gap-2 mr-2 cursor-help group/switch" />}
+                                  render={<button className="flex flex-col items-center gap-2 mr-2 cursor-help group/switch bg-transparent border-none p-0 text-inherit focus:outline-none" />}
                                 >
                                     <span className={cn(
                                       "text-[9px] font-black uppercase tracking-widest transition-colors",
