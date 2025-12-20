@@ -2,14 +2,13 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { projectListQuery } from "@/lib/queries";
 import { useOrganization } from "@clerk/clerk-react";
-import { Plus, Folder, Search, Filter, ExternalLink } from "lucide-react";
+import { IconPlus, IconFolder, IconSearch, IconFilter, IconExternalLink, IconBrandGithub } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/components/ui/item";
 import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
-import { IconBrandGithub, IconBrandGithubFilled } from "@tabler/icons-react";
 
 export function ProjectsPage() {
   const { organization } = useOrganization();
@@ -25,19 +24,19 @@ export function ProjectsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
           <p className="text-muted-foreground">Manage and edit your repository content.</p>
         </div>
-        <Button render={<Link to="/dashboard/projects/new" />}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button render={<Link to="/dashboard/projects/new" />} nativeButton={false}>
+          <IconPlus className="w-4 h-4 mr-2" />
           New Project
         </Button>
       </div>
 
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search projects..." className="pl-9" />
         </div>
         <Button variant="outline" size="icon">
-          <Filter className="w-4 h-4" />
+          <IconFilter className="w-4 h-4" />
         </Button>
       </div>
 
@@ -51,13 +50,13 @@ export function ProjectsPage() {
             <div className="flex items-center justify-center h-[400px]">
               <Empty className="border-none max-w-md">
                 <EmptyMedia>
-                  <Folder className="w-12 h-12 text-muted-foreground opacity-20" />
+                  <IconFolder className="w-12 h-12 text-muted-foreground opacity-20" />
                 </EmptyMedia>
                 <EmptyTitle className="text-xl">No projects found</EmptyTitle>
                 <EmptyDescription className="text-base">
                   You haven't created any projects yet. Connect a repository to get started.
                 </EmptyDescription>
-                <Button size="lg" className="mt-6" render={<Link to="/dashboard/projects/new" />}>
+                <Button size="lg" className="mt-6" render={<Link to="/dashboard/projects/new" />} nativeButton={false}>
                   Create your first project
                 </Button>
               </Empty>
@@ -67,7 +66,7 @@ export function ProjectsPage() {
               {projects.map((project) => (
                 <Item key={project.id} variant="default" className="px-8 py-6 border-b last:border-0 rounded-none hover:bg-accent/30 group">
                   <ItemMedia variant="icon" className="w-12 h-12 rounded-xl bg-primary/10 text-primary shrink-0 transition-all group-hover:scale-110 group-hover:rotate-3">
-                    <Folder className="w-6 h-6" />
+                    <IconFolder className="w-6 h-6" />
                   </ItemMedia>
                   <ItemContent className="ml-6 gap-2">
                     <ItemTitle className="text-lg font-bold group-hover:text-primary transition-colors">
@@ -97,11 +96,11 @@ export function ProjectsPage() {
                       <Badge variant="success" className="h-5">Active</Badge>
                       <span className="text-[10px] text-muted-foreground italic">Last analyzed 2 days ago</span>
                     </div>
-                    <Button variant="outline" size="sm" className="hidden sm:flex" render={<Link to="/dashboard/projects/$projectId" params={{ projectId: project.id }} />}>
+                    <Button variant="outline" size="sm" className="hidden sm:flex" render={<Link to="/dashboard/projects/$projectId" params={{ projectId: project.id }} />} nativeButton={false}>
                       Manage
                     </Button>
-                    <Button variant="ghost" size="icon" render={<Link to="/dashboard/projects/$projectId" params={{ projectId: project.id }} />}>
-                      <ExternalLink className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" render={<Link to="/dashboard/projects/$projectId" params={{ projectId: project.id }} />} nativeButton={false}>
+                      <IconExternalLink className="w-4 h-4" />
                     </Button>
                   </ItemActions>
                 </Item>

@@ -1,15 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Code2, Hash, Type, ImageIcon, Globe, MousePointer2 } from "lucide-react";
+import { IconCode, IconHash, IconTypography, IconPhoto, IconWorld, IconPointer } from "@tabler/icons-react";
 import CodeCardStack from "./CodeCardStack";
 
 const CodeExamplesCard = () => {
   const contentTypes = [
-    { label: "Headlines", icon: Type },
-    { label: "Navigation", icon: Globe },
-    { label: "CTAs", icon: MousePointer2 },
-    { label: "SEO Meta", icon: Hash },
-    { label: "Assets", icon: ImageIcon },
+    { label: "Headlines", icon: IconTypography },
+    { label: "Navigation", icon: IconWorld },
+    { label: "CTAs", icon: IconPointer },
+    { label: "SEO Meta", icon: IconHash },
+    { label: "Assets", icon: IconPhoto },
   ];
 
   return (
@@ -19,7 +19,7 @@ const CodeExamplesCard = () => {
       <CardContent className="p-10 relative z-10 flex flex-col md:flex-row items-center gap-12 w-full">
         <div className="flex-1 space-y-6">
           <Badge variant="outline" className="bg-violet-500/10 text-violet-500 border-violet-500/20 px-3 py-1 gap-1.5 font-bold uppercase tracking-widest text-[10px]">
-            <Code2 className="w-3.5 h-3.5" />
+            <IconCode className="w-3.5 h-3.5" />
             Content as Code
           </Badge>
           

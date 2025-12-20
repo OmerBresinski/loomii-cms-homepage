@@ -3,7 +3,7 @@ import { useUser, UserButton, OrganizationSwitcher } from "@clerk/clerk-react"
 import { useQuery } from "@tanstack/react-query"
 import { currentOrgQuery } from "@/lib/queries"
 import { cn } from "@/lib/utils"
-import { Home, Folder, Settings, ChevronUp } from "lucide-react"
+import { IconHome, IconFolder, IconSettings, IconChevronUp } from "@tabler/icons-react"
 import {
   Sidebar,
   SidebarContent,
@@ -24,9 +24,9 @@ export function AppSidebar() {
   const hasGitHub = orgData?.organization?.hasGitHubConnected
 
   const navItems = [
-    { to: "/dashboard", label: "Overview", icon: Home, exact: true },
-    { to: "/dashboard/projects", label: "Projects", icon: Folder },
-    { to: "/dashboard/settings", label: "Settings", icon: Settings },
+    { to: "/dashboard", label: "Overview", icon: IconHome, exact: true },
+    { to: "/dashboard/projects", label: "Projects", icon: IconFolder },
+    { to: "/dashboard/settings", label: "Settings", icon: IconSettings },
   ]
 
   return (
@@ -74,7 +74,7 @@ export function AppSidebar() {
 
                 return (
                   <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton render={<Link to={item.to} />} isActive={isActive}>
+                    <SidebarMenuButton render={<Link to={item.to} />} isActive={isActive} >
                       <item.icon />
                       <span>{item.label}</span>
                       {item.label === "Settings" && !hasGitHub && (
@@ -99,7 +99,7 @@ export function AppSidebar() {
                   <p className="text-sm font-medium truncate">{user?.fullName || "User"}</p>
                   <p className="text-xs text-muted-foreground truncate">{user?.primaryEmailAddress?.emailAddress}</p>
                 </div>
-                <ChevronUp className="w-4 h-4 ml-auto text-muted-foreground" />
+                <IconChevronUp className="w-4 h-4 ml-auto text-muted-foreground" />
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

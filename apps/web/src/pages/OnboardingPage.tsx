@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/components/ui/item";
 import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
-import { Building2, Plus, ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { IconBuilding, IconPlus, IconArrowRight, IconLoader2, IconSparkles } from "@tabler/icons-react";
 
 export function OnboardingPage() {
   const { user, isLoaded: userLoaded } = useUser();
@@ -50,7 +50,7 @@ export function OnboardingPage() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a]">
         <div className="flex flex-col items-center gap-6 max-w-sm text-center">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-             <Loader2 className="w-8 h-8 text-primary animate-spin" />
+             <IconLoader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
           <div className="space-y-2">
             <h2 className="text-xl font-bold tracking-tight">Setting things up...</h2>
@@ -73,7 +73,7 @@ export function OnboardingPage() {
           <div className="space-y-1">
             <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
               Welcome to Loomii
-              <Sparkles className="w-6 h-6 text-primary fill-primary/20" />
+              <IconSparkles className="w-6 h-6 text-primary fill-primary/20" />
             </h1>
             <p className="text-muted-foreground text-lg">Choose where you'll be working today.</p>
           </div>
@@ -90,7 +90,7 @@ export function OnboardingPage() {
             {organizationList.length === 0 ? (
               <Empty className="py-20 border-none">
                 <EmptyMedia>
-                  <Building2 className="w-16 h-16 text-muted-foreground opacity-10" />
+                  <IconBuilding className="w-16 h-16 text-muted-foreground opacity-10" />
                 </EmptyMedia>
                 <EmptyTitle className="text-xl">No organizations found</EmptyTitle>
                 <EmptyDescription className="text-base max-w-xs mx-auto mb-8">
@@ -124,7 +124,7 @@ export function OnboardingPage() {
                     <ItemActions>
                       <Button onClick={() => handleSelectOrg(membership.organization.id)} size="lg" className="rounded-full shadow-lg group-hover:translate-x-1 transition-transform">
                          Enter Workspace
-                         <ArrowRight className="w-4 h-4 ml-2" />
+                         <IconArrowRight className="w-4 h-4 ml-2" />
                       </Button>
                     </ItemActions>
                   </Item>

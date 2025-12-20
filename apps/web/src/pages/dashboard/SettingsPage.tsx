@@ -2,7 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useOrganization } from "@clerk/clerk-react";
 import { useQuery } from "@tanstack/react-query";
 import { currentOrgQuery } from "@/lib/queries";
-import { Github, Settings as SettingsIcon, Shield, Check, AlertCircle, RefreshCw } from "lucide-react";
+import { IconBrandGithub, IconSettings, IconShield, IconCheck, IconAlertCircle, IconRefresh } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +47,7 @@ export function SettingsPage() {
       <div className="grid gap-10">
         <section className="space-y-4">
           <div className="flex items-center gap-2 px-1">
-            <Shield className="w-4 h-4 text-primary" />
+            <IconShield className="w-4 h-4 text-primary" />
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Organization</h2>
           </div>
           <Card>
@@ -80,7 +80,7 @@ export function SettingsPage() {
 
         <section className="space-y-4">
           <div className="flex items-center gap-2 px-1">
-            <SettingsIcon className="w-4 h-4 text-primary" />
+            <IconSettings className="w-4 h-4 text-primary" />
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Integrations</h2>
           </div>
           <Card>
@@ -92,7 +92,7 @@ export function SettingsPage() {
                <ItemGroup className="gap-0 border-t">
                   <Item className="px-6 py-8 rounded-none bg-transparent">
                     <ItemMedia variant="icon" className="w-12 h-12 rounded-xl bg-[#24292f]/5 dark:bg-white/5 border shrink-0">
-                      <Github className="w-6 h-6" />
+                      <IconBrandGithub className="w-6 h-6" />
                     </ItemMedia>
                     <ItemContent className="ml-6">
                       <ItemTitle className="text-lg">GitHub</ItemTitle>
@@ -102,17 +102,17 @@ export function SettingsPage() {
                       <div className="flex items-center gap-2 mt-3">
                         {isLoading ? (
                           <Badge variant="secondary" className="gap-1.5">
-                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <IconRefresh className="w-3 h-3 animate-spin" />
                             Checking status...
                           </Badge>
                         ) : hasGitHub ? (
                           <Badge variant="success" className="gap-1.5 px-3">
-                            <Check className="w-3 h-3" />
+                            <IconCheck className="w-3 h-3" />
                             Connected
                           </Badge>
                         ) : (
                           <Badge variant="warning" className="gap-1.5 px-3">
-                            <AlertCircle className="w-3 h-3" />
+                            <IconAlertCircle className="w-3 h-3" />
                             Not connected
                           </Badge>
                         )}
@@ -125,7 +125,7 @@ export function SettingsPage() {
                          </Button>
                        ) : (
                          <Button onClick={handleConnectGitHub} className="bg-[#24292f] hover:bg-[#24292f]/90 text-white">
-                           <Github className="w-4 h-4 mr-2" />
+                           <IconBrandGithub className="w-4 h-4 mr-2" />
                            Connect GitHub
                          </Button>
                        )}

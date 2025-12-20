@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Field, FieldLabel, FieldContent, FieldDescription } from "@/components/ui/field";
-import { RefreshCw, Save, X, Type, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import { IconRefresh, IconDeviceFloppy, IconX, IconTypography, IconPhoto, IconLink } from "@tabler/icons-react";
 
 interface ElementEditorProps {
   projectId: string;
@@ -72,9 +72,9 @@ export function ElementEditor({ projectId, elementId, onClose }: ElementEditorPr
           </div>
           <div className="flex items-center gap-2 mt-4">
             <Badge variant="outline" className="gap-1.5 py-1 px-2.5 bg-background font-mono text-[10px] uppercase tracking-wider">
-               {element.type === "text" ? <Type className="w-3 h-3" /> :
-                element.type === "image" ? <ImageIcon className="w-3 h-3" /> :
-                <LinkIcon className="w-3 h-3" />}
+               {element.type === "text" ? <IconTypography className="w-3 h-3" /> :
+                element.type === "image" ? <IconPhoto className="w-3 h-3" /> :
+                <IconLink className="w-3 h-3" />}
                {element.type}
             </Badge>
             <span className="text-[10px] text-muted-foreground font-mono">{element.key}</span>
@@ -155,9 +155,9 @@ export function ElementEditor({ projectId, elementId, onClose }: ElementEditorPr
              onClick={handleSave}
           >
             {update.isPending ? (
-              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              <IconRefresh className="w-4 h-4 mr-2 animate-spin" />
             ) : (
-              <Save className="w-4 h-4 mr-2" />
+              <IconDeviceFloppy className="w-4 h-4 mr-2" />
             )}
             Save Draft
           </Button>

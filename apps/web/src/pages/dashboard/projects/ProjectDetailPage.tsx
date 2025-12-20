@@ -5,21 +5,21 @@ import { projectDetailQuery, reanalyzeProjectMutation, updateElementMutation } f
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { 
-  Settings, 
-  ExternalLink, 
-  RefreshCw, 
-  Type, 
-  Image as ImageIcon, 
-  Link as LinkIcon, 
-  Calendar,
-  ChevronDown,
-  ChevronRight,
-  Edit2,
-  Github,
-  GitBranch,
-  Info,
-  Search as SearchIcon
-} from "lucide-react";
+  IconSettings, 
+  IconExternalLink, 
+  IconRefresh, 
+  IconTypography, 
+  IconPhoto, 
+  IconLink, 
+  IconCalendar,
+  IconChevronDown,
+  IconChevronRight,
+  IconEdit,
+  IconBrandGithub,
+  IconGitBranch,
+  IconInfoCircle,
+  IconSearch
+} from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -101,7 +101,7 @@ export function ProjectDetailPage() {
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Link to="/dashboard/projects" className="hover:text-primary transition-colors">Projects</Link>
-          <ChevronRight className="w-3 h-3" />
+          <IconChevronRight className="w-3 h-3" />
           <span className="text-foreground font-medium">{project.name}</span>
         </div>
 
@@ -119,7 +119,7 @@ export function ProjectDetailPage() {
                     <div className="flex items-center gap-2 cursor-help group" />
                   }
                 >
-                  <Github className="w-4 h-4 group-hover:text-primary transition-colors" />
+                  <IconBrandGithub className="w-4 h-4 group-hover:text-primary transition-colors" />
                   <span className="font-medium text-sm border-b border-dotted border-muted-foreground/30 group-hover:border-primary/50 group-hover:text-foreground transition-all">
                     {project.githubRepo}
                   </span>
@@ -128,7 +128,7 @@ export function ProjectDetailPage() {
                   <div className="bg-primary/5 p-4 border-b">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-background border flex items-center justify-center">
-                        <Github className="w-5 h-5" />
+                        <IconBrandGithub className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
                         <div className="text-xs font-bold uppercase tracking-widest text-primary">Connected Repository</div>
@@ -138,39 +138,42 @@ export function ProjectDetailPage() {
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <GitBranch className="w-3 h-3" />
+                      <IconGitBranch className="w-3 h-3" />
                       Branch: <span className="font-bold text-foreground">{project.githubBranch}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                       <Calendar className="w-3 h-3" />
+                       <IconCalendar className="w-3 h-3" />
                        Last synced: <span className="font-bold text-foreground">Oct 24, 2024</span>
                     </div>
-                    <div className="pt-2">
-                       <Button size="sm" variant="outline" className="w-full text-[10px] font-bold uppercase tracking-widest h-8" render={<a href={`https://github.com/${project.githubRepo}`} target="_blank" rel="noreferrer" />}>
-                         View on GitHub
-                       </Button>
-                    </div>
+                     <div className="pt-2">
+                        <Button
+                          // @ts-ignore - nativeButton is missing from types but required by Base UI
+                          nativeButton={false}
+                          size="sm" variant="outline" className="w-full text-[10px] font-bold uppercase tracking-widest h-8" render={<a href={`https://github.com/${project.githubRepo}`} target="_blank" rel="noreferrer" />}>
+                          View on GitHub
+                        </Button>
+                     </div>
                   </div>
                 </HoverCardContent>
               </HoverCard>
 
               <div className="flex items-center gap-2">
-                 <GitBranch className="w-4 h-4" />
+                 <IconGitBranch className="w-4 h-4" />
                  <span className="font-mono text-xs">{project.githubBranch}</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => reanalyze.mutate()} disabled={reanalyze.isPending}>
-              <RefreshCw className={cn("w-4 h-4 mr-2", reanalyze.isPending && "animate-spin")} />
+              <IconRefresh className={cn("w-4 h-4 mr-2", reanalyze.isPending && "animate-spin")} />
               {reanalyze.isPending ? "Analyzing..." : "Re-analyze"}
             </Button>
             <Button size="sm" className="group shadow-lg shadow-primary/20">
-              <ExternalLink className="w-4 h-4 mr-2 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <IconExternalLink className="w-4 h-4 mr-2 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               View Site
             </Button>
             <Button size="icon" variant="ghost" className="rounded-full">
-              <Settings className="w-4 h-4" />
+              <IconSettings className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -182,7 +185,7 @@ export function ProjectDetailPage() {
             <div className="space-y-4">
               <div className="flex justify-between text-sm font-bold">
                 <span className="text-primary flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <IconRefresh className="w-4 h-4 animate-spin" />
                   Analyzing repository structure...
                 </span>
                 <span className="text-primary">45%</span>
@@ -199,7 +202,7 @@ export function ProjectDetailPage() {
           { label: "Sections", value: sections.length },
           { label: "Total Elements", value: totalElements },
           { label: "Visible", value: visibleElements },
-          { label: "Last Analysis", value: "Oct 24, '24", icon: Calendar },
+          { label: "Last Analysis", value: "Oct 24, '24", icon: IconCalendar },
         ].map((stat) => (
           <Card key={stat.label} className="bg-muted/20 border-border/50 shadow-none hover:bg-muted/30 transition-colors">
             <CardContent className="p-6">
@@ -217,7 +220,7 @@ export function ProjectDetailPage() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
+            <IconSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
             <Input 
               placeholder="Search in content..." 
               className="pl-11 h-12 bg-muted/20 border-border/50 text-base focus-visible:ring-primary/20 rounded-2xl" 
@@ -237,13 +240,17 @@ export function ProjectDetailPage() {
                 onOpenChange={() => toggleSection(section.name)}
                 className="group border border-border/60 rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm"
               >
-                <CollapsibleTrigger render={<div className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-accent/5 transition-all" />}>
+                <CollapsibleTrigger 
+                  // @ts-ignore - nativeButton is missing from types but required by Base UI
+                  nativeButton={false}
+                  render={<div className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-accent/5 transition-all" />}
+                >
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
                       isOpen ? "bg-primary text-primary-foreground rotate-90" : "bg-muted text-muted-foreground"
                     )}>
-                      <ChevronDown className="w-4 h-4" />
+                      <IconChevronDown className="w-4 h-4" />
                     </div>
                     <div>
                       <h3 className="text-lg font-black tracking-tight">{section.name}</h3>
@@ -264,9 +271,9 @@ export function ProjectDetailPage() {
                           )}
                         >
                           <ItemMedia variant="icon" className="w-12 h-12 border-2 bg-background shrink-0 mt-1 rounded-xl shadow-inner group-hover/item:border-primary/30 group-hover/item:scale-105 transition-all">
-                            {element.type === "text" ? <Type className="w-5 h-5" /> :
-                             element.type === "image" ? <ImageIcon className="w-5 h-5" /> :
-                             <LinkIcon className="w-5 h-5" />}
+                            {element.type === "text" ? <IconTypography className="w-5 h-5" /> :
+                             element.type === "image" ? <IconPhoto className="w-5 h-5" /> :
+                             <IconLink className="w-5 h-5" />}
                           </ItemMedia>
                           
                           <ItemContent className="min-w-0">
@@ -281,7 +288,7 @@ export function ProjectDetailPage() {
                               </p>
                               {element.alt && (
                                 <div className="mt-4 p-3 rounded-xl bg-muted/30 border border-border/30 flex items-start gap-3">
-                                  <Info className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                                  <IconInfoCircle className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
                                   <p className="text-[11px] font-medium text-muted-foreground leading-normal">
                                     <span className="text-foreground/70 font-bold uppercase text-[9px] mr-1">Alt Text:</span> 
                                     {element.alt}
@@ -294,7 +301,11 @@ export function ProjectDetailPage() {
                           <ItemActions className="ml-auto">
                             <div className="flex items-center gap-6 pr-2">
                               <HoverCard>
-                                <HoverCardTrigger render={<div className="flex flex-col items-center gap-2 mr-2 cursor-help group/switch" />}>
+                                <HoverCardTrigger 
+                                  // @ts-ignore - nativeButton is missing from types but required by Base UI
+                                  nativeButton={false}
+                                  render={<div className="flex flex-col items-center gap-2 mr-2 cursor-help group/switch" />}
+                                >
                                     <span className={cn(
                                       "text-[9px] font-black uppercase tracking-widest transition-colors",
                                       element.isVisible ? "text-emerald-500" : "text-muted-foreground"
@@ -323,7 +334,7 @@ export function ProjectDetailPage() {
                                 onClick={() => setEditingElementId(element.id)}
                                 className="h-10 px-4 rounded-xl border-border/50 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all group/edit"
                               >
-                                <Edit2 className="w-4 h-4 mr-2 group-hover/edit:rotate-12 transition-transform" />
+                                <IconEdit className="w-4 h-4 mr-2 group-hover/edit:rotate-12 transition-transform" />
                                 <span className="font-bold text-[10px] uppercase tracking-widest">Edit</span>
                               </Button>
                             </div>

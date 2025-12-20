@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Field, FieldLabel, FieldContent, FieldDescription, FieldError } from "@/components/ui/field";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown, Lock, Loader2, Folder, FolderRoot, Plus, Github, Globe } from "lucide-react";
+import { IconCheck, IconSelector, IconLock, IconLoader2, IconFolder, IconPlus, IconBrandGithub, IconWorld } from "@tabler/icons-react";
 
 export function NewProjectPage() {
   const navigate = useNavigate();
@@ -96,7 +96,7 @@ export function NewProjectPage() {
         <Card className="border-amber-500/30 bg-amber-500/5">
           <CardHeader>
             <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
-              <Github className="w-6 h-6 text-amber-500" />
+              <IconBrandGithub className="w-6 h-6 text-amber-500" />
             </div>
             <CardTitle className="text-amber-500">GitHub Connection Required</CardTitle>
             <CardDescription className="text-amber-500/70">
@@ -113,7 +113,7 @@ export function NewProjectPage() {
         <form onSubmit={handleSubmit} className="space-y-10">
           <section className="space-y-4">
             <div className="flex items-center gap-2 px-1">
-               <Github className="w-4 h-4 text-primary" />
+               <IconBrandGithub className="w-4 h-4 text-primary" />
                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Source</h2>
             </div>
             <Card>
@@ -140,14 +140,14 @@ export function NewProjectPage() {
                         >
                           {selectedRepo ? (
                             <span className="flex items-center gap-2">
-                              <Github className="w-4 h-4 text-primary" />
+                              <IconBrandGithub className="w-4 h-4 text-primary" />
                               {selectedRepo.fullName}
-                              {selectedRepo.private && <Lock className="h-3 w-3 opacity-50" />}
+                              {selectedRepo.private && <IconLock className="h-3 w-3 opacity-50" />}
                             </span>
                           ) : (
                             "Select a repository..."
                           )}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          <IconSelector className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                           <Command>
@@ -160,11 +160,11 @@ export function NewProjectPage() {
                                     <div className="flex flex-col flex-1 min-w-0">
                                       <span className="flex items-center gap-2 font-mono text-sm">
                                         {repo.fullName}
-                                        {repo.private && <Lock className="h-3 w-3 opacity-50" />}
+                                        {repo.private && <IconLock className="h-3 w-3 opacity-50" />}
                                       </span>
                                       {repo.description && <span className="text-[10px] text-muted-foreground truncate font-sans mt-0.5">{repo.description}</span>}
                                     </div>
-                                    <Check className={cn("ml-2 h-4 w-4 text-primary", formData.githubRepo === repo.fullName ? "opacity-100" : "opacity-0")} />
+                                    <IconCheck className={cn("ml-2 h-4 w-4 text-primary", formData.githubRepo === repo.fullName ? "opacity-100" : "opacity-0")} />
                                   </CommandItem>
                                 ))}
                               </CommandGroup>
@@ -197,7 +197,7 @@ export function NewProjectPage() {
                       <FieldContent>
                         {foldersLoading ? (
                           <div className="h-11 bg-muted/20 rounded-md flex items-center justify-center border border-border">
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            <IconLoader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                           </div>
                         ) : (
                           <Select
@@ -208,12 +208,12 @@ export function NewProjectPage() {
                               <SelectValue>
                                 {formData.rootPath && formData.rootPath !== ROOT_PATH_VALUE ? (
                                   <span className="flex items-center gap-2 font-mono text-sm text-primary">
-                                    <Folder className="h-4 w-4" />
+                                    <IconFolder className="h-4 w-4" />
                                     {formData.rootPath}
                                   </span>
                                 ) : (
                                   <span className="flex items-center gap-2 text-sm text-primary">
-                                    <FolderRoot className="h-4 w-4" />
+                                    <IconFolder className="h-4 w-4" />
                                     (root)
                                   </span>
                                 )}
@@ -229,12 +229,12 @@ export function NewProjectPage() {
                                   <span className="flex items-center gap-2">
                                     {folder.path === "" ? (
                                       <>
-                                        <FolderRoot className="h-3.5 w-3.5 opacity-50" />
+                                        <IconFolder className="h-3.5 w-3.5 opacity-50" />
                                         (root)
                                       </>
                                     ) : (
                                       <>
-                                        <Folder className="h-3.5 w-3.5 opacity-50" />
+                                        <IconFolder className="h-3.5 w-3.5 opacity-50" />
                                         <span style={{ paddingLeft: `${(folder.depth - 1) * 8}px` }}>
                                           {folder.path}
                                         </span>
@@ -257,7 +257,7 @@ export function NewProjectPage() {
 
           <section className="space-y-4">
              <div className="flex items-center gap-2 px-1">
-               <Globe className="w-4 h-4 text-primary" />
+               <IconWorld className="w-4 h-4 text-primary" />
                <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Project Details</h2>
              </div>
              <Card>
@@ -297,12 +297,12 @@ export function NewProjectPage() {
             <Button size="lg" type="submit" disabled={createProject.isPending || !formData.githubRepo} className="min-w-[140px]">
               {createProject.isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />
                   Analyzing...
                 </>
               ) : (
                 <>
-                  <Plus className="mr-2 h-4 w-4" />
+                  <IconPlus className="mr-2 h-4 w-4" />
                   Create Project
                 </>
               )}

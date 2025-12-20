@@ -1,6 +1,6 @@
 import { SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CheckCircle2, LayoutDashboard, Sparkles } from "lucide-react";
+import { IconCircleCheck, IconLayoutDashboard, IconSparkles } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +59,7 @@ const SignInPanel = () => {
       <Card className="border-none bg-transparent shadow-none p-0">
         <CardHeader className="p-0 mb-10 space-y-2">
           <div className="flex items-center gap-2 text-primary font-bold text-[10px] uppercase tracking-[0.2em] mb-1">
-            <Sparkles className="w-3.5 h-3.5" />
+            <IconSparkles className="w-3.5 h-3.5" />
             AI Content Management
           </div>
           <CardTitle className="text-4xl font-black tracking-tight leading-[0.9]">
@@ -83,15 +83,15 @@ const SignInPanel = () => {
             <div className="space-y-6 animate-in fade-in zoom-in duration-500">
               <div className="flex flex-col items-center gap-4 p-8 rounded-2xl bg-primary/5 border border-primary/10 text-center">
                 <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center border border-primary/20">
-                  <CheckCircle2 className="w-8 h-8 text-primary" />
+                  <IconCircleCheck className="w-8 h-8 text-primary" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold">You're signed in!</h2>
                   <p className="text-sm text-muted-foreground mt-1">Ready to start editing?</p>
                 </div>
-                <Button size="lg" className="w-full rounded-xl mt-2 group" render={<Link to="/dashboard" />}>
+                <Button size="lg" className="w-full rounded-xl mt-2 group" render={<Link to="/dashboard" />} nativeButton={false}>
                   Go to Dashboard
-                  <LayoutDashboard className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
+                  <IconLayoutDashboard className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
                 </Button>
               </div>
             </div>

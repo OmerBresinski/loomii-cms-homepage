@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
 import { Item, ItemGroup, ItemContent, ItemTitle, ItemMedia } from "@/components/ui/item";
-import { Info, Send, Type, Image as ImageIcon, Link as LinkIcon, RefreshCw } from "lucide-react";
+import { IconInfoCircle, IconSend, IconTypography, IconPhoto, IconLink, IconRefresh } from "@tabler/icons-react";
 
 interface Edit {
   id: string;
@@ -69,9 +69,9 @@ export function EditSubmitModal({
                   {edits.map((edit) => (
                     <Item key={edit.id} className="px-4 py-3 border-b last:border-0 rounded-none bg-transparent">
                       <ItemMedia variant="icon" className="w-8 h-8 rounded-lg border bg-background">
-                        {edit.element.type === "text" ? <Type className="w-3.5 h-3.5" /> :
-                         edit.element.type === "image" ? <ImageIcon className="w-3.5 h-3.5" /> :
-                         <LinkIcon className="w-3.5 h-3.5" />}
+                        {edit.element.type === "text" ? <IconTypography className="w-3.5 h-3.5" /> :
+                         edit.element.type === "image" ? <IconPhoto className="w-3.5 h-3.5" /> :
+                         <IconLink className="w-3.5 h-3.5" />}
                       </ItemMedia>
                       <ItemContent className="ml-3">
                         <ItemTitle className="text-xs font-semibold">{edit.element.name}</ItemTitle>
@@ -120,7 +120,7 @@ export function EditSubmitModal({
             </div>
 
             <div className="flex items-start gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
-              <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+              <IconInfoCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
               <p className="text-[11px] leading-relaxed text-blue-500/80">
                 This will create a new branch and pull request in your GitHub repository. 
                 A developer will need to review and merge the changes before they appear on your live site.
@@ -134,9 +134,9 @@ export function EditSubmitModal({
             </Button>
             <Button type="submit" disabled={isLoading || !prTitle.trim()}>
               {isLoading ? (
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                <IconRefresh className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <Send className="w-4 h-4 mr-2" />
+                <IconSend className="w-4 h-4 mr-2" />
               )}
               Create Pull Request
             </Button>

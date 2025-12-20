@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Github, CheckCircle2, GitPullRequest, ArrowRight, Sparkles } from "lucide-react";
+import { IconBrandGithub, IconCircleCheck, IconGitPullRequest, IconArrowRight, IconSparkles } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
 const PRAutomationCard = () => {
@@ -14,7 +14,7 @@ const PRAutomationCard = () => {
       <CardContent className="p-10 relative z-10 flex flex-col md:flex-row items-center gap-12">
         <div className="flex-1 space-y-6">
           <Badge variant="success" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-3 py-1 gap-1.5 font-bold uppercase tracking-widest text-[10px]">
-            <GitPullRequest className="w-3 h-3" />
+            <IconGitPullRequest className="w-3 h-3" />
             Git-Native Workflow
           </Badge>
           
@@ -30,9 +30,9 @@ const PRAutomationCard = () => {
 
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             {[
-              { label: "Auto-commit", icon: CheckCircle2 },
-              { label: "Branch control", icon: CheckCircle2 },
-              { label: "AI Summary", icon: Sparkles },
+              { label: "Auto-commit", icon: IconCircleCheck },
+              { label: "Branch control", icon: IconCircleCheck },
+              { label: "AI Summary", icon: IconSparkles },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-2 group/feat">
                 <item.icon className="w-4 h-4 text-emerald-500 group-hover/feat:scale-110 transition-transform" />
@@ -46,12 +46,12 @@ const PRAutomationCard = () => {
         <div className="w-full md:w-80 shrink-0">
           <div className="bg-card rounded-2xl border border-border shadow-2xl p-6 relative group/pr transition-all hover:-translate-y-1">
             <div className="absolute -top-3 -right-3 bg-emerald-500 text-white p-2 rounded-full shadow-lg z-20 scale-0 group-hover/pr:scale-100 transition-transform duration-300">
-               <CheckCircle2 className="w-4 h-4" />
+               <IconCircleCheck className="w-4 h-4" />
             </div>
             
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                <GitPullRequest className="w-5 h-5 text-emerald-500" />
+                <IconGitPullRequest className="w-5 h-5 text-emerald-500" />
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest block">
@@ -78,7 +78,7 @@ const PRAutomationCard = () => {
                  </div>
                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     <span>2 files</span>
-                    <ArrowRight className="w-3 h-3" />
+                    <IconArrowRight className="w-3 h-3" />
                  </div>
                </div>
             </div>

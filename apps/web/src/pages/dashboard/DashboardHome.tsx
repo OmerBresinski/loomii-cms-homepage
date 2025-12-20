@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { projectListQuery, currentOrgQuery } from "@/lib/queries";
 import { useOrganization } from "@clerk/clerk-react";
-import { Plus, Github, Folder, ArrowRight, Zap, History, Settings } from "lucide-react";
+import { IconPlus, IconBrandGithub, IconFolder, IconArrowRight, IconBolt, IconHistory, IconSettings } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,14 +31,14 @@ export function DashboardHome() {
           <CardContent className="pt-6">
             <div className="flex items-start gap-4">
               <div className="mt-1 w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                <Github className="w-5 h-5 text-amber-500" />
+                <IconBrandGithub className="w-5 h-5 text-amber-500" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-amber-500">Connect GitHub</h3>
                 <p className="text-sm text-amber-500/80 mb-4 max-w-lg">
                   Loomii needs access to your GitHub repositories to analyze and manage your project content.
                 </p>
-                <Button variant="outline" className="border-amber-500/30 hover:bg-amber-500/10 text-amber-500" render={<Link to="/dashboard/settings" search={{ github: undefined, error: undefined }} />}>
+                <Button variant="outline" className="border-amber-500/30 hover:bg-amber-500/10 text-amber-500" render={<Link to="/dashboard/settings" search={{ github: undefined, error: undefined }} />} nativeButton={false}>
                   Connect Account
                 </Button>
               </div>
@@ -51,7 +51,7 @@ export function DashboardHome() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Projects</CardTitle>
-            <Folder className="w-4 h-4 text-muted-foreground" />
+            <IconFolder className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{projects.length}</div>
@@ -60,7 +60,7 @@ export function DashboardHome() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Recent Edits</CardTitle>
-            <Zap className="w-4 h-4 text-muted-foreground" />
+            <IconBolt className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">12</div>
@@ -69,7 +69,7 @@ export function DashboardHome() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Elements</CardTitle>
-            <History className="w-4 h-4 text-muted-foreground" />
+            <IconHistory className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">148</div>
@@ -81,7 +81,7 @@ export function DashboardHome() {
         <Card className="col-span-1">
           <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/30 px-6 py-4">
             <CardTitle className="text-base font-semibold">Recent Projects</CardTitle>
-            <Button variant="ghost" size="sm" render={<Link to="/dashboard/projects" />}>
+            <Button variant="ghost" size="sm" render={<Link to="/dashboard/projects" />} nativeButton={false}>
               View All
             </Button>
           </CardHeader>
@@ -93,12 +93,12 @@ export function DashboardHome() {
             ) : projects.length === 0 ? (
               <Empty className="py-12 border-none">
                 <EmptyMedia>
-                  <Folder className="w-10 h-10 text-muted-foreground opacity-20" />
+                  <IconFolder className="w-10 h-10 text-muted-foreground opacity-20" />
                 </EmptyMedia>
                 <EmptyTitle>No projects yet</EmptyTitle>
                 <EmptyDescription>Create your first project to start managing content.</EmptyDescription>
-                <Button size="sm" className="mt-4" render={<Link to="/dashboard/projects/new" />}>
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button size="sm" className="mt-4" render={<Link to="/dashboard/projects/new" />} nativeButton={false}>
+                  <IconPlus className="w-4 h-4 mr-2" />
                   New Project
                 </Button>
               </Empty>
@@ -107,7 +107,7 @@ export function DashboardHome() {
                 {projects.slice(0, 5).map((project) => (
                   <Item key={project.id} variant="default" className="px-6 py-4 border-b last:border-0 rounded-none hover:bg-accent/50 group">
                     <ItemMedia variant="icon" className="w-10 h-10 rounded-lg bg-primary/10 text-primary shrink-0 transition-transform group-hover:scale-105">
-                      <Folder className="w-5 h-5" />
+                      <IconFolder className="w-5 h-5" />
                     </ItemMedia>
                     <ItemContent className="ml-4">
                       <ItemTitle className="text-sm font-semibold">{project.name}</ItemTitle>
@@ -117,8 +117,8 @@ export function DashboardHome() {
                       <Badge variant="outline" className="font-normal text-[10px] h-5">
                         {project.githubBranch}
                       </Badge>
-                      <Button variant="ghost" size="icon-sm" render={<Link to="/dashboard/projects/$projectId" params={{ projectId: project.id }} />}>
-                        <ArrowRight className="w-4 h-4" />
+                      <Button variant="ghost" size="icon-sm" render={<Link to="/dashboard/projects/$projectId" params={{ projectId: project.id }} />} nativeButton={false}>
+                        <IconArrowRight className="w-4 h-4" />
                       </Button>
                     </ItemActions>
                   </Item>
@@ -136,28 +136,28 @@ export function DashboardHome() {
             <ItemGroup className="gap-0">
               <Item variant="default" className="px-6 py-6 border-b rounded-none hover:bg-accent/50 group">
                 <ItemMedia variant="icon" className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 shrink-0">
-                  <Plus className="w-5 h-5" />
+                  <IconPlus className="w-5 h-5" />
                 </ItemMedia>
                 <ItemContent className="ml-4">
                   <ItemTitle className="text-base">New Project</ItemTitle>
                   <ItemDescription>Analyze a new GitHub repository</ItemDescription>
                 </ItemContent>
                 <ItemActions>
-                  <Button variant="outline" size="sm" render={<Link to="/dashboard/projects/new" />}>
+                  <Button variant="outline" size="sm" render={<Link to="/dashboard/projects/new" />} nativeButton={false}>
                     Start
                   </Button>
                 </ItemActions>
               </Item>
               <Item variant="default" className="px-6 py-6 border-b rounded-none hover:bg-accent/50 group">
                 <ItemMedia variant="icon" className="w-10 h-10 rounded-full bg-purple-500/10 text-purple-500 shrink-0">
-                  <Settings className="w-5 h-5" />
+                  <IconSettings className="w-5 h-5" />
                 </ItemMedia>
                 <ItemContent className="ml-4">
                   <ItemTitle className="text-base">Organization Settings</ItemTitle>
                   <ItemDescription>Manage team and integrations</ItemDescription>
                 </ItemContent>
                 <ItemActions>
-                  <Button variant="outline" size="sm" render={<Link to="/dashboard/settings" search={{ github: undefined, error: undefined }} />}>
+                  <Button variant="outline" size="sm" render={<Link to="/dashboard/settings" search={{ github: undefined, error: undefined }} />} nativeButton={false}>
                     Manage
                   </Button>
                 </ItemActions>
