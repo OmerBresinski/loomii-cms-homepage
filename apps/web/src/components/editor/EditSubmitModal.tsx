@@ -6,13 +6,13 @@ import {
   DialogTitle, 
   DialogDescription,
   DialogFooter
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
-import { Item, ItemGroup, ItemContent, ItemTitle, ItemMedia } from "@/components/ui/item";
+} from "@/ui/dialog";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Textarea } from "@/ui/textarea";
+import { ScrollArea } from "@/ui/scroll-area";
+import { Field, FieldLabel, FieldContent } from "@/ui/field";
+import { Item, ItemGroup, ItemContent, ItemTitle, ItemMedia } from "@/ui/item";
 import { IconInfoCircle, IconSend, IconTypography, IconPhoto, IconLink, IconRefresh } from "@tabler/icons-react";
 
 interface Edit {

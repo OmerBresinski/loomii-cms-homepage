@@ -3,7 +3,7 @@ import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { SignedIn, SignedOut, SignInButton, useAuth, useOrganization } from "@clerk/clerk-react";
 import { useEffect } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "@/ui/sonner";
 
 export function RootLayout() {
   const location = useLocation();

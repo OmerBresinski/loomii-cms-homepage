@@ -1,5 +1,5 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/ui/card";
+import { Badge } from "@/ui/badge";
 import { IconBrandGithub, IconCircleCheck, IconGitPullRequest, IconArrowRight, IconSparkles } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 

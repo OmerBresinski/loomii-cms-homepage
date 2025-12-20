@@ -3,9 +3,9 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { currentOrgQuery, orgReposQuery, repoFoldersQuery } from "@/lib/queries";
 import { useCreateProject } from "@/lib/mutations";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/ui/card";
 import {
   Command,
   CommandEmpty,
@@ -13,20 +13,20 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
+} from "@/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Field, FieldLabel, FieldContent, FieldDescription, FieldError } from "@/components/ui/field";
+} from "@/ui/select";
+import { Field, FieldLabel, FieldContent, FieldDescription, FieldError } from "@/ui/field";
 import { cn } from "@/lib/utils";
 import { IconCheck, IconSelector, IconLock, IconLoader2, IconFolder, IconPlus, IconBrandGithub, IconWorld } from "@tabler/icons-react";
 

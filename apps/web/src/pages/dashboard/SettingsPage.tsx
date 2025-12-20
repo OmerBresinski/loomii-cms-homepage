@@ -4,11 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { currentOrgQuery } from "@/lib/queries";
 import { apiFetch } from "@/lib/api";
 import { IconBrandGithub, IconSettings, IconShield, IconCheck, IconAlertCircle, IconRefresh } from "@tabler/icons-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
-import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/components/ui/item";
+import { Button } from "@/ui/button";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/ui/card";
+import { Badge } from "@/ui/badge";
+import { Field, FieldLabel, FieldContent } from "@/ui/field";
+import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/ui/item";
 import { toast } from "sonner";
 import { useEffect } from "react";
 

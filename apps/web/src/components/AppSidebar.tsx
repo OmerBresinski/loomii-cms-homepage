@@ -15,7 +15,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-} from "@/components/ui/sidebar"
+} from "@/ui/sidebar"
 
 export function AppSidebar() {
   const { user } = useUser()

@@ -10,11 +10,11 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/ui/dialog"
 import {
   InputGroup,
   InputGroupAddon,
-} from "@/components/ui/input-group"
+} from "@/ui/input-group"
 import { IconSearch, IconCheck } from "@tabler/icons-react"
 
 function Command({

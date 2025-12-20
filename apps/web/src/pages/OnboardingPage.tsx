@@ -1,28 +1,29 @@
-import { useUser, useOrganizationList, CreateOrganization, OrganizationList } from "@clerk/clerk-react";
+import { useUser, useOrganizationList, CreateOrganization } from "@clerk/clerk-react";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/components/ui/item";
-import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
-import { IconBuilding, IconPlus, IconArrowRight, IconLoader2, IconSparkles } from "@tabler/icons-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/card";
+import { Button } from "@/ui/button";
+import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/ui/item";
+import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/ui/empty";
+import { IconBuilding, IconArrowRight, IconLoader2, IconSparkles } from "@tabler/icons-react";
 
 export function OnboardingPage() {
   const { user, isLoaded: userLoaded } = useUser();
-  const { organizationList, isLoaded: orgsLoaded, setActive } = useOrganizationList();
+  const { userMemberships, isLoaded: orgsLoaded, setActive } = useOrganizationList({
+    userMemberships: {
+      infinite: true,
+    },
+  });
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
 
-  useEffect(() => {
-    // If user is not loaded yet, wait
-    if (!userLoaded || !orgsLoaded) return;
-  }, [userLoaded, orgsLoaded]);
 
-  const handleSelectOrg = async (orgId: string) => {
+
+    const handleSelectOrg = async (orgId: string) => {
     setIsSyncing(true);
     try {
-      const org = organizationList.find((o) => o.organization.id === orgId)?.organization;
+      const org = userMemberships.data?.find((o) => o.organization.id === orgId)?.organization;
       if (!org) return;
 
       // Sync with backend
@@ -36,7 +37,9 @@ export function OnboardingPage() {
         }),
       });
 
-      await setActive({ organization: orgId });
+      if (setActive) {
+        await setActive({ organization: orgId });
+      }
       navigate({ to: "/dashboard" });
     } catch (error) {
       console.error("Failed to sync organization:", error);
@@ -87,7 +90,7 @@ export function OnboardingPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 border-t">
-            {(organizationList || []).length === 0 ? (
+            {(userMemberships?.data || []).length === 0 ? (
               <Empty className="py-20 border-none">
                 <EmptyMedia>
                   <IconBuilding className="w-16 h-16 text-muted-foreground opacity-10" />
@@ -99,7 +102,7 @@ export function OnboardingPage() {
               </Empty>
             ) : (
               <ItemGroup className="gap-0">
-                {(organizationList || []).map((membership) => (
+                {(userMemberships.data || []).map((membership) => (
                   <Item 
                     key={membership.organization.id} 
                     className="px-8 py-6 border-b last:border-0 rounded-none hover:bg-primary/5 transition-all group"

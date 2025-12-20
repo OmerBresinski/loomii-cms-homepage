@@ -3,12 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { projectListQuery } from "@/lib/queries";
 import { useOrganization } from "@clerk/clerk-react";
 import { IconPlus, IconFolder, IconSearch, IconFilter, IconExternalLink, IconBrandGithub } from "@tabler/icons-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/components/ui/item";
-import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
+import { Button } from "@/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/ui/card";
+import { Badge } from "@/ui/badge";
+import { Input } from "@/ui/input";
+import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/ui/item";
+import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/ui/empty";
 
 export function ProjectsPage() {
   const { organization } = useOrganization();

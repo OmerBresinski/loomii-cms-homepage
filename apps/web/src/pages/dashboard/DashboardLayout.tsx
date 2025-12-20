@@ -1,9 +1,9 @@
-import { Link, Outlet } from "@tanstack/react-router";
+import { Outlet } from "@tanstack/react-router";
 import { useOrganization } from "@clerk/clerk-react";
 import { useQuery } from "@tanstack/react-query";
 import { currentOrgQuery } from "@/lib/queries";
-import { Card, CardContent } from "@/components/ui/card";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { Card, CardContent } from "@/ui/card";
+import { SidebarProvider, SidebarInset } from "@/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 
 import { useEffect } from "react";

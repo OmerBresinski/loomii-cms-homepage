@@ -4,7 +4,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 
-import { createAppRouter } from "./router";
+import { createAppRouter } from "./routes";
 import { setAuthTokenGetter } from "./lib/api";
 import "./index.css";
 

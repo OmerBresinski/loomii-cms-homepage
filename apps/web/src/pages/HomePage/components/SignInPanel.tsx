@@ -1,9 +1,9 @@
 import { SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/card";
 import { IconCircleCheck, IconLayoutDashboard, IconSparkles } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/ui/button";
+import { Badge } from "@/ui/badge";
 
 const clerkAppearance = {
   elements: {

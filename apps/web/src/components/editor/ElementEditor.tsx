@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { projectDetailQuery } from "@/lib/queries";
 import { useUpdateElement } from "@/lib/mutations";
@@ -9,13 +9,13 @@ import {
   SheetTitle, 
   SheetDescription,
   SheetFooter
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Field, FieldLabel, FieldContent, FieldDescription } from "@/components/ui/field";
+} from "@/ui/sheet";
+import { Button } from "@/ui/button";
+import { Input } from "@/ui/input";
+import { Textarea } from "@/ui/textarea";
+import { Label } from "@/ui/label";
+import { Badge } from "@/ui/badge";
+import { Field, FieldLabel, FieldContent, FieldDescription } from "@/ui/field";
 import { IconRefresh, IconDeviceFloppy, IconX, IconTypography, IconPhoto, IconLink } from "@tabler/icons-react";
 
 interface ElementEditorProps {
@@ -24,34 +24,27 @@ interface ElementEditorProps {
   onClose: () => void;
 }
 
-export function ElementEditor({ projectId, elementId, onClose }: ElementEditorProps) {
-  const queryClient = useQueryClient();
-  const { data: project, isLoading } = useQuery(projectDetailQuery(projectId));
-  
-  const element = project?.sections
-    .flatMap(s => s.elements)
-    .find(e => e.id === elementId);
 
-  const [content, setContent] = useState("");
-  const [alt, setAlt] = useState("");
+function ElementEditorForm({ 
+  element, 
+  projectId, 
+  onClose 
+}: { 
+  element: any;
+  projectId: string;
+  onClose: () => void;
+}) {
+  const [content, setContent] = useState(element.content || "");
+  const [alt, setAlt] = useState(element.alt || "");
   const [isDirty, setIsDirty] = useState(false);
 
-  // Mutations
   const updateElement = useUpdateElement(projectId);
-
-  useEffect(() => {
-    if (element) {
-      setContent(element.content || "");
-      setAlt(element.alt || "");
-      setIsDirty(false);
-    }
-  }, [element]);
-
+  
   const handleSave = () => {
     updateElement.mutate({ 
-      elementId, 
+      elementId: element.id, 
       content, 
-      alt: element?.type === "image" ? alt : undefined // Only send alt for images
+      alt: element?.type === "image" ? alt : undefined
     }, {
       onSuccess: () => {
         onClose();
@@ -59,11 +52,9 @@ export function ElementEditor({ projectId, elementId, onClose }: ElementEditorPr
     });
   };
 
-  if (isLoading || !element) return null;
-
   return (
-    <Sheet open={!!elementId} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="sm:max-w-md flex flex-col h-full p-0 gap-0 border-l border-border bg-card">
+    <div className="flex flex-col h-full"> 
+       {/* Re-using the content from the previous render but now as a child of the Sheet */}
         <SheetHeader className="p-6 border-b bg-muted/20">
           <div className="flex justify-between items-start">
             <div className="space-y-1">
@@ -165,7 +156,38 @@ export function ElementEditor({ projectId, elementId, onClose }: ElementEditorPr
             Save Draft
           </Button>
         </SheetFooter>
-      </SheetContent>
+    </div>
+  );
+}
+
+export function ElementEditor({ projectId, elementId, onClose }: ElementEditorProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const queryClient = useQueryClient();
+  const { data: project, isLoading } = useQuery(projectDetailQuery(projectId));
+  
+  const element = project?.sections
+    .flatMap(s => s.elements)
+    .find(e => e.id === elementId);
+
+  // Close if element disappears or project fails to load
+  // Actually, better to just return null. The parent controls "open" state often.
+  
+  return (
+    <Sheet open={!!elementId} onOpenChange={(open) => !open && onClose()}>
+       <SheetContent className="sm:max-w-md flex flex-col h-full p-0 gap-0 border-l border-border bg-card">
+          {(isLoading || !element) ? (
+             <div className="flex h-full items-center justify-center p-6 text-muted-foreground">
+                <IconRefresh className="w-6 h-6 animate-spin" />
+             </div>
+          ) : (
+             <ElementEditorForm 
+               key={element.id} // <--- CRITICAL: This resets state when element changes
+               element={element}
+               projectId={projectId}
+               onClose={onClose}
+             />
+          )}
+       </SheetContent>
     </Sheet>
   );
 }
