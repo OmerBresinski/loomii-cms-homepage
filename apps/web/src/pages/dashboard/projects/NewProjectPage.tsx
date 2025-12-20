@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { currentOrgQuery, orgReposQuery, repoFoldersQuery } from "@/lib/queries";
 import { useCreateProject } from "@/lib/mutations";
@@ -34,6 +34,23 @@ export function NewProjectPage() {
   const navigate = useNavigate();
   const createProject = useCreateProject();
   const [repoOpen, setRepoOpen] = useState(false);
+  
+  // Measure trigger width for PopoverContent
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!triggerRef.current) return;
+    
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setTriggerWidth(entry.contentRect.width);
+      }
+    });
+    
+    observer.observe(triggerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const { data: orgData } = useQuery(currentOrgQuery());
   const orgId = orgData?.organization?.id || "";
@@ -130,6 +147,7 @@ export function NewProjectPage() {
                         <PopoverTrigger
                           render={
                             <Button
+                              ref={triggerRef}
                               variant="outline"
                               className={cn(
                                 "w-full justify-between font-mono text-sm h-11 bg-muted/20 border-border px-4",
@@ -149,7 +167,7 @@ export function NewProjectPage() {
                           )}
                           <IconSelector className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                        <PopoverContent className="p-0" align="start" style={{ width: triggerWidth ? `${triggerWidth}px` : "auto" }}>
                           <Command>
                             <CommandInput placeholder="Search your repositories..." />
                             <CommandList className="max-h-[300px]">
@@ -219,7 +237,7 @@ export function NewProjectPage() {
                                 )}
                               </SelectValue>
                             </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
+                            <SelectContent className="max-h-[300px]" alignItemWithTrigger={false}>
                               {foldersData?.folders.map((folder) => (
                                 <SelectItem
                                   key={folder.path || ROOT_PATH_VALUE}
