@@ -6,7 +6,7 @@ import { ClerkProvider, useAuth } from "@clerk/clerk-react";
 
 import { createAppRouter } from "./router";
 import { setAuthTokenGetter } from "./lib/api";
-import "./styles/globals.css";
+import "./index.css";
 
 // Clerk publishable key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
