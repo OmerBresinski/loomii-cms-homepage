@@ -1,4 +1,19 @@
 import { useState } from "react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Field, FieldLabel, FieldContent } from "@/components/ui/field";
+import { Item, ItemGroup, ItemContent, ItemTitle, ItemMedia } from "@/components/ui/item";
+import { Info, Send, Type, Image as ImageIcon, Link as LinkIcon, RefreshCw } from "lucide-react";
 
 interface Edit {
   id: string;
@@ -34,183 +49,102 @@ export function EditSubmitModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onCancel}
-      />
+    <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="max-w-2xl p-0 overflow-hidden bg-card border-border">
+        <form onSubmit={handleSubmit} className="flex flex-col h-full">
+          <DialogHeader className="p-6 border-b bg-muted/20">
+            <DialogTitle className="text-xl font-bold">Submit Changes</DialogTitle>
+            <DialogDescription>
+              Create a pull request with your content changes. A developer will review and merge them.
+            </DialogDescription>
+          </DialogHeader>
 
-      {/* Modal */}
-      <div className="relative bg-background-secondary border border-border rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden animate-in">
-        <form onSubmit={handleSubmit}>
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-border">
-            <h2 className="text-xl font-semibold">Submit Changes</h2>
-            <p className="text-sm text-foreground-muted mt-1">
-              Create a pull request with your content changes
-            </p>
-          </div>
-
-          {/* Content */}
-          <div className="px-6 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-            {/* Changes summary */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium">
+          <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+            <div className="space-y-3">
+              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Changes ({edits.length})
               </label>
-              <div className="bg-background-tertiary rounded-lg divide-y divide-border max-h-48 overflow-y-auto">
-                {edits.map((edit) => (
-                  <div key={edit.id} className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="badge badge-accent text-xs">
-                        {edit.element.type}
-                      </span>
-                      <span className="font-medium text-sm">
-                        {edit.element.name}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-xs text-foreground-muted">
-                      <span className="line-through">
-                        {truncate(edit.oldValue || "", 50)}
-                      </span>
-                      <span className="mx-2">→</span>
-                      <span className="text-success">
-                        {truncate(edit.newValue, 50)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ScrollArea className="h-48 rounded-xl border bg-muted/10">
+                <ItemGroup className="gap-0">
+                  {edits.map((edit) => (
+                    <Item key={edit.id} className="px-4 py-3 border-b last:border-0 rounded-none bg-transparent">
+                      <ItemMedia variant="icon" className="w-8 h-8 rounded-lg border bg-background">
+                        {edit.element.type === "text" ? <Type className="w-3.5 h-3.5" /> :
+                         edit.element.type === "image" ? <ImageIcon className="w-3.5 h-3.5" /> :
+                         <LinkIcon className="w-3.5 h-3.5" />}
+                      </ItemMedia>
+                      <ItemContent className="ml-3">
+                        <ItemTitle className="text-xs font-semibold">{edit.element.name}</ItemTitle>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-muted-foreground line-through opacity-50 truncate max-w-[150px]">
+                            {edit.oldValue || "empty"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">→</span>
+                          <span className="text-[10px] text-emerald-500 font-medium truncate max-w-[150px]">
+                            {edit.newValue}
+                          </span>
+                        </div>
+                      </ItemContent>
+                    </Item>
+                  ))}
+                </ItemGroup>
+              </ScrollArea>
             </div>
 
-            {/* PR Title */}
-            <div className="space-y-2">
-              <label htmlFor="prTitle" className="block text-sm font-medium">
-                Pull Request Title
-              </label>
-              <input
-                type="text"
-                id="prTitle"
-                value={prTitle}
-                onChange={(e) => setPrTitle(e.target.value)}
-                className="input"
-                placeholder="Enter PR title..."
-                required
-                disabled={isLoading}
-              />
+            <div className="space-y-6">
+              <Field>
+                <FieldLabel>Pull Request Title</FieldLabel>
+                <FieldContent>
+                  <Input 
+                    value={prTitle}
+                    onChange={(e) => setPrTitle(e.target.value)}
+                    placeholder="Enter PR title..."
+                    required
+                    disabled={isLoading}
+                  />
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel>Description (optional)</FieldLabel>
+                <FieldContent>
+                  <Textarea 
+                    value={prDescription}
+                    onChange={(e) => setPrDescription(e.target.value)}
+                    placeholder="Add a description for reviewers..."
+                    className="min-h-[100px]"
+                    disabled={isLoading}
+                  />
+                </FieldContent>
+              </Field>
             </div>
 
-            {/* PR Description */}
-            <div className="space-y-2">
-              <label
-                htmlFor="prDescription"
-                className="block text-sm font-medium"
-              >
-                Description (optional)
-              </label>
-              <textarea
-                id="prDescription"
-                value={prDescription}
-                onChange={(e) => setPrDescription(e.target.value)}
-                className="input min-h-[100px] resize-y"
-                placeholder="Add a description for reviewers..."
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Info */}
-            <div className="flex items-start gap-3 p-3 bg-accent/10 rounded-lg">
-              <svg
-                className="w-5 h-5 text-accent flex-shrink-0 mt-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <p className="text-sm text-foreground-muted">
-                This will create a new branch and pull request in your GitHub
-                repository. A developer will need to review and merge the changes
-                before they appear on your live site.
+            <div className="flex items-start gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+              <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+              <p className="text-[11px] leading-relaxed text-blue-500/80">
+                This will create a new branch and pull request in your GitHub repository. 
+                A developer will need to review and merge the changes before they appear on your live site.
               </p>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn-secondary"
-              disabled={isLoading}
-            >
+          <DialogFooter className="p-6 border-t bg-muted/20 sm:justify-end gap-3">
+            <Button variant="outline" onClick={onCancel} disabled={isLoading}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={isLoading || !prTitle.trim()}
-            >
+            </Button>
+            <Button type="submit" disabled={isLoading || !prTitle.trim()}>
               {isLoading ? (
-                <>
-                  <LoadingSpinner />
-                  Creating PR...
-                </>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
               ) : (
-                <>
-                  <svg
-                    className="w-4 h-4 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                    />
-                  </svg>
-                  Create Pull Request
-                </>
+                <Send className="w-4 h-4 mr-2" />
               )}
-            </button>
-          </div>
+              Create Pull Request
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
-}
-
-function LoadingSpinner() {
-  return (
-    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      />
-    </svg>
-  );
-}
-
-function truncate(str: string, length: number): string {
-  if (str.length <= length) return str;
-  return str.slice(0, length) + "...";
 }
 
 function generateDefaultTitle(edits: Edit[]): string {
@@ -235,4 +169,3 @@ function generateDefaultDescription(edits: Edit[]): string {
 
   return lines.join("\n");
 }
-

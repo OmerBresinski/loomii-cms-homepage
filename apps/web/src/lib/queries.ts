@@ -101,6 +101,7 @@ interface Project {
   name: string;
   githubRepo: string;
   githubBranch: string;
+  rootPath: string;
   deploymentUrl: string;
   status: string;
   elementCount?: number;
@@ -324,3 +325,21 @@ export function analysisStatusQuery(projectId: string) {
     },
   });
 }
+
+// Mutations
+export const reanalyzeProjectMutation = (projectId: string) => ({
+  mutationFn: async () => {
+    return apiFetch<{ success: boolean }>(`/projects/${projectId}/analyze`, {
+      method: "POST",
+    });
+  },
+});
+
+export const updateElementMutation = (projectId: string) => ({
+  mutationFn: async ({ elementId, ...data }: { elementId: string; [key: string]: any }) => {
+    return apiFetch<{ success: boolean }>(`/projects/${projectId}/elements/${elementId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+});

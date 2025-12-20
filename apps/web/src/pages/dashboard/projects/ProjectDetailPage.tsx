@@ -1,460 +1,383 @@
-import { useState, useEffect } from "react";
-import { Link, useParams } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import {
-  projectDetailQuery,
-  sectionListQuery,
-  sectionDetailQuery,
-} from "@/lib/queries";
-import { useTriggerAnalysis } from "@/lib/mutations";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  ArrowLeft,
-  Play,
-  Loader2,
-  Search,
-  AlertCircle,
-  FileText,
-  Type,
-  Image,
-  MousePointer,
-  LayoutGrid,
+import { useState } from "react";
+import { useParams, Link } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { projectDetailQuery, reanalyzeProjectMutation, updateElementMutation } from "@/lib/queries";
+import { apiFetch } from "@/lib/api";
+import { toast } from "sonner";
+import { 
+  Settings, 
+  ExternalLink, 
+  RefreshCw, 
+  Type, 
+  Image as ImageIcon, 
+  Link as LinkIcon, 
+  Calendar,
   ChevronDown,
   ChevronRight,
-  GitPullRequest,
-  Layers,
+  Edit2,
+  Github,
+  GitBranch,
+  Info,
+  Search as SearchIcon
 } from "lucide-react";
-
-interface ElementChange {
-  newValue: string;
-  visible: boolean;
-  originalValue: string;
-}
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { Item, ItemGroup, ItemContent, ItemMedia, ItemActions } from "@/components/ui/item";
+import { ElementEditor } from "@/components/editor/ElementEditor";
+import { cn } from "@/lib/utils";
 
 export function ProjectDetailPage() {
-  const { projectId } = useParams({ strict: false }) as { projectId: string };
-  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
-  const [pendingChanges, setPendingChanges] = useState<Record<string, ElementChange>>({});
-  const [isReanalyzing, setIsReanalyzing] = useState(false);
-  const [wasAnalyzing, setWasAnalyzing] = useState(false);
+  const { projectId } = useParams({ from: "/dashboard/projects/$projectId" });
+  const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingElementId, setEditingElementId] = useState<string | null>(null);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
-  const { data: projectData, isLoading: projectLoading } = useQuery({
-    ...projectDetailQuery(projectId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.project?.status;
-      return status === "analyzing" || isReanalyzing ? 10000 : false;
+  const { data: projectData, isLoading: isProjectLoading } = useQuery(projectDetailQuery(projectId));
+  const { data: sectionsData, isLoading: isSectionsLoading } = useQuery({
+    queryKey: ["project", projectId, "sections"],
+    queryFn: async () => {
+      const response = await apiFetch<{ sections: any[] }>(`/projects/${projectId}/sections`);
+      return response.sections;
+    }
+  });
+
+  const project = projectData?.project;
+  const sections = sectionsData || [];
+
+  const reanalyze = useMutation({
+    ...reanalyzeProjectMutation(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      toast.success("Analysis started!");
     },
   });
 
-  const isAnalyzing = projectData?.project?.status === "analyzing";
-
-  useEffect(() => {
-    if (isAnalyzing) {
-      setWasAnalyzing(true);
-    }
-  }, [isAnalyzing]);
-
-  useEffect(() => {
-    if (wasAnalyzing && !isAnalyzing && projectData?.project?.status === "ready") {
-      setIsReanalyzing(false);
-      setWasAnalyzing(false);
-    }
-  }, [wasAnalyzing, isAnalyzing, projectData?.project?.status]);
-
-  const showReanalyzeSpinner = isReanalyzing || isAnalyzing;
-
-  const { data: sectionsData, isLoading: sectionsLoading } = useQuery({
-    ...sectionListQuery(projectId),
-    refetchInterval: showReanalyzeSpinner ? 10000 : false,
+  const toggleVisibility = useMutation({
+    ...updateElementMutation(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", projectId, "sections"] });
+    },
   });
 
-  const triggerAnalysis = useTriggerAnalysis(projectId);
-
-  const handleReanalyze = () => {
-    setIsReanalyzing(true);
-    setWasAnalyzing(false);
-    setExpandedSectionId(null);
-    setPendingChanges({});
-    triggerAnalysis.mutate({ fullRescan: true });
+  const toggleSection = (sectionName: string) => {
+    setOpenSections(prev => ({ ...prev, [sectionName]: !prev[sectionName] }));
   };
 
-  const project = projectData?.project;
-  const sections = sectionsData?.sections || [];
-  const totalElements = sections.reduce((acc, s) => acc + s.elementCount, 0);
-  const needsAnalysis = project?.status === "pending" || (!project?.lastAnalyzedAt && sections.length === 0);
-  const pendingCount = Object.keys(pendingChanges).length;
+  const isLoading = isProjectLoading || isSectionsLoading;
 
-  const handleSaveChange = (elementId: string, change: ElementChange) => {
-    if (change.newValue !== change.originalValue || !change.visible) {
-      setPendingChanges((prev) => ({ ...prev, [elementId]: change }));
-    } else {
-      setPendingChanges((prev) => {
-        const next = { ...prev };
-        delete next[elementId];
-        return next;
-      });
-    }
-  };
+  if (isLoading) return <ProjectDetailSkeleton />;
+  if (!project) return <div>Project not found</div>;
 
-  const handlePublish = () => {
-    console.log("Publishing changes:", pendingChanges);
-  };
+  const filteredSections = sections.map(section => ({
+    ...section,
+    elements: (section.elements || []).filter((el: any) => 
+      (el.currentValue || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (el.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  })).filter(section => section.elements.length > 0);
 
-  if (projectLoading) {
-    return (
-      <div className="p-6">
-        <div className="h-8 w-48 bg-muted rounded animate-pulse mb-4" />
-        <div className="h-4 w-64 bg-muted rounded animate-pulse" />
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div className="p-6">
-        <Card className="text-center py-16">
-          <CardContent>
-            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />
-            <h2 className="text-xl font-semibold mb-2">Project not found</h2>
-            <p className="text-muted-foreground mb-6">This project doesn't exist or you don't have access.</p>
-            <Link to="/dashboard/projects" className="inline-flex items-center gap-2 border border-border hover:bg-accent h-8 px-3 rounded-md text-sm font-medium">
-              Back to Projects
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const totalElements = sections.reduce((acc, s) => acc + (s.elements?.length || 0), 0);
+  const visibleElements = sections.reduce((acc, s) => acc + (s.elements?.filter((e: any) => e.isVisible)?.length || 0), 0);
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <Link
-          to="/dashboard/projects"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to Projects
-        </Link>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">{project.name}</h1>
-            <p className="text-muted-foreground font-mono text-sm">{project.githubRepo}</p>
+    <div className="p-8 max-w-6xl mx-auto space-y-8 pb-24">
+      {/* Header */}
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Link to="/dashboard/projects" className="hover:text-primary transition-colors">Projects</Link>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-foreground font-medium">{project.name}</span>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <h1 className="text-4xl font-black tracking-tight leading-none">{project.name}</h1>
+              <Badge variant="success" className="px-3 py-1 font-bold">Active</Badge>
+            </div>
+            
+            <div className="flex items-center gap-4 text-muted-foreground">
+              <HoverCard>
+                <HoverCardTrigger 
+                  render={
+                    <div className="flex items-center gap-2 cursor-help group" />
+                  }
+                >
+                  <Github className="w-4 h-4 group-hover:text-primary transition-colors" />
+                  <span className="font-medium text-sm border-b border-dotted border-muted-foreground/30 group-hover:border-primary/50 group-hover:text-foreground transition-all">
+                    {project.githubRepo}
+                  </span>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-80 p-0 overflow-hidden border-border/50 shadow-2xl">
+                  <div className="bg-primary/5 p-4 border-b">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-background border flex items-center justify-center">
+                        <Github className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold uppercase tracking-widest text-primary">Connected Repository</div>
+                        <div className="text-sm font-bold truncate">{project.githubRepo}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <GitBranch className="w-3 h-3" />
+                      Branch: <span className="font-bold text-foreground">{project.githubBranch}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                       <Calendar className="w-3 h-3" />
+                       Last synced: <span className="font-bold text-foreground">Oct 24, 2024</span>
+                    </div>
+                    <div className="pt-2">
+                       <Button size="sm" variant="outline" className="w-full text-[10px] font-bold uppercase tracking-widest h-8" render={<a href={`https://github.com/${project.githubRepo}`} target="_blank" rel="noreferrer" />}>
+                         View on GitHub
+                       </Button>
+                    </div>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+
+              <div className="flex items-center gap-2">
+                 <GitBranch className="w-4 h-4" />
+                 <span className="font-mono text-xs">{project.githubBranch}</span>
+              </div>
+            </div>
           </div>
-          <StatusBadge status={project.status} />
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={() => reanalyze.mutate()} disabled={reanalyze.isPending}>
+              <RefreshCw className={cn("w-4 h-4 mr-2", reanalyze.isPending && "animate-spin")} />
+              {reanalyze.isPending ? "Analyzing..." : "Re-analyze"}
+            </Button>
+            <Button size="sm" className="group shadow-lg shadow-primary/20">
+              <ExternalLink className="w-4 h-4 mr-2 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              View Site
+            </Button>
+            <Button size="icon" variant="ghost" className="rounded-full">
+              <Settings className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {isAnalyzing ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin" />
-            <h2 className="text-xl font-semibold mb-2">Analyzing your website...</h2>
-            <p className="text-muted-foreground mb-4">We're scanning your repository to detect editable content.</p>
-            <p className="text-sm text-muted-foreground">This may take a few minutes.</p>
+      {reanalyze.isPending && (
+        <Card className="bg-primary/5 border-primary/20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-500">
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex justify-between text-sm font-bold">
+                <span className="text-primary flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Analyzing repository structure...
+                </span>
+                <span className="text-primary">45%</span>
+              </div>
+              <Progress value={45} className="h-1.5" />
+            </div>
           </CardContent>
         </Card>
-      ) : needsAnalysis ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <Search className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-xl font-semibold mb-2">Ready to analyze</h2>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Start the analysis to scan your repository and detect all editable content.
-            </p>
-            <Button
-              onClick={() => triggerAnalysis.mutate({})}
-              disabled={triggerAnalysis.isPending}
-              size="lg"
-            >
-              {triggerAnalysis.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Starting...
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Begin Analysis
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Sections</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{sections.length}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Elements</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">{totalElements}</p>
-              </CardContent>
-            </Card>
-            <Card className={pendingCount > 0 ? "border-primary/50" : ""}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Pending Edits</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className={`text-2xl font-bold ${pendingCount > 0 ? "text-primary" : ""}`}>{pendingCount}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Last Analyzed</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-bold">
-                  {project.lastAnalyzedAt ? new Date(project.lastAnalyzedAt).toLocaleDateString() : "Never"}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+      )}
 
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Content Sections ({showReanalyzeSpinner ? "..." : sections.length})</h2>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleReanalyze} disabled={showReanalyzeSpinner}>
-                {showReanalyzeSpinner ? (
-                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                ) : (
-                  <Play className="w-3 h-3 mr-1.5" />
-                )}
-                {showReanalyzeSpinner ? "Analyzing..." : "Re-analyze"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePublish}
-                disabled={pendingCount === 0 || showReanalyzeSpinner}
-                className={pendingCount > 0 ? "border-primary text-primary hover:bg-primary/10" : ""}
-              >
-                <GitPullRequest className="w-3 h-3 mr-1.5" />
-                Publish {pendingCount > 0 && `(${pendingCount})`}
-              </Button>
-            </div>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "Sections", value: sections.length },
+          { label: "Total Elements", value: totalElements },
+          { label: "Visible", value: visibleElements },
+          { label: "Last Analysis", value: "Oct 24, '24", icon: Calendar },
+        ].map((stat) => (
+          <Card key={stat.label} className="bg-muted/20 border-border/50 shadow-none hover:bg-muted/30 transition-colors">
+            <CardContent className="p-6">
+              <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.15em] mb-1">{stat.label}</p>
+              <div className="flex items-end justify-between">
+                <p className="text-2xl font-black">{stat.value}</p>
+                {stat.icon && <stat.icon className="w-4 h-4 text-muted-foreground opacity-20" />}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-          {showReanalyzeSpinner ? (
-            <Card className="text-center py-12">
-              <CardContent>
-                <Loader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin" />
-                <h3 className="text-lg font-semibold mb-2">Re-analyzing...</h3>
-                <p className="text-muted-foreground text-sm">Scanning your repository for content changes.</p>
-              </CardContent>
-            </Card>
-          ) : sectionsLoading ? (
-            <div className="space-y-2.5">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : sections.length === 0 ? (
-            <Card className="text-center py-12">
-              <CardContent>
-                <Layers className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">No content sections detected yet.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2.5">
-              {sections.map((section) => (
-                <SectionRow
-                  key={section.id}
-                  projectId={projectId}
-                  section={section}
-                  isExpanded={expandedSectionId === section.id}
-                  onToggle={() => setExpandedSectionId(expandedSectionId === section.id ? null : section.id)}
-                  pendingChanges={pendingChanges}
-                  onSaveChange={handleSaveChange}
-                />
-              ))}
-            </div>
-          )}
+      {/* Content Area */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
+            <Input 
+              placeholder="Search in content..." 
+              className="pl-11 h-12 bg-muted/20 border-border/50 text-base focus-visible:ring-primary/20 rounded-2xl" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
+
+        <div className="space-y-4">
+          {filteredSections.map((section: any) => {
+            const isOpen = openSections[section.name] !== false;
+            return (
+              <Collapsible
+                key={section.name}
+                open={isOpen}
+                onOpenChange={() => toggleSection(section.name)}
+                className="group border border-border/60 rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm"
+              >
+                <CollapsibleTrigger render={<div className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-accent/5 transition-all" />}>
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                      isOpen ? "bg-primary text-primary-foreground rotate-90" : "bg-muted text-muted-foreground"
+                    )}>
+                      <ChevronDown className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black tracking-tight">{section.name}</h3>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{(section.elements || []).length} components</p>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="font-bold opacity-60 px-3 uppercase text-[10px] tracking-widest">Section</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="animate-collapsible-down">
+                  <div className="border-t border-border/50">
+                    <ItemGroup className="gap-0">
+                      {section.elements.map((element: any) => (
+                        <Item 
+                          key={element.id} 
+                          className={cn(
+                            "px-8 py-6 border-b border-border/40 last:border-0 rounded-none items-start gap-8 hover:bg-muted/10 transition-all group/item",
+                            !element.isVisible && "opacity-40 grayscale-[0.8]"
+                          )}
+                        >
+                          <ItemMedia variant="icon" className="w-12 h-12 border-2 bg-background shrink-0 mt-1 rounded-xl shadow-inner group-hover/item:border-primary/30 group-hover/item:scale-105 transition-all">
+                            {element.type === "text" ? <Type className="w-5 h-5" /> :
+                             element.type === "image" ? <ImageIcon className="w-5 h-5" /> :
+                             <LinkIcon className="w-5 h-5" />}
+                          </ItemMedia>
+                          
+                          <ItemContent className="min-w-0">
+                            <div className="flex items-center gap-3 mb-2.5">
+                              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{element.key}</span>
+                              {element.type === "image" && <Badge variant="outline" className="text-[8px] h-4 py-0 font-black uppercase tracking-widest bg-primary/5 border-primary/20 text-primary">Image</Badge>}
+                            </div>
+                            
+                            <div className="relative">
+                              <p className="text-sm font-medium text-foreground line-clamp-4 leading-relaxed tracking-tight">
+                                {element.content || <span className="text-muted-foreground/50 italic font-normal">No content discovered</span>}
+                              </p>
+                              {element.alt && (
+                                <div className="mt-4 p-3 rounded-xl bg-muted/30 border border-border/30 flex items-start gap-3">
+                                  <Info className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                                  <p className="text-[11px] font-medium text-muted-foreground leading-normal">
+                                    <span className="text-foreground/70 font-bold uppercase text-[9px] mr-1">Alt Text:</span> 
+                                    {element.alt}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </ItemContent>
+
+                          <ItemActions className="ml-auto">
+                            <div className="flex items-center gap-6 pr-2">
+                              <HoverCard>
+                                <HoverCardTrigger render={<div className="flex flex-col items-center gap-2 mr-2 cursor-help group/switch" />}>
+                                    <span className={cn(
+                                      "text-[9px] font-black uppercase tracking-widest transition-colors",
+                                      element.isVisible ? "text-emerald-500" : "text-muted-foreground"
+                                    )}>
+                                      {element.isVisible ? "Visible" : "Hidden"}
+                                    </span>
+                                    <Switch 
+                                      checked={element.isVisible} 
+                                      size="sm"
+                                      onCheckedChange={(checked) => toggleVisibility.mutate({ elementId: element.id, isVisible: checked })}
+                                    />
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-64 text-[11px] p-4 bg-popover/90 backdrop-blur-md">
+                                  <p className="font-bold mb-1 uppercase tracking-tighter">Visibility Toggle</p>
+                                  <p className="text-muted-foreground leading-relaxed">
+                                    {element.isVisible 
+                                      ? "This element is currently synced with your codebase and visible in the CMS." 
+                                      : "This element is hidden from the CMS but still exists in your source code."}
+                                  </p>
+                                </HoverCardContent>
+                              </HoverCard>
+
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setEditingElementId(element.id)}
+                                className="h-10 px-4 rounded-xl border-border/50 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all group/edit"
+                              >
+                                <Edit2 className="w-4 h-4 mr-2 group-hover/edit:rotate-12 transition-transform" />
+                                <span className="font-bold text-[10px] uppercase tracking-widest">Edit</span>
+                              </Button>
+                            </div>
+                          </ItemActions>
+                        </Item>
+                      ))}
+                    </ItemGroup>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
+        </div>
+      </div>
+
+      {editingElementId && (
+        <ElementEditor
+          projectId={projectId}
+          elementId={editingElementId}
+          onClose={() => setEditingElementId(null)}
+        />
       )}
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
-    ready: "success",
-    analyzing: "warning",
-    pending: "secondary",
-    error: "destructive",
-  };
-
-  return <Badge variant={variants[status] || "secondary"}>{status}</Badge>;
-}
-
-interface SectionProps {
-  projectId: string;
-  section: {
-    id: string;
-    name: string;
-    description: string | null;
-    sourceFile: string | null;
-    elementCount: number;
-  };
-  isExpanded: boolean;
-  onToggle: () => void;
-  pendingChanges: Record<string, ElementChange>;
-  onSaveChange: (elementId: string, change: ElementChange) => void;
-}
-
-function SectionRow({ projectId, section, isExpanded, onToggle, pendingChanges, onSaveChange }: SectionProps) {
-  const { data: sectionData, isLoading: elementsLoading } = useQuery({
-    ...sectionDetailQuery(projectId, section.id),
-    enabled: isExpanded,
-  });
-
-  const elements = sectionData?.section?.elements || [];
-  const pendingInSection = elements.filter((e) => pendingChanges[e.id]).length;
-
+function ProjectDetailSkeleton() {
   return (
-    <Card>
-      <div className="px-4 py-4 hover:bg-muted transition-colors cursor-pointer flex items-center gap-3" onClick={onToggle}>
-        <div className="text-muted-foreground">
-          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+    <div className="p-8 max-w-6xl mx-auto space-y-8 animate-pulse">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-4 w-24" />
         </div>
-        <div className="p-2 rounded bg-violet-500/20 text-violet-400">
-          <Layers className="w-4 h-4" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{section.name}</span>
-            {pendingInSection > 0 && (
-              <Badge variant="default" className="text-xs">{pendingInSection} modified</Badge>
-            )}
+        <div className="flex justify-between items-end">
+          <div className="space-y-3">
+            <Skeleton className="h-12 w-80 rounded-lg" />
+            <Skeleton className="h-4 w-48" />
           </div>
-          {section.description && <p className="text-xs text-muted-foreground truncate mt-0.5">{section.description}</p>}
+          <div className="flex gap-3">
+            <Skeleton className="h-10 w-28 rounded-xl" />
+            <Skeleton className="h-10 w-28 rounded-xl" />
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
         </div>
-        <span className="text-sm text-muted-foreground">{section.elementCount} elements</span>
-        {section.sourceFile && <span className="text-xs text-muted-foreground font-mono">{section.sourceFile.split("/").pop()}</span>}
       </div>
-
-      {isExpanded && (
-        <CardContent className="border-t border-border bg-background/50 pt-4">
-          {elementsLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-muted rounded animate-pulse" />)}
-            </div>
-          ) : elements.length === 0 ? (
-            <div className="text-center text-muted-foreground text-sm py-6">No elements in this section</div>
-          ) : (
-            <div className="space-y-3">
-              {elements.map((element) => (
-                <ElementInput
-                  key={element.id}
-                  element={element}
-                  pendingChange={pendingChanges[element.id]}
-                  onSaveChange={(change) => onSaveChange(element.id, change)}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      )}
-    </Card>
-  );
-}
-
-interface ElementInputProps {
-  element: {
-    id: string;
-    name: string;
-    type: string;
-    sourceFile: string | null;
-    sourceLine: number | null;
-    currentValue: string | null;
-  };
-  pendingChange?: ElementChange;
-  onSaveChange: (change: ElementChange) => void;
-}
-
-function ElementInput({ element, pendingChange, onSaveChange }: ElementInputProps) {
-  const [editValue, setEditValue] = useState(pendingChange?.newValue ?? element.currentValue ?? "");
-  const [isVisible, setIsVisible] = useState(pendingChange?.visible ?? true);
-  const hasChanges = pendingChange !== undefined;
-
-  useEffect(() => {
-    setEditValue(pendingChange?.newValue ?? element.currentValue ?? "");
-    setIsVisible(pendingChange?.visible ?? true);
-  }, [pendingChange, element.currentValue]);
-
-  const typeIcons: Record<string, React.ReactNode> = {
-    heading: <Type className="w-3 h-3" />,
-    paragraph: <FileText className="w-3 h-3" />,
-    text: <FileText className="w-3 h-3" />,
-    image: <Image className="w-3 h-3" />,
-    button: <MousePointer className="w-3 h-3" />,
-    link: <MousePointer className="w-3 h-3" />,
-  };
-
-  const typeColors: Record<string, string> = {
-    heading: "bg-blue-500/20 text-blue-400",
-    paragraph: "bg-green-500/20 text-green-400",
-    text: "bg-green-500/20 text-green-400",
-    button: "bg-purple-500/20 text-purple-400",
-    image: "bg-orange-500/20 text-orange-400",
-    link: "bg-cyan-500/20 text-cyan-400",
-  };
-
-  const handleSave = () => {
-    onSaveChange({
-      newValue: editValue,
-      visible: isVisible,
-      originalValue: element.currentValue || "",
-    });
-  };
-
-  return (
-    <div className={`flex items-center gap-3 p-3 rounded-lg border ${hasChanges ? "border-primary/50 bg-primary/5" : "border-border bg-card"}`}>
-      <div className={`p-1.5 rounded shrink-0 ${typeColors[element.type] || "bg-muted text-muted-foreground"}`}>
-        {typeIcons[element.type] || <LayoutGrid className="w-3 h-3" />}
+      <div className="grid grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 w-full rounded-2xl" />)}
       </div>
-
-      <div className="flex-1 min-w-0">
-        <Input
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          className="text-sm h-8"
-          placeholder={element.name}
-        />
+      <div className="space-y-4 pt-10">
+        <Skeleton className="h-14 w-full rounded-2xl" />
+        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
       </div>
-
-      <div className="flex items-center gap-2 shrink-0">
-        <Checkbox
-          id={`visible-${element.id}`}
-          checked={isVisible}
-          onCheckedChange={(checked) => setIsVisible(checked === true)}
-        />
-        <label htmlFor={`visible-${element.id}`} className="text-xs text-muted-foreground cursor-pointer">
-          visible
-        </label>
-      </div>
-
-      <Button size="sm" variant="outline" className="h-7 text-xs shrink-0" onClick={handleSave}>
-        Save
-      </Button>
-
-      <span className="text-[10px] text-muted-foreground font-mono shrink-0 w-24 truncate text-right">
-        {element.sourceFile?.split("/").pop()}:{element.sourceLine}
-      </span>
     </div>
   );
 }

@@ -1,193 +1,168 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { projectDetailQuery, updateElementMutation } from "@/lib/queries";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetDescription,
+  SheetFooter
+} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Field, FieldLabel, FieldContent, FieldDescription } from "@/components/ui/field";
+import { RefreshCw, Save, X, Type, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
 
 interface ElementEditorProps {
-  element: {
-    id: string;
-    name: string;
-    type: string;
-    currentValue: string | null;
-    selector: string;
-    confidence: number;
-  };
-  onSave: (elementId: string, newValue: string) => void;
-  onCancel: () => void;
-  isLoading?: boolean;
+  projectId: string;
+  elementId: string;
+  onClose: () => void;
 }
 
-export function ElementEditor({
-  element,
-  onSave,
-  onCancel,
-  isLoading = false,
-}: ElementEditorProps) {
-  const [value, setValue] = useState(element.currentValue || "");
+export function ElementEditor({ projectId, elementId, onClose }: ElementEditorProps) {
+  const queryClient = useQueryClient();
+  const { data: project, isLoading } = useQuery(projectDetailQuery(projectId));
+  
+  const element = project?.sections
+    .flatMap(s => s.elements)
+    .find(e => e.id === elementId);
+
+  const [content, setContent] = useState("");
+  const [alt, setAlt] = useState("");
   const [isDirty, setIsDirty] = useState(false);
 
-  const handleChange = useCallback((newValue: string) => {
-    setValue(newValue);
-    setIsDirty(newValue !== element.currentValue);
-  }, [element.currentValue]);
+  useEffect(() => {
+    if (element) {
+      setContent(element.content || "");
+      setAlt(element.alt || "");
+      setIsDirty(false);
+    }
+  }, [element]);
+
+  const update = useMutation({
+    mutationFn: (data: { content: string; alt?: string }) => 
+      updateElementMutation(projectId, elementId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      onClose();
+    }
+  });
 
   const handleSave = () => {
-    if (isDirty) {
-      onSave(element.id, value);
-    }
+    update.mutate({ content, alt });
   };
 
-  const renderEditor = () => {
-    switch (element.type) {
-      case "heading":
-      case "button":
-      case "link":
-        return (
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => handleChange(e.target.value)}
-            className="input text-lg font-medium"
-            placeholder={`Enter ${element.type}...`}
-            disabled={isLoading}
-          />
-        );
+  if (isLoading || !element) return null;
 
-      case "paragraph":
-      case "text":
-        return (
-          <textarea
-            value={value}
-            onChange={(e) => handleChange(e.target.value)}
-            className="input min-h-[120px] resize-y"
-            placeholder="Enter text..."
-            disabled={isLoading}
-          />
-        );
+  return (
+    <Sheet open={!!elementId} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="sm:max-w-md flex flex-col h-full p-0 gap-0 border-l border-border bg-card">
+        <SheetHeader className="p-6 border-b bg-muted/20">
+          <div className="flex justify-between items-start">
+            <div className="space-y-1">
+              <SheetTitle className="text-xl font-bold">Edit Element</SheetTitle>
+              <SheetDescription className="text-xs">
+                Make changes to this content piece. Changes are saved as drafts.
+              </SheetDescription>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-4">
+            <Badge variant="outline" className="gap-1.5 py-1 px-2.5 bg-background font-mono text-[10px] uppercase tracking-wider">
+               {element.type === "text" ? <Type className="w-3 h-3" /> :
+                element.type === "image" ? <ImageIcon className="w-3 h-3" /> :
+                <LinkIcon className="w-3 h-3" />}
+               {element.type}
+            </Badge>
+            <span className="text-[10px] text-muted-foreground font-mono">{element.key}</span>
+          </div>
+        </SheetHeader>
 
-      case "image":
-        return (
-          <div className="space-y-3">
-            <input
-              type="url"
-              value={value}
-              onChange={(e) => handleChange(e.target.value)}
-              className="input"
-              placeholder="Enter image URL..."
-              disabled={isLoading}
-            />
-            {value && (
-              <div className="rounded-lg overflow-hidden border border-border bg-background-tertiary">
-                <img
-                  src={value}
-                  alt="Preview"
-                  className="max-h-48 w-auto mx-auto"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          <Field>
+            <FieldLabel>Content</FieldLabel>
+            <FieldContent>
+              {element.type === "text" ? (
+                <Textarea 
+                  value={content}
+                  onChange={(e) => { setContent(e.target.value); setIsDirty(true); }}
+                  placeholder="Enter content..."
+                  className="min-h-[160px] text-sm leading-relaxed"
+                />
+              ) : (
+                <Input 
+                  value={content}
+                  onChange={(e) => { setContent(e.target.value); setIsDirty(true); }}
+                  placeholder="Enter URL..."
+                  className="text-sm"
+                />
+              )}
+            </FieldContent>
+            <FieldDescription>
+              {element.type === "image" ? "The direct source URL for the image." : "The text content displayed on the page."}
+            </FieldDescription>
+          </Field>
+
+          {element.type === "image" && (
+            <Field>
+              <FieldLabel>Alt Text</FieldLabel>
+              <FieldContent>
+                <Input 
+                  value={alt}
+                  onChange={(e) => { setAlt(e.target.value); setIsDirty(true); }}
+                  placeholder="Describe the image..."
+                  className="text-sm"
+                />
+              </FieldContent>
+              <FieldDescription>
+                Important for SEO and accessibility.
+              </FieldDescription>
+            </Field>
+          )}
+
+          {element.type === "image" && content && (
+            <div className="space-y-3">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Preview</Label>
+              <div className="rounded-xl overflow-hidden border bg-muted/10 p-2">
+                <img 
+                  src={content} 
+                  alt="Preview" 
+                  className="w-full h-auto rounded-lg shadow-sm max-h-[300px] object-contain bg-white"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = "https://placehold.co/400x300?text=Invalid+Image+URL"; }}
                 />
               </div>
-            )}
-          </div>
-        );
-
-      default:
-        return (
-          <textarea
-            value={value}
-            onChange={(e) => handleChange(e.target.value)}
-            className="input min-h-[80px] resize-y font-mono text-sm"
-            placeholder="Enter content..."
-            disabled={isLoading}
-          />
-        );
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="font-semibold text-lg">{element.name}</h3>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="badge badge-accent">{element.type}</span>
-            <span className="text-xs text-foreground-subtle">
-              {Math.round(element.confidence * 100)}% confidence
-            </span>
-          </div>
-        </div>
-        {isDirty && (
-          <span className="badge bg-warning/20 text-warning">Unsaved</span>
-        )}
-      </div>
-
-      {/* Selector info */}
-      <div className="text-xs text-foreground-subtle font-mono bg-background-tertiary px-3 py-2 rounded-lg overflow-x-auto">
-        {element.selector}
-      </div>
-
-      {/* Editor */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium">Content</label>
-        {renderEditor()}
-      </div>
-
-      {/* Original value comparison */}
-      {isDirty && element.currentValue && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-foreground-muted">
-            Original value
-          </label>
-          <div className="text-sm text-foreground-subtle bg-background-tertiary px-3 py-2 rounded-lg line-through">
-            {element.currentValue.length > 200
-              ? `${element.currentValue.slice(0, 200)}...`
-              : element.currentValue}
-          </div>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex items-center gap-3 pt-2">
-        <button
-          onClick={handleSave}
-          disabled={!isDirty || isLoading}
-          className="btn-primary"
-        >
-          {isLoading ? (
-            <>
-              <LoadingSpinner />
-              Saving...
-            </>
-          ) : (
-            "Save Draft"
+            </div>
           )}
-        </button>
-        <button
-          onClick={onCancel}
-          disabled={isLoading}
-          className="btn-secondary"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
 
-function LoadingSpinner() {
-  return (
-    <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      />
-    </svg>
+          <div className="pt-4 border-t space-y-3">
+             <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Original Source</Label>
+             <div className="bg-muted/50 rounded-lg p-3 text-[10px] font-mono break-all text-muted-foreground border border-dashed">
+                {element.selector}
+             </div>
+          </div>
+        </div>
+
+        <SheetFooter className="p-6 border-t bg-muted/20 sm:flex-row flex-row gap-3">
+          <Button variant="outline" className="flex-1" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button 
+             className="flex-1" 
+             disabled={!isDirty || update.isPending} 
+             onClick={handleSave}
+          >
+            {update.isPending ? (
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            Save Draft
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
