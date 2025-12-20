@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { projectDetailQuery, analysisStatusQuery } from "@/lib/queries";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { projectDetailQuery, analysisStatusQuery, sectionDetailQuery } from "@/lib/queries";
 import { useTriggerAnalysis, useUpdateElement } from "@/lib/mutations";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
@@ -9,16 +9,11 @@ import {
   IconSettings, 
   IconExternalLink, 
   IconRefresh, 
-  IconTypography, 
-  IconPhoto, 
-  IconLink, 
   IconCalendar,
-  IconChevronDown,
   IconChevronRight,
   IconEdit,
   IconBrandGithub,
   IconGitBranch,
-  IconInfoCircle,
   IconSearch,
   IconLoader2
 } from "@tabler/icons-react";
@@ -27,28 +22,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { Item, ItemGroup, ItemContent, ItemMedia, ItemActions } from "@/components/ui/item";
 import { ElementEditor } from "@/components/editor/ElementEditor";
 import { cn } from "@/lib/utils";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 export function ProjectDetailPage() {
   const { projectId } = useParams({ from: "/dashboard/projects/$projectId" });
   
   const [searchTerm, setSearchTerm] = useState("");
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   // Data Queries
   const { data: projectData, isLoading: isProjectLoading } = useQuery(projectDetailQuery(projectId));
@@ -70,25 +60,15 @@ export function ProjectDetailPage() {
 
   // Mutations
   const triggerAnalysis = useTriggerAnalysis(projectId);
-  const updateElement = useUpdateElement(projectId);
 
   // Derived State
   const isAnalyzing = analysisStatus?.projectStatus === "analyzing" || triggerAnalysis.isPending;
   const analysisProgress = analysisStatus?.currentJob?.progress || 0;
   
-  // Auto-expand sections when loaded
-  useEffect(() => {
-    if (sections.length > 0 && Object.keys(openSections).length === 0) {
-      const allOpen = sections.reduce((acc: any, s: any) => ({ ...acc, [s.name]: true }), {});
-      setOpenSections(allOpen);
-    }
-  }, [sections.length]);
-
   const handleAnalysis = () => {
     triggerAnalysis.mutate({}, {
       onSuccess: () => {
         toast.success("Analysis started");
-        // Status query will handle polling
       },
       onError: (err) => {
         toast.error("Failed to start analysis: " + err.message);
@@ -96,25 +76,17 @@ export function ProjectDetailPage() {
     });
   };
 
-  const toggleSection = (sectionName: string) => {
-    setOpenSections(prev => ({ ...prev, [sectionName]: !prev[sectionName] }));
-  };
-
   const isLoading = isProjectLoading;
 
   if (isLoading) return <ProjectDetailSkeleton />;
   if (!project) return <div>Project not found</div>;
 
-  const filteredSections = sections.map(section => ({
-    ...section,
-    elements: (section.elements || []).filter((el: any) => 
-      (el.currentValue || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (el.name || "").toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  })).filter(section => section.elements.length > 0);
+  const filteredSections = sections.filter((section: any) => 
+    section.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const totalElements = sections.reduce((acc: number, s: any) => acc + (s.elements?.length || 0), 0);
-  const visibleElements = sections.reduce((acc: number, s: any) => acc + (s.elements?.filter((e: any) => e.isVisible)?.length || 0), 0);
+  const totalElements = sections.reduce((acc: number, s: any) => acc + (s.elementCount || 0), 0);
+  const visibleElements = "-"; 
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 pb-24">
@@ -264,7 +236,7 @@ export function ProjectDetailPage() {
             <div className="relative flex-1">
               <IconSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
               <Input 
-                placeholder="Search in content..." 
+                placeholder="Search sections..." 
                 className="pl-11 h-12 bg-muted/20 border-border/50 text-base focus-visible:ring-primary/20 rounded-2xl" 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -279,124 +251,21 @@ export function ProjectDetailPage() {
               </div>
               <h3 className="text-lg font-bold">No sections found</h3>
               <p className="text-muted-foreground max-w-sm mx-auto mt-2">
-                We couldn't find any editable content matching your search terms.
+                We couldn't find any sections matching your search terms.
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredSections.map((section: any) => {
-                const isOpen = openSections[section.name] !== false;
-                return (
-                  <Collapsible
-                    key={section.name}
-                    open={isOpen}
-                    onOpenChange={() => toggleSection(section.name)}
-                    className="group border border-border/60 rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm shadow-sm"
-                  >
-                    <CollapsibleTrigger 
-                      render={<button className="w-full flex items-center justify-between p-5 cursor-pointer hover:bg-accent/5 transition-all bg-transparent border-none text-inherit text-left focus:outline-none" />}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={cn(
-                          "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-                          isOpen ? "bg-primary text-primary-foreground rotate-90" : "bg-muted text-muted-foreground"
-                        )}>
-                          <IconChevronDown className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-black tracking-tight">{section.name}</h3>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{(section.elements || []).length} components</p>
-                        </div>
-                      </div>
-                      <Badge variant="secondary" className="font-bold opacity-60 px-3 uppercase text-[10px] tracking-widest">Section</Badge>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="animate-collapsible-down">
-                      <div className="border-t border-border/50">
-                        <ItemGroup className="gap-0">
-                          {section.elements.map((element: any) => (
-                            <Item 
-                              key={element.id} 
-                              className={cn(
-                                "px-8 py-6 border-b border-border/40 last:border-0 rounded-none items-start gap-8 hover:bg-muted/10 transition-all group/item",
-                                !element.isVisible && "opacity-40 grayscale-[0.8]"
-                              )}
-                            >
-                              <ItemMedia variant="icon" className="w-12 h-12 border-2 bg-background shrink-0 mt-1 rounded-xl shadow-inner group-hover/item:border-primary/30 group-hover/item:scale-105 transition-all">
-                                {element.type === "text" ? <IconTypography className="w-5 h-5" /> :
-                                 element.type === "image" ? <IconPhoto className="w-5 h-5" /> :
-                                 <IconLink className="w-5 h-5" />}
-                              </ItemMedia>
-                              
-                              <ItemContent className="min-w-0">
-                                <div className="flex items-center gap-3 mb-2.5">
-                                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{element.key}</span>
-                                  {element.type === "image" && <Badge variant="outline" className="text-[8px] h-4 py-0 font-black uppercase tracking-widest bg-primary/5 border-primary/20 text-primary">Image</Badge>}
-                                </div>
-                                
-                                <div className="relative">
-                                  <p className="text-sm font-medium text-foreground line-clamp-4 leading-relaxed tracking-tight">
-                                    {element.content || <span className="text-muted-foreground/50 italic font-normal">No content discovered</span>}
-                                  </p>
-                                  {element.alt && (
-                                    <div className="mt-4 p-3 rounded-xl bg-muted/30 border border-border/30 flex items-start gap-3">
-                                      <IconInfoCircle className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                                      <p className="text-[11px] font-medium text-muted-foreground leading-normal">
-                                        <span className="text-foreground/70 font-bold uppercase text-[9px] mr-1">Alt Text:</span> 
-                                        {element.alt}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              </ItemContent>
-
-                              <ItemActions className="ml-auto">
-                                <div className="flex items-center gap-6 pr-2">
-                                  <HoverCard>
-                                    <HoverCardTrigger 
-                                      render={<button className="flex flex-col items-center gap-2 mr-2 cursor-help group/switch bg-transparent border-none p-0 text-inherit focus:outline-none" />}
-                                    >
-                                        <span className={cn(
-                                          "text-[9px] font-black uppercase tracking-widest transition-colors",
-                                          element.isVisible ? "text-emerald-500" : "text-muted-foreground"
-                                        )}>
-                                          {element.isVisible ? "Visible" : "Hidden"}
-                                        </span>
-                                        <Switch 
-                                          checked={element.isVisible} 
-                                          size="sm"
-                                          onCheckedChange={(checked) => updateElement.mutate({ elementId: element.id, isVisible: checked })}
-                                        />
-                                    </HoverCardTrigger>
-                                    <HoverCardContent className="w-64 text-[11px] p-4 bg-popover/90 backdrop-blur-md">
-                                      <p className="font-bold mb-1 uppercase tracking-tighter">Visibility Toggle</p>
-                                      <p className="text-muted-foreground leading-relaxed">
-                                        {element.isVisible 
-                                          ? "This element is currently synced with your codebase and visible in the CMS." 
-                                          : "This element is hidden from the CMS but still exists in your source code."}
-                                      </p>
-                                    </HoverCardContent>
-                                  </HoverCard>
-
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={() => setEditingElementId(element.id)}
-                                    className="h-10 px-4 rounded-xl border-border/50 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all group/edit"
-                                  >
-                                    <IconEdit className="w-4 h-4 mr-2 group-hover/edit:rotate-12 transition-transform" />
-                                    <span className="font-bold text-[10px] uppercase tracking-widest">Edit</span>
-                                  </Button>
-                                </div>
-                              </ItemActions>
-                            </Item>
-                          ))}
-                        </ItemGroup>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                );
-              })}
-            </div>
+            <Accordion className="w-full border-none space-y-4">
+              {filteredSections.map((section: any) => (
+                <SectionRow 
+                  key={section.id} 
+                  section={section} 
+                  projectId={projectId}
+                  searchTerm={searchTerm}
+                  onEditElement={setEditingElementId}
+                />
+              ))}
+            </Accordion>
           )}
         </div>
       ) : (
@@ -425,6 +294,117 @@ export function ProjectDetailPage() {
         />
       )}
     </div>
+  );
+}
+
+
+function SectionRow({ section, projectId, searchTerm, onEditElement }: any) {
+  const queryClient = useQueryClient();
+  const updateElement = useUpdateElement(projectId);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Prefetch on hover
+  const onMouseEnter = () => {
+    queryClient.prefetchQuery({
+      ...sectionDetailQuery(projectId, section.id),
+      staleTime: Infinity
+    });
+  };
+
+  // Fetch only when open
+  const { data: sectionDetail } = useQuery({
+    ...sectionDetailQuery(projectId, section.id),
+    enabled: isOpen,
+    staleTime: Infinity 
+  });
+
+  // Use the fetched details (with elements) or fallback to basic info
+  const elements = sectionDetail?.section?.elements || [];
+  
+  // Local filtering of elements if search term exists
+  const displayedElements = elements.filter((el: any) => 
+    !searchTerm || 
+    (el.currentValue || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (el.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <AccordionItem value={section.id} className="border border-border/60 rounded-lg bg-card/50 backdrop-blur-sm overflow-hidden mb-4">
+      <AccordionTrigger 
+        className="px-6 py-4 hover:bg-accent/5 hover:no-underline"
+        onMouseEnter={onMouseEnter}
+        onClick={() => setIsOpen(true)}
+      >
+        <div className="flex items-center gap-4 text-left">
+          <div>
+            <h3 className="text-sm font-semibold">{section.name}</h3>
+            <p className="text-[10px] text-muted-foreground uppercase opacity-70">
+              {section.elementCount || elements.length} components
+            </p>
+          </div>
+          <Badge variant="secondary" className="text-[10px] h-5">Section</Badge>
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="border-t border-border/50 bg-accent/2">
+        <div className="p-4 space-y-2">
+            {elements.length === 0 && isOpen ? (
+              <div className="p-4 text-center text-muted-foreground text-xs flex items-center justify-center gap-2">
+                 <IconLoader2 className="w-3 h-3 animate-spin" />
+                 Loading elements...
+              </div>
+            ) : (
+                displayedElements.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground text-xs">
+                        No elements matching search.
+                    </div>
+                ) : (
+                  displayedElements.map((element: any) => (
+                    <Card key={element.id} className="p-3 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-center h-full">
+                            <Checkbox 
+                                id={`vis-${element.id}`}
+                                checked={element.isVisible}
+                                onCheckedChange={(checked) => updateElement.mutate({ elementId: element.id, isVisible: !!checked })}
+                            />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0 grid gap-1.5">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor={`input-${element.id}`} className="text-xs font-semibold text-muted-foreground truncate flex items-center gap-2">
+                                    {element.key}
+                                    {element.type === 'image' && <Badge variant="outline" className="text-[9px] h-3 px-1 py-0">IMG</Badge>}
+                                </Label>
+                                {element.alt && (
+                                    <span className="text-[9px] text-muted-foreground italic truncate max-w-[150px]" title={element.alt}>
+                                        Alt: {element.alt}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="relative group/input">
+                                <Input 
+                                    id={`input-${element.id}`}
+                                    className="h-8 text-sm" 
+                                    value={element.currentValue || ""} 
+                                    readOnly // For now, explicit edit button
+                                    placeholder="No content"
+                                />
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover/input:opacity-100 transition-opacity"
+                                    onClick={() => onEditElement(element.id)}
+                                >
+                                    <IconEdit className="w-3 h-3 text-muted-foreground" />
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+                  ))
+                )
+            )}
+        </div>
+      </AccordionContent>
+    </AccordionItem>
   );
 }
 
