@@ -1,7 +1,9 @@
 {
   "name": "ai-cms",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "dev:api": "bun run --cwd apps/api dev",
@@ -19,5 +21,8 @@
   "devDependencies": {
     "@types/bun": "^1.1.14",
     "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@base-ui-components/react": "^1.0.0-rc.0"
   }
 }
