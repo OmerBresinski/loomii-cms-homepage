@@ -52,12 +52,18 @@
             >GitHub</a
           >
         </div>
-        <a
-          href="/dashboard"
-          class="px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary/80 transition-colors"
-        >
-          Get Started
-        </a>
+        <div class="relative">
+          <div
+            class="px-4 py-2 bg-primary/50 text-white/50 text-sm font-medium rounded-md cursor-not-allowed"
+          >
+            Get Started
+          </div>
+          <span
+            class="absolute -top-2 -left-4 text-[10px] bg-black border border-primary text-primary px-1 py-0.5 rounded font-medium whitespace-nowrap"
+          >
+            Coming Soon
+          </span>
+        </div>
       </div>
     </nav>
 
@@ -120,12 +126,18 @@
             <div
               class="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
-              <a
-                href="/dashboard"
-                class="h-12 px-8 flex items-center justify-center bg-primary text-white font-medium rounded-md hover:bg-primary/80 transition-colors w-full sm:w-auto"
-              >
-                Get Started
-              </a>
+              <div class="relative w-full sm:w-auto">
+                <div
+                  class="h-12 px-8 flex items-center justify-center bg-primary/50 text-white/50 font-medium rounded-md cursor-not-allowed"
+                >
+                  Get Started
+                </div>
+                <span
+                  class="absolute -top-3 -left-10 text-[10px] bg-black border border-primary text-primary px-1.5 py-0.5 rounded font-medium whitespace-nowrap"
+                >
+                  Coming Soon
+                </span>
+              </div>
               <a
                 href="#how-it-works"
                 class="h-12 px-8 flex items-center justify-center border border-white/20 text-white font-medium rounded-md hover:bg-white/5 transition-colors w-full sm:w-auto"
@@ -1205,7 +1217,7 @@
               </p>
               <a
                 href="/dashboard"
-                class="inline-flex items-center justify-center h-12 px-8 bg-primary text-white font-medium rounded-md hover:bg-primary/90 transition-all hover:scale-105"
+                class="inline-flex items-center justify-center h-12 px-8 bg-primary text-white font-medium rounded-md hover:bg-primary/90"
               >
                 Request Early Access
                 <svg
