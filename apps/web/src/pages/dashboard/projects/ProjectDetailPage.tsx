@@ -261,7 +261,6 @@ export function ProjectDetailPage() {
                   section={section} 
                   projectId={projectId}
                   searchTerm={searchTerm}
-                  onEditElement={setEditingElementId}
                 />
               ))}
             </Accordion>

@@ -2,25 +2,18 @@ import { useState } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { AccordionItem, AccordionTrigger, AccordionContent } from "@/ui/accordion";
 import { Badge } from "@/ui/badge";
-import { Card } from "@/ui/card";
-import { Checkbox } from "@/ui/checkbox";
-import { Label } from "@/ui/label";
-import { Input } from "@/ui/input";
-import { Button } from "@/ui/button";
-import { IconEdit, IconLoader2 } from "@tabler/icons-react";
+import { IconLoader2 } from "@tabler/icons-react";
 import { sectionDetailQuery } from "@/lib/queries";
-import { useUpdateElement } from "@/lib/mutations";
+import { ElementRow } from "./ElementRow";
 
 interface SectionRowProps {
     section: any;
     projectId: string;
     searchTerm: string;
-    onEditElement: (id: string) => void;
 }
 
-export function SectionRow({ section, projectId, searchTerm, onEditElement }: SectionRowProps) {
+export function SectionRow({ section, projectId, searchTerm }: SectionRowProps) {
   const queryClient = useQueryClient();
-  const updateElement = useUpdateElement(projectId);
   const [isOpen, setIsOpen] = useState(false);
 
   // Prefetch on hover
@@ -79,46 +72,11 @@ export function SectionRow({ section, projectId, searchTerm, onEditElement }: Se
                     </div>
                 ) : (
                   displayedElements.map((element: any) => (
-                    <Card key={element.id} className="p-3 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center h-full">
-                            <Checkbox 
-                                id={`vis-${element.id}`}
-                                checked={element.isVisible}
-                                onCheckedChange={(checked) => updateElement.mutate({ elementId: element.id, isVisible: !!checked })}
-                            />
-                        </div>
-                        
-                        <div className="flex-1 min-w-0 grid gap-1.5">
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor={`input-${element.id}`} className="text-xs font-semibold text-muted-foreground truncate flex items-center gap-2">
-                                    {element.key}
-                                    {element.type === 'image' && <Badge variant="outline" className="text-[9px] h-3 px-1 py-0">IMG</Badge>}
-                                </Label>
-                                {element.alt && (
-                                    <span className="text-[9px] text-muted-foreground italic truncate max-w-[150px]" title={element.alt}>
-                                        Alt: {element.alt}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="relative group/input">
-                                <Input 
-                                    id={`input-${element.id}`}
-                                    className="h-8 text-sm" 
-                                    value={element.currentValue || ""} 
-                                    readOnly // For now, explicit edit button
-                                    placeholder="No content"
-                                 />
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover/input:opacity-100 transition-opacity"
-                                    onClick={() => onEditElement(element.id)}
-                                >
-                                    <IconEdit className="w-3 h-3 text-muted-foreground" />
-                                </Button>
-                            </div>
-                        </div>
-                    </Card>
+                    <ElementRow 
+                        key={`${element.id}-${element.currentValue}`} // Force reset on value change
+                        element={element}
+                        projectId={projectId}
+                    />
                   ))
                 )
             )}
