@@ -33,8 +33,19 @@ import { cn } from "@/lib/utils";
 import { Accordion } from "@/ui/accordion";
 import { SectionRow } from "./components/SectionRow";
 
+import { ProjectProvider, useProjectContext } from "./context/ProjectContext";
+
 export function ProjectDetailPage() {
+  return (
+    <ProjectProvider>
+      <ProjectDetailContent />
+    </ProjectProvider>
+  );
+}
+
+function ProjectDetailContent() {
   const { projectId } = useParams({ from: "/dashboard/projects/$projectId" });
+  const { isDirty, clearDirtyStates } = useProjectContext();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
@@ -73,6 +84,13 @@ export function ProjectDetailPage() {
         toast.error("Failed to start analysis: " + err.message);
       }
     });
+  };
+
+  const handlePublish = () => {
+    console.log("Publishing...");
+    toast.success("Project publishing...");
+    // Clear dirty states locally for now as it's a demo
+    clearDirtyStates();
   };
 
   const isLoading = isProjectLoading;
@@ -172,12 +190,24 @@ export function ProjectDetailPage() {
               <IconRefresh className={cn("w-4 h-4 mr-2", isAnalyzing && "animate-spin")} />
               {isAnalyzing ? "Analyzing..." : "Begin Analysis"}
             </Button>
-            <Button size="sm" className="group shadow-lg shadow-primary/20">
+
+            <Button size="sm" variant="secondary" className="group shadow-md">
               <IconExternalLink className="w-4 h-4 mr-2 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               View Site
             </Button>
-            <Button size="icon" variant="ghost" className="rounded-full">
-              <IconSettings className="w-4 h-4" />
+            
+            <Button 
+              size="sm" 
+              className={cn(
+                "font-bold uppercase tracking-widest px-6 transition-all",
+                isDirty 
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:scale-105 active:scale-95" 
+                  : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+              )}
+              onClick={handlePublish}
+              disabled={!isDirty}
+            >
+              Publish
             </Button>
           </div>
         </div>
@@ -277,8 +307,8 @@ export function ProjectDetailPage() {
                Run the analysis to discover editable sections and components in your codebase.
              </p>
              <Button size="lg" onClick={handleAnalysis}>
-               <IconRefresh className="w-4 h-4 mr-2" />
-               Start Analysis
+                <IconRefresh className="w-4 h-4 mr-2" />
+                Start Analysis
              </Button>
           </div>
         )
