@@ -202,7 +202,7 @@ export function ProjectDetailPage() {
 
       {/* Stats */}
       {isReady && sections.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-700 delay-150">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-500">
           {[
             { label: "Sections", value: sections.length },
             { label: "Total Elements", value: totalElements },
@@ -230,13 +230,13 @@ export function ProjectDetailPage() {
 
       {/* Content Area */}
       {isReady ? (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
-              <IconSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
+              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input 
                 placeholder="Search sections..." 
-                className="pl-11 h-12 bg-muted/20 border-border/50 text-base focus-visible:ring-primary/20 rounded-2xl" 
+                className="pl-10" 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
