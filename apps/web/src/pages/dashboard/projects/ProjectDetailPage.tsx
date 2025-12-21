@@ -6,7 +6,6 @@ import { useTriggerAnalysis } from "@/lib/mutations";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { 
-  IconSettings, 
   IconExternalLink, 
   IconRefresh, 
   IconCalendar,

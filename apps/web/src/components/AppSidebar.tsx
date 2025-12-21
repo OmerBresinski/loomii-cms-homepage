@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router"
 import { useUser, UserButton, OrganizationSwitcher } from "@clerk/clerk-react"
+import { dark } from "@clerk/themes"
 import { useQuery } from "@tanstack/react-query"
 import { currentOrgQuery } from "@/lib/queries"
 import { cn } from "@/lib/utils"
@@ -49,14 +50,19 @@ export function AppSidebar() {
               afterLeaveOrganizationUrl="/onboarding"
               hidePersonal
               appearance={{
+                baseTheme: dark,
                 elements: {
                   rootBox: "w-full",
                   organizationSwitcherTrigger: cn(
                     "w-full px-3 py-2 rounded-md",
                     "bg-secondary border border-border",
                     "hover:bg-accent",
-                    "transition-all text-sm"
+                    "transition-all text-sm font-bold text-white"
                   ),
+                  organizationSwitcherTriggerTitle: "text-white font-bold",
+                  organizationSwitcherTriggerTitleText: "text-white font-bold",
+                  organizationPreviewMainIdentifier: "text-white font-bold",
+                  organizationPreviewTextContainer: "text-white",
                 },
               }}
             />
@@ -92,16 +98,41 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="px-2">
-              <div className="flex items-center gap-3 w-full">
-                <UserButton appearance={{ elements: { avatarBox: "w-8 h-8" } }} />
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium truncate">{user?.fullName || "User"}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user?.primaryEmailAddress?.emailAddress}</p>
+            <div className="relative group/user px-2 py-2 rounded-lg hover:bg-accent transition-colors cursor-pointer flex items-center gap-3">
+              {/* Visuals (Avatar, Name, Email) */}
+              <div className="flex items-center gap-3 w-full pointer-events-none">
+                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-border/50">
+                   <UserButton 
+                    appearance={{ 
+                      baseTheme: dark,
+                      elements: { 
+                        avatarBox: "w-8 h-8",
+                        userButtonTrigger: "pointer-events-none"
+                      } 
+                    }} 
+                  />
                 </div>
-                <IconChevronUp className="w-4 h-4 ml-auto text-muted-foreground" />
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-bold text-white truncate">{user?.fullName || "User"}</p>
+                  <p className="text-xs text-muted-foreground/80 truncate">{user?.primaryEmailAddress?.emailAddress}</p>
+                </div>
+                <IconChevronUp className="w-4 h-4 ml-auto text-muted-foreground/60" />
               </div>
-            </SidebarMenuButton>
+
+              {/* The Actual Trigger (Transparent Overlay) */}
+              <div className="absolute inset-0 opacity-0">
+                <UserButton 
+                  appearance={{ 
+                    baseTheme: dark,
+                    elements: { 
+                      rootBox: "w-full h-full",
+                      userButtonTrigger: "w-full h-full",
+                      userButtonAvatarBox: "hidden"
+                    } 
+                  }} 
+                />
+              </div>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
