@@ -216,7 +216,7 @@ function ProjectDetailContent() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 p-8 max-w-5xl space-y-8 pb-24">
+      <div className="flex-1 p-8 space-y-8 pb-24">
       {/* Header */}
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
