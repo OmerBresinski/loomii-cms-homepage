@@ -44,6 +44,7 @@ interface RawElement {
   line: number;
   context: string;
   filePath: string;
+  href?: string;
 }
 
 // Section group
@@ -60,6 +61,7 @@ export interface SectionGroup {
     line: number;
     currentValue: string;
     confidence: number;
+    href?: string;
   }>;
 }
 
@@ -68,7 +70,7 @@ export interface AnalysisResult {
   filesAnalyzed: string[];
 }
 
-// Generate a reasonable name for an element based on its type and content
+// Generate a reasonable name for an element based on its type and content (fallback)
 function generateElementName(type: string, content: string): string {
   const truncated =
     content.length > 40 ? content.slice(0, 37) + "..." : content;
@@ -144,22 +146,39 @@ Rules:
 3. Maintain the order from top to bottom based on line numbers
 4. Each element can only belong to ONE section
 5. Use clear, human-readable section names
+6. Give each element a title that describes its ROLE or POSITION in the UI, NOT its content
+
+CRITICAL: Element titles must describe WHAT the element IS, not WHAT IT SAYS.
+- BAD titles: "Edit Content Text", "Learn More Button", "Welcome Heading" (these echo the content)
+- GOOD titles: "Primary CTA", "Second Navigation Link", "Section Subheading", "Description Text" (these describe the role)
+
+Think about it this way: if someone changes the content, the title should still make sense.
+For example, if "Learn More" changes to "Get Started", the title "Primary CTA" still works, but "Learn More Button" wouldn't.
 
 Return ONLY a JSON array in this exact format:
 [
   {
     "name": "Hero Section",
     "description": "Main hero area with headline and CTA",
-    "elementIndices": [0, 1, 2]
+    "elements": [
+      { "idx": 0, "title": "Main Headline" },
+      { "idx": 1, "title": "Subheading" },
+      { "idx": 2, "title": "Primary CTA" }
+    ]
   },
   {
     "name": "Navigation Menu", 
     "description": "Top navigation with links",
-    "elementIndices": [3, 4, 5, 6]
+    "elements": [
+      { "idx": 3, "title": "First Link" },
+      { "idx": 4, "title": "Second Link" },
+      { "idx": 5, "title": "Third Link" },
+      { "idx": 6, "title": "CTA Button" }
+    ]
   }
 ]
 
-The elementIndices should reference the "idx" values from the input.`;
+The idx values should reference the "idx" values from the input. Titles should be 2-4 words describing the element's role.`;
 
   try {
     const response = await (generateText as any)({
@@ -183,33 +202,46 @@ Group related content together - a heading typically starts a new section.`,
     const sections: SectionGroup[] = [];
 
     for (const aiSection of aiSections) {
-      if (!aiSection.elementIndices || aiSection.elementIndices.length === 0) {
+      // Support both old format (elementIndices) and new format (elements with titles)
+      const elementsWithTitles = aiSection.elements || 
+        (aiSection.elementIndices?.map((idx: number) => ({ idx, title: null })) || []);
+      
+      if (elementsWithTitles.length === 0) {
         continue;
       }
 
-      const sectionElements = aiSection.elementIndices
-        .map((idx: number) => sorted[idx])
-        .filter(Boolean);
+      const sectionElements = elementsWithTitles
+        .map((el: { idx: number; title?: string }) => {
+          const rawElement = sorted[el.idx];
+          if (!rawElement || !el.title) return null; // Skip elements without AI-generated title
+          return {
+            ...rawElement,
+            aiTitle: el.title,
+          };
+        })
+        .filter(Boolean) as (RawElement & { aiTitle: string })[];
 
       if (sectionElements.length === 0) continue;
 
-      const lines = sectionElements.map((e: RawElement) => e.line);
+      const lines = sectionElements.map((e) => e.line);
       const startLine = Math.min(...lines);
       const endLine = Math.max(...lines);
 
       sections.push({
         name: aiSection.name || "Untitled Section",
         description: aiSection.description,
-        sourceFile: sectionElements[0].filePath,
+        sourceFile: sectionElements[0]!.filePath,
         startLine,
         endLine,
-        elements: sectionElements.map((e: RawElement) => ({
-          name: generateElementName(e.type, e.content),
+        elements: sectionElements.map((e) => ({
+          // Use AI-generated title (required)
+          name: e.aiTitle,
           type: e.type,
           filePath: e.filePath,
           line: e.line,
           currentValue: e.content,
           confidence: 0.9,
+          href: e.href,
         })),
       });
     }
@@ -257,6 +289,7 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
           line: e.line,
           currentValue: e.content,
           confidence: 0.9,
+          href: e.href,
         })),
       });
       currentElements = [];
@@ -281,6 +314,7 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
         line: e.line,
         currentValue: e.content,
         confidence: 0.9,
+        href: e.href,
       })),
     });
   }
@@ -288,8 +322,12 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
   return sections;
 }
 
+// Progress callback type
+export type ProgressCallback = (progress: number, message: string) => void | Promise<void>;
+
 export async function analyzeRepository(
-  ctx: GitHubContext
+  ctx: GitHubContext,
+  onProgress?: ProgressCallback
 ): Promise<AnalysisResult> {
   const startTime = Date.now();
   const rootPath = ctx.rootPath || "";
@@ -306,8 +344,17 @@ export async function analyzeRepository(
   const allRawElements: RawElement[] = [];
   const filesAnalyzed: string[] = [];
 
+  // Helper to report progress
+  const reportProgress = async (progress: number, message: string) => {
+    console.log(`  📊 Progress: ${progress}% - ${message}`);
+    if (onProgress) {
+      await onProgress(progress, message);
+    }
+  };
+
   try {
-    // Step 1: List all files in the repository/subdirectory
+    // Step 1: List all files in the repository/subdirectory (0-10%)
+    await reportProgress(5, "Listing repository files");
     logger.workflow.step("Listing repository files");
     const files = await executors.listFiles({
       path: rootPath,
@@ -322,10 +369,12 @@ export async function analyzeRepository(
       )
       .slice(0, 50); // Limit to prevent too many API calls
 
+    await reportProgress(10, `Found ${sourceFiles.length} source files`);
     console.log(`  Found ${sourceFiles.length} source files to analyze`);
 
     if (sourceFiles.length === 0) {
       console.log(`  No source files found in ${rootPath || "repository"}`);
+      await reportProgress(100, "No source files found");
       logger.workflow.complete("analyzeRepository", Date.now() - startTime, {
         sectionsFound: 0,
         filesAnalyzed: 0,
@@ -333,10 +382,15 @@ export async function analyzeRepository(
       return { sections: [], filesAnalyzed: [] };
     }
 
-    // Step 2: Analyze each source file
+    // Step 2: Analyze each source file (10-85%)
     logger.workflow.step(`Analyzing ${sourceFiles.length} source files`);
 
-    for (const file of sourceFiles) {
+    for (let i = 0; i < sourceFiles.length; i++) {
+      const file = sourceFiles[i]!;
+      // Progress from 10% to 85% based on file count
+      const fileProgress = 10 + Math.round((i / sourceFiles.length) * 75);
+      await reportProgress(fileProgress, `Analyzing ${file.name} (${i + 1}/${sourceFiles.length})`);
+      
       try {
         const analysis = await executors.analyzeSourceFile({ path: file.path });
         filesAnalyzed.push(file.path);
@@ -354,6 +408,7 @@ export async function analyzeRepository(
               line: elem.line,
               context: elem.context,
               filePath: file.path,
+              href: elem.href,
             });
           }
         }
@@ -364,9 +419,12 @@ export async function analyzeRepository(
       }
     }
 
-    // Step 3: Use AI to group elements into sections
+    // Step 3: Use AI to group elements into sections (85-95%)
+    await reportProgress(85, "AI grouping elements into sections");
     logger.workflow.step("AI grouping elements into sections");
     const sections = await groupElementsWithAI(allRawElements);
+    
+    await reportProgress(95, `Created ${sections.length} sections`);
     console.log(
       `  Created ${sections.length} sections from ${allRawElements.length} elements`
     );

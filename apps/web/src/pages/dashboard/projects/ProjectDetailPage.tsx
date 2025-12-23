@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useParams, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { projectDetailQuery, analysisStatusQuery } from "@/lib/queries";
-import { useTriggerAnalysis } from "@/lib/mutations";
+import { useTriggerAnalysis, useCancelAnalysis } from "@/lib/mutations";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { 
@@ -69,10 +69,27 @@ function ProjectDetailContent() {
 
   // Mutations
   const triggerAnalysis = useTriggerAnalysis(projectId);
+  const cancelAnalysis = useCancelAnalysis(projectId);
 
   // Derived State
   const isAnalyzing = analysisStatus?.projectStatus === "analyzing" || triggerAnalysis.isPending;
   const analysisProgress = analysisStatus?.currentJob?.progress || 0;
+  const queryClient = useQueryClient();
+  
+  // Track if we started analyzing to show toast on completion
+  const [wasAnalyzingState, setWasAnalyzingState] = useState(false);
+  
+  // Update wasAnalyzingState when starting analysis
+  if (isAnalyzing && !wasAnalyzingState) {
+    setWasAnalyzingState(true);
+  }
+  
+  // When analysis completes, refetch sections and show toast
+  if (wasAnalyzingState && !isAnalyzing && analysisStatus?.projectStatus === "ready") {
+    setWasAnalyzingState(false);
+    queryClient.invalidateQueries({ queryKey: ["project", projectId, "sections"] });
+    toast.success("Analysis complete!");
+  }
   
   const handleAnalysis = () => {
     triggerAnalysis.mutate({}, {
@@ -221,7 +238,26 @@ function ProjectDetailContent() {
                   <IconLoader2 className="w-4 h-4 animate-spin" />
                   Analyzing repository structure...
                 </span>
-                <span className="text-primary">{analysisProgress}%</span>
+                <div className="flex items-center gap-4">
+                  <span className="text-primary">{analysisProgress}%</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => {
+                      cancelAnalysis.mutate(undefined, {
+                        onSuccess: () => {
+                          toast.success("Analysis cancelled");
+                          setWasAnalyzingState(false);
+                        },
+                        onError: (err) => toast.error("Failed to cancel: " + err.message)
+                      });
+                    }}
+                    disabled={cancelAnalysis.isPending}
+                    className="text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </div>
               <Progress value={analysisProgress} className="h-1.5" />
             </div>
@@ -229,8 +265,8 @@ function ProjectDetailContent() {
         </Card>
       )}
 
-      {/* Stats */}
-      {isReady && sections.length > 0 && (
+      {/* Stats - hide during analysis */}
+      {isReady && !isAnalyzing && sections.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-500">
           {[
             { label: "Sections", value: sections.length },
@@ -257,8 +293,8 @@ function ProjectDetailContent() {
         </div>
       )}
 
-      {/* Content Area */}
-      {isReady ? (
+      {/* Content Area - hide during analysis */}
+      {isReady && !isAnalyzing ? (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
           <div className="flex items-center gap-4">
             <div className="relative flex-1">

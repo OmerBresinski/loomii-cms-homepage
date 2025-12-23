@@ -179,6 +179,23 @@ export function useTriggerAnalysis(projectId: string) {
   });
 }
 
+// Cancel analysis mutation
+export function useCancelAnalysis(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      return apiFetch<{ success: boolean; jobId: string }>(`/projects/${projectId}/analysis/cancel`, {
+        method: "POST",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.analysis(projectId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projectDetail(projectId) });
+    },
+  });
+}
+
 // Logout mutation
 export function useLogout() {
   const queryClient = useQueryClient();

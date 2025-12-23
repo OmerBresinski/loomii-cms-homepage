@@ -304,7 +304,7 @@ Extract every piece of user-facing text content that could be edited by a conten
 - Headings (h1-h6)
 - Paragraphs
 - Button text
-- Link text (EACH link separately, not grouped together)
+- Link text (EACH link separately, not grouped together) - INCLUDE THE HREF!
 - Span text
 - Labels
 - Placeholders
@@ -317,12 +317,13 @@ IMPORTANT RULES:
 3. Include the exact line number where the text appears
 4. Only include actual text content, not code/variables/expressions
 5. Skip CSS classes, JavaScript code, and HTML attributes (except alt/placeholder/title text)
+6. For links, ALWAYS include the href attribute value
 
 Return ONLY a JSON array in this exact format:
 [
   { "type": "heading", "content": "Welcome to our site", "line": 15 },
-  { "type": "link", "content": "Features", "line": 42 },
-  { "type": "link", "content": "How it Works", "line": 45 },
+  { "type": "link", "content": "Features", "line": 42, "href": "#features" },
+  { "type": "link", "content": "About Us", "line": 45, "href": "/about" },
   { "type": "button", "content": "Get Started", "line": 58 },
   { "type": "paragraph", "content": "Some description text here", "line": 72 }
 ]
@@ -343,6 +344,7 @@ Return valid JSON only.`,
           content: string;
           line: number;
           context: string;
+          href?: string;
         }> = [];
 
         try {
@@ -354,6 +356,7 @@ Return valid JSON only.`,
               content: el.content || "",
               line: el.line || 1,
               context: lines[Math.max(0, (el.line || 1) - 1)]?.trim() || "",
+              href: el.href || undefined,
             }));
           }
         } catch (parseError) {

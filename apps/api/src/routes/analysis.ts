@@ -247,18 +247,32 @@ async function runAnalysis(
 ) {
   const [owner, repo] = githubRepo.split("/");
 
+  // Progress callback to update job status in DB
+  const updateProgress = async (progress: number, message: string) => {
+    await prisma.analysisJob.update({
+      where: { id: jobId },
+      data: { 
+        progress,
+        status: "running",
+      }
+    });
+  };
+
   try {
     const pathInfo = rootPath ? ` (path: ${rootPath})` : "";
     console.log(`\n🔍 Starting analysis for ${githubRepo}${pathInfo}...`);
 
-    // Call the AI analysis
+    // Call the AI analysis with progress callback
     const result = await analyzeRepository({
       accessToken,
       owner,
       repo,
       branch,
       rootPath,
-    });
+    }, updateProgress);
+
+    // Update progress to 100% before saving
+    await updateProgress(100, "Saving results");
 
     const totalElements = result.sections.reduce(
       (acc, s) => acc + s.elements.length,
@@ -319,6 +333,7 @@ async function runAnalysis(
               currentValue: el.currentValue,
               confidence: el.confidence,
               pageUrl: el.filePath,
+              schema: (el as any).href ? { href: (el as any).href } : undefined,
             })),
           });
         }

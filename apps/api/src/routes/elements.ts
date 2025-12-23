@@ -53,6 +53,7 @@ export const elementRoutes = new Hono()
             type: e.type,
             selector: e.selector,
             currentValue: e.currentValue,
+            schema: e.schema,
             pageUrl: e.pageUrl,
             confidence: e.confidence,
             sourceFile: e.sourceFile,
@@ -139,7 +140,8 @@ export const elementRoutes = new Hono()
     requireProjectAccess(),
     zValidator("json", z.object({
       currentValue: z.string().optional(),
-      visible: z.boolean().optional(),
+      schema: z.any().optional(),
+      isVisible: z.boolean().optional(),
     })),
     async (c) => {
       const projectId = c.req.param("projectId");
@@ -158,7 +160,8 @@ export const elementRoutes = new Hono()
         where: { id: elementId },
         data: {
           ...(updates.currentValue !== undefined && { currentValue: updates.currentValue }),
-          // Note: 'visible' field doesn't exist in schema yet, we can add it later
+          ...(updates.schema !== undefined && { schema: updates.schema }),
+          ...(updates.isVisible !== undefined && { isVisible: updates.isVisible }),
         },
       });
 

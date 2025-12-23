@@ -113,6 +113,7 @@ export interface Element {
   sourceFile: string | null;
   sourceLine: number | null;
   currentValue: string | null;
+  schema?: any;
   pageUrl: string;
   confidence: number;
   createdAt: string;
