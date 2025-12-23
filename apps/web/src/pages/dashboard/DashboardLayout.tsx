@@ -48,9 +48,11 @@ export function DashboardLayout() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="bg-grid-pattern">
+        {/* Radial gradient overlay */}
+        <div className="fixed inset-0 bg-gradient-radial pointer-events-none" />
 
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 relative">
           {!hasGitHub && organization && (
             <Card className="rounded-none border-x-0 border-t-0 bg-amber-500/10 border-amber-500/30">
               <CardContent className="py-3 px-6 flex items-center justify-between">

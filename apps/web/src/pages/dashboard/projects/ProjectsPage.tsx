@@ -21,7 +21,7 @@ export function ProjectsPage() {
   if (!organization) return null;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-6 max-w-4xl mx-auto space-y-6 min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -41,7 +41,7 @@ export function ProjectsPage() {
       </div>
 
       {/* Projects List */}
-      <div className="border rounded-lg overflow-hidden bg-card">
+      <div className="border border-border/50 rounded-lg overflow-hidden bg-card/50 backdrop-blur-sm">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />

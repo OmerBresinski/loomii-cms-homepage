@@ -127,3 +127,16 @@
     @apply font-sans;
     }
 }
+
+/* Subtle dot grid background pattern for dark mode */
+.bg-grid-pattern {
+  background-image: radial-gradient(circle at center, oklch(1 0 0 / 4%) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Radial gradient overlays for depth - subtle red glows */
+.bg-gradient-radial {
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, oklch(0.645 0.246 16.439 / 10%), transparent 50%),
+    radial-gradient(ellipse 40% 30% at 95% 80%, oklch(0.645 0.246 16.439 / 6%), transparent 50%);
+}

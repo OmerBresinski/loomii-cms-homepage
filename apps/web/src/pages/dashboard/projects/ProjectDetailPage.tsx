@@ -181,7 +181,7 @@ export function ProjectDetailPage() {
     <div className="flex">
       {/* Left Sidebar - Pages (attached to app sidebar) */}
       {isReady && !isAnalyzingEffective && pages.length > 0 && (
-        <div className="w-44 border-r p-3 shrink-0 hidden lg:block">
+        <div className="w-44 border-r border-border/50 p-3 shrink-0 hidden lg:block">
           <div className="sticky top-4">
             <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               Pages
@@ -333,20 +333,14 @@ export function ProjectDetailPage() {
 
             <Button
               size="sm"
-              className={cn(
-                "font-bold uppercase tracking-widest px-6 transition-all gap-2",
-                isDirty
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:scale-105 active:scale-95"
-                  : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
-              )}
               onClick={handlePublish}
               disabled={!isDirty}
             >
               Review Changes
               {editCount > 0 && (
-                <span className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-primary-foreground text-primary">
+                <Badge variant="secondary" className="ml-1.5 text-[10px] h-5 px-1.5">
                   {editCount}
-                </span>
+                </Badge>
               )}
             </Button>
           </div>

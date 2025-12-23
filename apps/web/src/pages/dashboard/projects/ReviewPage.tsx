@@ -230,7 +230,7 @@ export function ReviewPage() {
 
   if (editCount === 0) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
+      <div className="p-8 max-w-4xl mx-auto min-h-screen">
         <div className="text-center py-16">
           <h2 className="text-2xl font-bold mb-2">No Changes to Review</h2>
           <p className="text-muted-foreground mb-6">
@@ -246,7 +246,7 @@ export function ReviewPage() {
   }
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-6 pb-24">
+    <div className="p-8 max-w-5xl mx-auto space-y-6 pb-24 min-h-screen">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
