@@ -17,11 +17,12 @@ import {
   IconLoader2
 } from "@tabler/icons-react";
 import { Button } from "@/ui/button";
-import { Card, CardContent } from "@/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/ui/card";
 import { Badge } from "@/ui/badge";
-import { Input } from "@/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/ui/input-group";
 import { Progress } from "@/ui/progress";
 import { Skeleton } from "@/ui/skeleton";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/ui/empty";
 import {
   HoverCard,
   HoverCardContent,
@@ -272,20 +273,24 @@ function ProjectDetailContent() {
             { label: "Sections", value: sections.length },
             { label: "Total Elements", value: totalElements },
             { label: "Visible", value: visibleElements },
-            { 
-              label: "Last Analysis", 
-              value: analysisStatus?.lastAnalyzedAt 
-                ? new Date(analysisStatus.lastAnalyzedAt).toLocaleDateString() 
-                : "-", 
-              icon: IconCalendar 
+            {
+              label: "Last Analysis",
+              value: analysisStatus?.lastAnalyzedAt
+                ? new Date(analysisStatus.lastAnalyzedAt).toLocaleDateString()
+                : "-",
+              icon: IconCalendar
             },
           ].map((stat) => (
-            <Card key={stat.label} className="bg-muted/20 border-border/50 shadow-none hover:bg-muted/30 transition-colors">
-              <CardContent className="p-6">
-                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.15em] mb-1">{stat.label}</p>
+            <Card key={stat.label}>
+              <CardHeader className="pb-2">
+                <CardDescription className="text-xs uppercase tracking-wider">
+                  {stat.label}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <div className="flex items-end justify-between">
-                  <p className="text-2xl font-black">{stat.value}</p>
-                  {stat.icon && <stat.icon className="w-4 h-4 text-muted-foreground opacity-20" />}
+                  <CardTitle className="text-2xl">{stat.value}</CardTitle>
+                  {stat.icon && <stat.icon className="w-4 h-4 text-muted-foreground" />}
                 </div>
               </CardContent>
             </Card>
@@ -296,34 +301,37 @@ function ProjectDetailContent() {
       {/* Content Area - hide during analysis */}
       {isReady && !isAnalyzing ? (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search sections..." 
-                className="pl-10" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
+          <InputGroup className="flex-1">
+            <InputGroupAddon>
+              <InputGroupText>
+                <IconSearch className="w-4 h-4" />
+              </InputGroupText>
+            </InputGroupAddon>
+            <InputGroupInput
+              placeholder="Search sections..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </InputGroup>
 
           {filteredSections.length === 0 ? (
-            <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed border-border/50">
-              <div className="bg-muted/20 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <IconSearch className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-bold">No sections found</h3>
-              <p className="text-muted-foreground max-w-sm mx-auto mt-2">
-                We couldn't find any sections matching your search terms.
-              </p>
-            </div>
+            <Empty className="py-12 border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <IconSearch className="w-4 h-4" />
+                </EmptyMedia>
+                <EmptyTitle>No sections found</EmptyTitle>
+                <EmptyDescription>
+                  We couldn't find any sections matching your search terms.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : (
-            <Accordion className="w-full border-none space-y-4">
+            <Accordion>
               {filteredSections.map((section: any) => (
-                <SectionRow 
-                  key={section.id} 
-                  section={section} 
+                <SectionRow
+                  key={section.id}
+                  section={section}
                   projectId={projectId}
                   searchTerm={searchTerm}
                 />
@@ -333,19 +341,21 @@ function ProjectDetailContent() {
         </div>
       ) : (
         !isAnalyzing && (
-          <div className="flex flex-col items-center justify-center py-32 text-center animate-in fade-in duration-500">
-             <div className="bg-primary/5 p-6 rounded-full mb-6">
-                <IconRefresh className="w-12 h-12 text-primary opacity-50" />
-             </div>
-             <h2 className="text-2xl font-bold mb-2">No Analysis Data</h2>
-             <p className="text-muted-foreground max-w-md mb-8">
-               Run the analysis to discover editable sections and components in your codebase.
-             </p>
-             <Button size="lg" onClick={handleAnalysis}>
-                <IconRefresh className="w-4 h-4 mr-2" />
-                Start Analysis
-             </Button>
-          </div>
+          <Empty className="py-16 border animate-in fade-in duration-500">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <IconRefresh className="w-4 h-4" />
+              </EmptyMedia>
+              <EmptyTitle>No Analysis Data</EmptyTitle>
+              <EmptyDescription>
+                Run the analysis to discover editable sections and components in your codebase.
+              </EmptyDescription>
+            </EmptyHeader>
+            <Button onClick={handleAnalysis}>
+              <IconRefresh className="w-4 h-4 mr-2" />
+              Start Analysis
+            </Button>
+          </Empty>
         )
       )}
 

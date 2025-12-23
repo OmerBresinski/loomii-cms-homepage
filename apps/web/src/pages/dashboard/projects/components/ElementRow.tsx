@@ -1,13 +1,29 @@
 import { useState, useEffect } from "react";
-import { Card } from "@/ui/card";
-import { Checkbox } from "@/ui/checkbox";
-import { Label } from "@/ui/label";
+import { Item, ItemContent, ItemTitle, ItemActions } from "@/ui/item";
 import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
-import { Badge } from "@/ui/badge";
+import { Label } from "@/ui/label";
 import { IconDeviceFloppy, IconLoader2 } from "@tabler/icons-react";
 import { useUpdateElement } from "@/lib/mutations";
 import { useProjectContext } from "../context/ProjectContext";
+import { cn } from "@/lib/utils";
+
+// Map element types to colors (all unique)
+const elementTypeColors: Record<string, string> = {
+    heading: "text-purple-500",
+    text: "text-emerald-500",
+    paragraph: "text-sky-500",
+    link: "text-blue-500",
+    button: "text-orange-500",
+    image: "text-pink-500",
+    list: "text-teal-500",
+    section: "text-indigo-500",
+    navigation: "text-cyan-500",
+    footer: "text-slate-500",
+    hero: "text-violet-500",
+    card: "text-amber-500",
+    custom: "text-gray-500",
+};
 
 interface ElementRowProps {
     element: any;
@@ -60,85 +76,63 @@ export function ElementRow({ element, projectId }: ElementRowProps) {
     };
 
     return (
-        <Card className="p-3 shadow-sm hover:shadow-md transition-shadow group/card">
-            <div className="flex flex-col gap-1.5">
-                {/* Header Row: Element Title */}
-                <div className="flex items-center justify-between pl-[100px]"> 
-                    <Label htmlFor={`input-${element.id}`} className="text-xs font-semibold text-foreground truncate flex items-center gap-2">
+        <Item variant="outline" className="flex-col items-stretch">
+            <div className="flex items-center gap-3 w-full">
+                <ItemContent className="flex-1">
+                    <ItemTitle>
                         {element.name || "Untitled Element"}
                         {element.type && (
-                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 py-0 border-muted-foreground/30 text-muted-foreground font-normal">
+                            <span className={cn(
+                                "text-[10px] uppercase tracking-wide",
+                                elementTypeColors[element.type] || "text-gray-500"
+                            )}>
                                 {element.type}
-                            </Badge>
+                            </span>
                         )}
-                    </Label>
-                </div>
+                    </ItemTitle>
+                </ItemContent>
 
-                {/* Interaction Row: Toggle, Input, and Save */}
-                <div className="flex items-start gap-4">
-                    {/* Visibility Toggle */}
-                    <div className="flex items-center gap-2 shrink-0 w-[84px] justify-start mt-2">
-                        <Checkbox 
-                            id={`vis-${element.id}`}
-                            checked={element.isVisible ?? true}
-                            onCheckedChange={(checked) => updateElement.mutate({ elementId: element.id, isVisible: !!checked })}
-                            className="w-4 h-4"
-                        />
-                        <Label 
-                            htmlFor={`vis-${element.id}`} 
-                            className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 cursor-pointer group-hover/card:text-primary transition-colors leading-none"
-                        >
-                            Visible
-                        </Label>
-                    </div>
-
-                    {/* Input Field and Save Button */}
-                    <div className="flex-1 flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                            <div className="flex-1 relative group">
-                                <Label className="absolute -top-1.5 left-2 px-1 bg-background text-[9px] text-muted-foreground opacity-0 group-focus-within:opacity-100 transition-opacity">Content</Label>
-                                <Input 
-                                    id={`input-${element.id}`}
-                                    className="h-8 text-sm flex-1 bg-background/50 focus:bg-background transition-colors" 
-                                    value={value} 
-                                    onChange={handleChange}
-                                    placeholder="No content"
-                                />
-                            </div>
-                            
-                            <Button
-                                size="sm"
-                                variant={isDirty ? "default" : "ghost"}
-                                className={`h-8 px-3 shrink-0 transition-all gap-2 ${isDirty ? "opacity-100" : "opacity-40 hover:opacity-100"}`}
-                                onClick={handleSave}
-                                disabled={!isDirty || updateElement.isPending}
-                            >
-                                {updateElement.isPending ? (
-                                    <IconLoader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                    <IconDeviceFloppy className="w-3.5 h-3.5" />
-                                )}
-                                Save
-                            </Button>
-                        </div>
-
-                        {element.type === 'link' && (
-                            <div className="flex items-center gap-2 ml-0">
-                                <div className="flex-1 relative group">
-                                    <Label className="absolute -top-1.5 left-2 px-1 bg-background text-[9px] text-muted-foreground uppercase font-black tracking-widest">Links To</Label>
-                                    <Input 
-                                        className="h-8 text-xs flex-1 border-primary/20 bg-primary/5 focus:bg-background transition-colors font-mono" 
-                                        value={hrefValue} 
-                                        onChange={handleHrefChange}
-                                        placeholder="Target URL (e.g. /features, https://...)"
-                                    />
-                                </div>
-                                <div className="w-[74px] shrink-0" /> {/* Spacer to align with Save button */}
-                            </div>
+                <ItemActions>
+                    <Button
+                        size="sm"
+                        variant={isDirty ? "default" : "ghost"}
+                        onClick={handleSave}
+                        disabled={!isDirty || updateElement.isPending}
+                    >
+                        {updateElement.isPending ? (
+                            <IconLoader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                            <IconDeviceFloppy className="w-3.5 h-3.5" />
                         )}
-                    </div>
-                </div>
+                        Save
+                    </Button>
+                </ItemActions>
             </div>
-        </Card>
+
+            {/* Content Input */}
+            <div className="flex flex-col gap-2 w-full pt-2">
+                <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground w-16 shrink-0">Content</Label>
+                    <Input
+                        id={`input-${element.id}`}
+                        value={value}
+                        onChange={handleChange}
+                        placeholder="No content"
+                    />
+                </div>
+
+                {element.type === 'link' && (
+                    <div className="flex items-center gap-2">
+                        <Label className="text-xs text-muted-foreground w-16 shrink-0">Links to</Label>
+                        <Input
+                            value={hrefValue}
+                            onChange={handleHrefChange}
+                            placeholder="Target URL (e.g. /features, https://...)"
+                            className="font-mono"
+                        />
+                    </div>
+                )}
+            </div>
+        </Item>
     );
 }
