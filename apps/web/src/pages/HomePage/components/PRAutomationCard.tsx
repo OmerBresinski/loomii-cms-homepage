@@ -19,7 +19,7 @@ const PRAutomationCard = () => {
           </Badge>
           
           <div className="space-y-3">
-            <h3 className="text-3xl font-black tracking-tight text-foreground leading-tight">
+            <h3 className="text-3xl font-sans font-black tracking-tight text-foreground leading-tight">
               Auto-Generated <br /> Pull Requests
             </h3>
             <p className="text-muted-foreground text-base max-w-md leading-relaxed">

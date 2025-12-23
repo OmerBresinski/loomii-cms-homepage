@@ -52,7 +52,7 @@ const SignInPanel = () => {
         <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:rotate-6 transition-transform">
           <span className="text-primary-foreground text-xl font-black italic">L</span>
         </div>
-        <span className="text-2xl font-black tracking-tighter text-foreground">LOOMII</span>
+        <span className="text-2xl font-sans font-black tracking-tighter text-foreground">LOOMII</span>
         <Badge className="ml-2 bg-primary/10 text-primary border-none text-[9px] uppercase font-bold px-1.5 h-4">Alpha</Badge>
       </div>
 
@@ -62,7 +62,7 @@ const SignInPanel = () => {
             <IconSparkles className="w-3.5 h-3.5" />
             AI Content Management
           </div>
-          <CardTitle className="text-4xl font-black tracking-tight leading-[0.9]">
+          <CardTitle className="text-4xl font-sans font-black tracking-tight leading-[0.9]">
             Welcome <br /> back
           </CardTitle>
           <CardDescription className="text-muted-foreground text-base">
