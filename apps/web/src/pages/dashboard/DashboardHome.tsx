@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { dashboardStatsQuery, currentOrgQuery } from "@/lib/queries";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { dashboardStatsQuery, currentOrgQuery, projectDetailQuery, projectPagesQuery, analysisStatusQuery, sectionListQuery } from "@/lib/queries";
 import { useOrganization } from "@clerk/clerk-react";
 import {
   IconPlus,
@@ -52,10 +52,19 @@ function formatRelativeTime(dateString: string | null) {
 
 export function DashboardHome() {
   const { organization } = useOrganization();
+  const queryClient = useQueryClient();
   const { data: dashboardData, isLoading } = useQuery(dashboardStatsQuery());
   const { data: orgData } = useQuery(currentOrgQuery());
 
   const hasGitHub = orgData?.organization?.hasGitHubConnected;
+
+  const handlePrefetch = (projectId: string) => {
+    const staleTime = 60000;
+    queryClient.prefetchQuery({ ...projectDetailQuery(projectId), staleTime });
+    queryClient.prefetchQuery({ ...projectPagesQuery(projectId), staleTime });
+    queryClient.prefetchQuery({ ...analysisStatusQuery(projectId), staleTime });
+    queryClient.prefetchQuery({ ...sectionListQuery(projectId), staleTime });
+  };
 
   const handleConnect = async () => {
     if (!orgData?.organization?.id) {
@@ -87,7 +96,7 @@ export function DashboardHome() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -200,6 +209,7 @@ export function DashboardHome() {
                   key={project.id}
                   to="/dashboard/projects/$projectId"
                   params={{ projectId: project.id }}
+                  onMouseEnter={() => handlePrefetch(project.id)}
                   className="flex items-center gap-4 px-4 py-3 hover:bg-muted/30 transition-colors group"
                 >
                   <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

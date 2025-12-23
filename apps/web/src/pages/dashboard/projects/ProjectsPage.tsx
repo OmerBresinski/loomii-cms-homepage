@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { projectListQuery } from "@/lib/queries";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { projectListQuery, projectDetailQuery, projectPagesQuery, analysisStatusQuery, sectionListQuery } from "@/lib/queries";
 import { useOrganization } from "@clerk/clerk-react";
 import {
   IconPlus,
@@ -15,13 +15,22 @@ import { cn } from "@/lib/utils";
 
 export function ProjectsPage() {
   const { organization } = useOrganization();
+  const queryClient = useQueryClient();
   const { data: projectsData, isLoading } = useQuery(projectListQuery());
   const projects = projectsData?.projects ?? [];
+
+  const handlePrefetch = (projectId: string) => {
+    const staleTime = 60000;
+    queryClient.prefetchQuery({ ...projectDetailQuery(projectId), staleTime });
+    queryClient.prefetchQuery({ ...projectPagesQuery(projectId), staleTime });
+    queryClient.prefetchQuery({ ...analysisStatusQuery(projectId), staleTime });
+    queryClient.prefetchQuery({ ...sectionListQuery(projectId), staleTime });
+  };
 
   if (!organization) return null;
 
   return (
-    <div className="p-6 space-y-6 min-h-screen">
+    <div className="p-8 space-y-6 min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -71,6 +80,7 @@ export function ProjectsPage() {
                 key={project.id}
                 to="/dashboard/projects/$projectId"
                 params={{ projectId: project.id }}
+                onMouseEnter={() => handlePrefetch(project.id)}
                 className={cn(
                   "flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors group"
                 )}

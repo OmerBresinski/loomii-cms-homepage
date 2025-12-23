@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { projectDetailQuery, analysisStatusQuery, projectPagesQuery, queryKeys } from "@/lib/queries";
+import { projectDetailQuery, analysisStatusQuery, projectPagesQuery, sectionListQuery, queryKeys } from "@/lib/queries";
 import { useTriggerAnalysis, useCancelAnalysis } from "@/lib/mutations";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
@@ -69,13 +69,7 @@ export function ProjectDetailPage() {
   });
 
   const { data: sectionsData } = useQuery({
-    queryKey: ["project", projectId, "sections"],
-    queryFn: async () => {
-      const response = await apiFetch<{ sections: any[] }>(
-        `/projects/${projectId}/sections`
-      );
-      return response.sections;
-    },
+    ...sectionListQuery(projectId),
     enabled: isReady,
   });
 
@@ -85,7 +79,7 @@ export function ProjectDetailPage() {
   const effectiveSelectedPage = selectedPage ?? pages[0]?.pageRoute ?? null;
 
   const project = projectData?.project;
-  const sections = sectionsData || [];
+  const sections = sectionsData?.sections || [];
 
   // Mutations
   const triggerAnalysis = useTriggerAnalysis(projectId);
@@ -123,7 +117,7 @@ export function ProjectDetailPage() {
   ) {
     setWasAnalyzingState(false);
     queryClient.invalidateQueries({
-      queryKey: ["project", projectId, "sections"],
+      queryKey: queryKeys.sectionList(projectId),
     });
     queryClient.invalidateQueries({
       queryKey: [...queryKeys.projectDetail(projectId), "pages"],
@@ -348,7 +342,7 @@ export function ProjectDetailPage() {
       </div>
 
       {isAnalyzingEffective && (
-        <Card className="bg-primary/5 border-primary/20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-500">
+        <Card className="bg-primary/5 border-primary/20 overflow-hidden">
           <CardContent className="pt-6">
             <div className="space-y-4">
               <div className="flex justify-between text-sm font-bold">
@@ -404,7 +398,7 @@ export function ProjectDetailPage() {
             },
           ];
           return (
-            <Card className="animate-in fade-in duration-500">
+            <Card>
               <CardContent className="p-0">
                 <div className="flex items-center h-18">
                   {stats.map((stat, index) => (
@@ -435,7 +429,7 @@ export function ProjectDetailPage() {
 
       {/* Content Area - hide during analysis */}
       {isReady && !isAnalyzingEffective ? (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
+        <div className="space-y-6">
           <InputGroup className="flex-1">
             <InputGroupAddon>
               <InputGroupText>
@@ -477,7 +471,7 @@ export function ProjectDetailPage() {
         </div>
       ) : (
         !isAnalyzingEffective && (
-          <Empty className="py-16 border animate-in fade-in duration-500">
+          <Empty className="py-16 border">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <IconRefresh className="w-4 h-4" />
