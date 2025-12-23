@@ -65,140 +65,6 @@ export function SettingsPage() {
 
   const clerkAppearance = {
     baseTheme: dark,
-    variables: {
-      colorPrimary: "oklch(0.645 0.246 16.439)",
-      colorDanger: "oklch(0.704 0.191 22.216)",
-      colorSuccess: "oklch(0.696 0.17 162.48)",
-      colorWarning: "oklch(0.769 0.188 70.08)",
-      colorBackground: "oklch(0.216 0.006 56.043)",
-      colorInputBackground: "oklch(0.268 0.007 34.298)",
-      colorInputText: "oklch(0.985 0.001 106.423)",
-      colorText: "oklch(0.985 0.001 106.423)",
-      colorTextSecondary: "oklch(0.709 0.01 56.259)",
-      borderRadius: "0.45rem",
-      fontFamily: "'Geist Sans', sans-serif",
-      fontSize: "14px",
-    },
-    elements: {
-      // Root & Card
-      rootBox: "w-full max-w-none",
-      cardBox: "shadow-none border-0 bg-transparent p-0 w-full max-w-none",
-      card: "shadow-none border-0 bg-transparent p-0 w-full max-w-none",
-
-      // Navigation
-      navbar: "hidden",
-      navbarMobileMenuButton: "hidden",
-      breadcrumbs: "hidden",
-
-      // Headers
-      headerTitle: "hidden",
-      headerSubtitle: "hidden",
-      header: "hidden",
-
-      // Page layout
-      pageScrollBox: "p-0 w-full max-w-none",
-      page: "gap-8 w-full max-w-none",
-
-      // Profile sections
-      profileSection: "gap-4 p-0",
-      profileSectionTitle: "pb-2 border-b border-border/50",
-      profileSectionTitleText: "text-sm font-semibold text-foreground uppercase tracking-wide",
-      profileSectionSubtitle: "text-muted-foreground text-sm",
-      profileSectionContent: "gap-3 pt-4",
-      profileSectionPrimaryButton: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-medium",
-
-      // Profile page specific
-      profilePage: "p-0 gap-8",
-
-      // Accordion (expandable sections)
-      accordionTriggerButton: "hover:bg-muted/50 rounded-lg px-4 py-3 border border-border/50 bg-card/50",
-      accordionContent: "px-4 py-4 border border-t-0 border-border/50 rounded-b-lg bg-card/30",
-
-      // Form elements
-      formFieldLabel: "text-sm font-medium text-foreground mb-1.5",
-      formFieldInput: "bg-muted/30 border-border/50 text-foreground rounded-lg h-10 px-3 focus:border-primary focus:ring-1 focus:ring-primary/20",
-      formFieldInputShowPasswordButton: "text-muted-foreground hover:text-foreground",
-      formFieldHintText: "text-muted-foreground text-xs mt-1",
-      formFieldErrorText: "text-destructive text-xs mt-1",
-      formFieldWarningText: "text-amber-500 text-xs mt-1",
-      formFieldSuccessText: "text-emerald-500 text-xs mt-1",
-
-      // Buttons
-      formButtonPrimary: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-medium h-10 px-4",
-      formButtonReset: "text-muted-foreground hover:text-foreground",
-      buttonArrowIcon: "text-primary-foreground",
-
-      // User/Org buttons and items
-      userButtonBox: "rounded-lg",
-      userButtonTrigger: "rounded-lg",
-      userButtonAvatarBox: "rounded-lg",
-      organizationSwitcherTrigger: "rounded-lg",
-
-      // Avatars
-      avatarBox: "rounded-lg border border-border/30",
-      avatarImage: "rounded-lg",
-
-      // Badges
-      badge: "bg-primary/10 text-primary border-0 rounded-md text-xs font-medium px-2 py-0.5",
-
-      // Tables & Lists
-      tableHead: "text-muted-foreground text-xs font-semibold uppercase tracking-wide border-b border-border/50 pb-3",
-      tableRow: "border-b border-border/30",
-
-      // Members list
-      membersPageInviteButton: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg",
-      membersList: "gap-2",
-      membersListItem: "p-3 rounded-lg hover:bg-muted/30 border border-transparent hover:border-border/50 transition-all",
-      membersListItemActions: "gap-2",
-
-      // Invitations
-      inviteMembersFormButtonPrimary: "bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg",
-
-      // Modals & Popovers (for nested modals)
-      modalBackdrop: "bg-background/80 backdrop-blur-sm",
-      modalContent: "bg-card border border-border rounded-xl shadow-2xl",
-      modalCloseButton: "text-muted-foreground hover:text-foreground",
-
-      // Action cards
-      actionCard: "border border-border/50 rounded-lg p-4 hover:bg-muted/20 transition-colors",
-
-      // Destructive actions
-      formFieldAction__danger: "text-destructive hover:text-destructive/80",
-
-      // Footer
-      footer: "hidden",
-      footerAction: "hidden",
-      footerActionLink: "text-primary hover:text-primary/80",
-
-      // Powered by Clerk badge
-      internal: "hidden",
-
-      // Scrollbar
-      scrollBox: "scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent",
-
-      // Active states
-      navbarButton__active: "bg-primary/10 text-primary",
-
-      // Select/Dropdown
-      selectButton: "bg-muted/30 border-border/50 rounded-lg h-10",
-      selectOptionsContainer: "bg-card border border-border rounded-lg shadow-xl",
-      selectOption: "hover:bg-muted/50 px-3 py-2",
-
-      // Phone input
-      phoneInputBox: "bg-muted/30 border-border/50 rounded-lg",
-
-      // Verification
-      otpCodeFieldInput: "bg-muted/30 border-border/50 rounded-lg text-center font-mono",
-
-      // Alert
-      alert: "bg-muted/30 border border-border/50 rounded-lg p-4",
-      alertText: "text-foreground text-sm",
-
-      // Identity preview
-      identityPreview: "bg-muted/30 border border-border/50 rounded-lg p-3",
-      identityPreviewText: "text-foreground font-medium",
-      identityPreviewEditButton: "text-primary hover:text-primary/80 text-sm",
-    },
   };
 
   return (
@@ -277,21 +143,17 @@ export function SettingsPage() {
         )}
 
         {activeTab === "organization" && (
-          <div className="[&_.cl-profilePage]:p-0">
-            <OrganizationProfile
-              appearance={clerkAppearance}
-              routing="hash"
-            />
-          </div>
+          <OrganizationProfile
+            appearance={clerkAppearance}
+            routing="hash"
+          />
         )}
 
         {activeTab === "account" && (
-          <div className="[&_.cl-profilePage]:p-0">
-            <UserProfile
-              appearance={clerkAppearance}
-              routing="hash"
-            />
-          </div>
+          <UserProfile
+            appearance={clerkAppearance}
+            routing="hash"
+          />
         )}
       </div>
     </div>

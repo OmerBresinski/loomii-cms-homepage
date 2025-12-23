@@ -424,9 +424,12 @@ YOUR TASK:
 3. Give each element a role-based title (NOT its content)
 
 SECTION NAMING RULES:
-- Use descriptive names like "Hero Section", "Navigation Menu", "Feature Cards", "Contact Form"
+- Use descriptive names like "Hero", "Navigation", "Features", "Footer", "Benefits"
 - Section names should describe WHAT the section IS
-- Keep names to 2-4 words
+- Keep names to 1-3 words
+- DO NOT include page type prefixes like "Landing Page", "Pitch Deck", "Homepage" etc.
+- BAD: "Landing Page Hero", "Pitch Deck Features"
+- GOOD: "Hero", "Features"
 
 ELEMENT TITLE RULES (CRITICAL):
 - Titles describe the element's ROLE, not its content
@@ -608,17 +611,17 @@ function generateSectionName(elements: RawElement[], index: number): string {
 
   // Generate contextual names based on content types
   if (hasHeadings && hasButtons) {
-    return index === 0 ? "Hero Section" : `Call to Action ${index}`;
+    return index === 0 ? "Hero" : `CTA ${index}`;
   }
   if (hasLinks && !hasHeadings && !hasParagraphs) {
     return index === 0 ? "Navigation" : `Links ${index}`;
   }
   if (hasParagraphs && !hasButtons) {
-    return index === 0 ? "Content" : `Content Block ${index}`;
+    return index === 0 ? "Content" : `Content ${index}`;
   }
 
   // Default fallback with better naming
-  const sectionTypes = ["Header", "Main Content", "Features", "Details", "Footer"];
+  const sectionTypes = ["Header", "Content", "Features", "Details", "Footer"];
   return sectionTypes[index % sectionTypes.length] || `Section ${index + 1}`;
 }
 
