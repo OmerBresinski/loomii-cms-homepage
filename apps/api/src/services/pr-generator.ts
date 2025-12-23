@@ -5,6 +5,8 @@ import {
   updateFile,
   createPullRequest,
 } from "./github";
+import { applyEditWithAI } from "./ai-code-editor";
+import { logger } from "../ai/logger";
 import type { Element, Edit } from "@prisma/client";
 
 interface CodeChange {
@@ -31,7 +33,7 @@ export function generateBranchName(projectName: string): string {
   return `cms-update-${slug}-${timestamp}`;
 }
 
-// Generate a code change for a single edit
+// Generate a code change for a single edit using AI
 export async function generateCodeChange(
   element: Element,
   edit: Edit,
@@ -41,9 +43,11 @@ export async function generateCodeChange(
 
   // If we don't have source file info, we can't generate a change
   if (!element.sourceFile) {
-    console.warn(`No source file for element ${element.id}`);
+    logger.pr.aiEdit("failed", `No source file for element ${element.id}`);
     return null;
   }
+
+  logger.pr.editStart(element.name, element.sourceFile);
 
   try {
     // Get the current file content
@@ -57,29 +61,52 @@ export async function generateCodeChange(
 
     const content = decodeFileContent(fileData.content);
 
-    // Find and replace the old value with the new value
-    // This is a simple implementation - in production, we'd use AST parsing
     const oldValue = edit.oldValue || element.currentValue;
     if (!oldValue) {
-      console.warn(`No old value for element ${element.id}`);
+      logger.pr.aiEdit("failed", "No old value to replace");
       return null;
     }
 
-    if (!content.includes(oldValue)) {
-      console.warn(`Could not find content "${oldValue}" in ${element.sourceFile}`);
-      return null;
+    logger.pr.editChange(oldValue, edit.newValue);
+    logger.pr.aiEdit("start");
+
+    // Use AI to apply the edit - more robust than simple string replacement
+    const aiResult = await applyEditWithAI(content, element.sourceFile, {
+      elementName: element.name,
+      elementType: element.type,
+      oldValue,
+      newValue: edit.newValue,
+      oldHref: (element as any).href || undefined,
+      newHref: (edit as any).newHref || undefined,
+      sourceLine: element.sourceLine || undefined,
+    });
+
+    if (!aiResult.success) {
+      logger.pr.aiEdit("fallback", aiResult.error);
+      // Fallback to simple string replacement
+      if (!content.includes(oldValue)) {
+        logger.pr.aiEdit("failed", `Content not found in ${element.sourceFile}`);
+        return null;
+      }
+      const fallbackContent = content.replace(oldValue, edit.newValue);
+      return {
+        filePath: element.sourceFile,
+        oldContent: content,
+        newContent: fallbackContent,
+        description: `Update ${element.name}: "${oldValue.slice(0, 50)}..." → "${edit.newValue.slice(0, 50)}..."`,
+      };
     }
 
-    const newContent = content.replace(oldValue, edit.newValue);
+    logger.pr.aiEdit("success", aiResult.changedLine?.toString());
 
     return {
       filePath: element.sourceFile,
       oldContent: content,
-      newContent,
+      newContent: aiResult.newContent,
       description: `Update ${element.name}: "${oldValue.slice(0, 50)}..." → "${edit.newValue.slice(0, 50)}..."`,
     };
   } catch (error) {
-    console.error(`Failed to generate change for element ${element.id}:`, error);
+    logger.pr.aiEdit("failed", error instanceof Error ? error.message : "Unknown error");
     return null;
   }
 }
@@ -127,66 +154,81 @@ export async function createContentPR(
   options: PRGeneratorOptions
 ): Promise<{ prNumber: number; prUrl: string; branchName: string }> {
   const { accessToken, owner, repo, baseBranch } = options;
+  const startTime = Date.now();
+
+  logger.pr.start(projectName, changes.length);
 
   if (changes.length === 0) {
+    logger.pr.error("No changes to commit");
     throw new Error("No changes to commit");
   }
 
-  // Create a new branch
-  const branchName = generateBranchName(projectName);
-  await createBranch(accessToken, owner, repo, branchName, baseBranch);
+  try {
+    // Create a new branch
+    const branchName = generateBranchName(projectName);
+    logger.pr.github("Creating branch", branchName);
+    await createBranch(accessToken, owner, repo, branchName, baseBranch);
 
-  // Get the SHA for each file and commit changes
-  for (const change of changes) {
-    const fileData = await getFileContent(
+    // Get the SHA for each file and commit changes
+    for (const change of changes) {
+      const fileData = await getFileContent(
+        accessToken,
+        owner,
+        repo,
+        change.filePath,
+        baseBranch
+      );
+
+      logger.pr.github("Committing", change.filePath);
+      await updateFile(
+        accessToken,
+        owner,
+        repo,
+        change.filePath,
+        change.newContent,
+        `[AI CMS] ${change.description.split("\n")[0]}`,
+        branchName,
+        fileData.sha
+      );
+      logger.pr.fileChange(change.filePath, "modified");
+    }
+
+    // Build PR body
+    const changesMarkdown = changes
+      .map(
+        (c) =>
+          `### \`${c.filePath}\`\n${c.description
+            .split("\n")
+            .map((d) => `- ${d}`)
+            .join("\n")}`
+      )
+      .join("\n\n");
+
+    const fullDescription = `${prDescription}\n\n## Changes\n\n${changesMarkdown}\n\n---\n*Created by [AI CMS](https://github.com)*`;
+
+    // Create the pull request
+    logger.pr.github("Creating pull request");
+    const pr = await createPullRequest(
       accessToken,
       owner,
       repo,
-      change.filePath,
+      prTitle,
+      fullDescription,
+      branchName,
       baseBranch
     );
 
-    await updateFile(
-      accessToken,
-      owner,
-      repo,
-      change.filePath,
-      change.newContent,
-      `[AI CMS] ${change.description.split("\n")[0]}`,
+    logger.pr.complete(pr.number, pr.html_url, Date.now() - startTime);
+
+    return {
+      prNumber: pr.number,
+      prUrl: pr.html_url,
       branchName,
-      fileData.sha
-    );
+    };
+  } catch (error) {
+    logger.pr.error("GitHub API error", error instanceof Error ? error : undefined);
+    throw error;
   }
-
-  // Build PR body
-  const changesMarkdown = changes
-    .map(
-      (c) =>
-        `### \`${c.filePath}\`\n${c.description
-          .split("\n")
-          .map((d) => `- ${d}`)
-          .join("\n")}`
-    )
-    .join("\n\n");
-
-  const fullDescription = `${prDescription}\n\n## Changes\n\n${changesMarkdown}\n\n---\n*Created by [AI CMS](https://github.com)*`;
-
-  // Create the pull request
-  const pr = await createPullRequest(
-    accessToken,
-    owner,
-    repo,
-    prTitle,
-    fullDescription,
-    branchName,
-    baseBranch
-  );
-
-  return {
-    prNumber: pr.number,
-    prUrl: pr.html_url,
-    branchName,
-  };
 }
 
 // Generate a PR title from edits

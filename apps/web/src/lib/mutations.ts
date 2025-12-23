@@ -121,7 +121,7 @@ export function useCreateEdit(projectId: string) {
   });
 }
 
-// Submit edits mutation (creates PR)
+// Submit edits mutation (creates PR from existing Edit records)
 export function useSubmitEdits(projectId: string) {
   const queryClient = useQueryClient();
 
@@ -140,6 +140,44 @@ export function useSubmitEdits(projectId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.edits(projectId) });
+    },
+  });
+}
+
+// Publish edits mutation (creates Edit records + PR in one call)
+// This is the main mutation for the Review page "Publish" button
+export function usePublishEdits(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      edits: Array<{
+        elementId: string;
+        originalValue: string;
+        newValue: string;
+        originalHref?: string;
+        newHref?: string;
+      }>;
+    }) => {
+      return apiFetch<{
+        pullRequest: {
+          id: string;
+          githubPrNumber: number;
+          githubPrUrl: string;
+          title: string;
+          branchName: string;
+          status: string;
+          editCount: number;
+          createdAt: string;
+        };
+      }>(`/projects/${projectId}/edits/publish`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.edits(projectId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projectDetail(projectId) });
     },
   });
 }

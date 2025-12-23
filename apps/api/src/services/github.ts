@@ -166,22 +166,36 @@ export async function getFileContent(
   path: string,
   ref = "main"
 ): Promise<GitHubFileContent> {
-  const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${ref}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": GITHUB_API_VERSION,
-      },
-    }
-  );
+  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${ref}`;
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": GITHUB_API_VERSION,
+    },
+  });
 
   if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`GitHub getFileContent failed:`, {
+      status: response.status,
+      statusText: response.statusText,
+      url,
+      ref,
+      error: errorBody,
+    });
+
     if (response.status === 404) {
-      throw new Error("File not found");
+      throw new Error(`File not found: ${path} (ref: ${ref})`);
     }
-    throw new Error("Failed to get file content");
+    if (response.status === 401) {
+      throw new Error(`GitHub auth failed - token may be expired`);
+    }
+    if (response.status === 403) {
+      throw new Error(`GitHub access denied - check repo permissions`);
+    }
+    throw new Error(`GitHub API error ${response.status}: ${errorBody.slice(0, 200)}`);
   }
 
   return response.json() as Promise<GitHubFileContent>;

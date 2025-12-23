@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import {
   createEditSchema,
   submitEditSchema,
+  publishEditsSchema,
   paginationSchema,
 } from "../lib/schemas";
 import { z } from "zod";
@@ -219,7 +220,10 @@ export const editRoutes = new Hono()
 
       // Get project and edits
       const [project, edits] = await Promise.all([
-        prisma.project.findUnique({ where: { id: projectId } }),
+        prisma.project.findUnique({
+          where: { id: projectId },
+          include: { organization: true },
+        }),
         prisma.edit.findMany({
           where: {
             id: { in: input.editIds },
@@ -232,6 +236,10 @@ export const editRoutes = new Hono()
 
       if (!project) {
         return c.json({ error: "Project not found" }, 404);
+      }
+
+      if (!project.organization.githubAccessToken) {
+        return c.json({ error: "GitHub not connected. Please reconnect GitHub in settings." }, 400);
       }
 
       if (edits.length !== input.editIds.length) {
@@ -252,7 +260,7 @@ export const editRoutes = new Hono()
         const changes = await generateAllChanges(
           edits.map((e) => ({ edit: e, element: e.element })),
           {
-            accessToken: user.githubAccessToken,
+            accessToken: project.organization.githubAccessToken,
             owner,
             repo,
             baseBranch: project.githubBranch,
@@ -280,7 +288,7 @@ export const editRoutes = new Hono()
           prTitle,
           prDescription,
           {
-            accessToken: user.githubAccessToken,
+            accessToken: project.organization.githubAccessToken,
             owner,
             repo,
             baseBranch: project.githubBranch,
@@ -325,6 +333,178 @@ export const editRoutes = new Hono()
         );
       } catch (error) {
         console.error("Failed to create PR:", error);
+        return c.json(
+          {
+            error:
+              error instanceof Error ? error.message : "Failed to create PR",
+          },
+          500
+        );
+      }
+    }
+  )
+
+  // Publish edits directly (creates Edit records + PR in one call)
+  // This endpoint accepts pending edits from the frontend and creates a PR
+  .post(
+    "/publish",
+    requireAuth,
+    requireProjectAccess("editor"),
+    zValidator("json", publishEditsSchema),
+    async (c) => {
+      const projectId = c.req.param("projectId");
+      const user = c.get("user");
+      const input = c.req.valid("json");
+
+      // Get project with organization (for GitHub token)
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        include: { organization: true },
+      });
+
+      if (!project) {
+        return c.json({ error: "Project not found" }, 404);
+      }
+
+      if (!project.organization.githubAccessToken) {
+        return c.json({ error: "GitHub not connected. Please reconnect GitHub in settings." }, 400);
+      }
+
+      // Parse owner/repo
+      const [owner, repo] = project.githubRepo.split("/");
+      if (!owner || repo === undefined) {
+        return c.json({ error: "Invalid GitHub repo format" }, 400);
+      }
+
+      // Get all elements referenced by the edits
+      const elementIds = input.edits.map((e) => e.elementId);
+      const elements = await prisma.element.findMany({
+        where: {
+          id: { in: elementIds },
+          projectId,
+        },
+      });
+
+      // Create a map for quick lookup
+      const elementMap = new Map(elements.map((el) => [el.id, el]));
+
+      // Validate all elements exist and have source files
+      const missingElements = elementIds.filter((id) => !elementMap.has(id));
+      if (missingElements.length > 0) {
+        return c.json(
+          { error: `Elements not found: ${missingElements.join(", ")}` },
+          404
+        );
+      }
+
+      const elementsWithoutSource = elements.filter((el) => !el.sourceFile);
+      if (elementsWithoutSource.length > 0) {
+        return c.json(
+          {
+            error: `Elements missing source file info: ${elementsWithoutSource.map((el) => el.name).join(", ")}`,
+          },
+          400
+        );
+      }
+
+      try {
+        // Create Edit records in the database
+        const createdEdits = await prisma.$transaction(
+          input.edits.map((editInput) => {
+            const element = elementMap.get(editInput.elementId)!;
+            return prisma.edit.create({
+              data: {
+                elementId: editInput.elementId,
+                userId: user.id,
+                oldValue: editInput.originalValue,
+                newValue: editInput.newValue,
+                status: "draft",
+              },
+            });
+          })
+        );
+
+        // Build edit+element pairs for PR generation
+        const editElementPairs = createdEdits.map((edit) => ({
+          edit,
+          element: elementMap.get(edit.elementId)!,
+        }));
+
+        // Generate code changes
+        const changes = await generateAllChanges(editElementPairs, {
+          accessToken: project.organization.githubAccessToken,
+          owner,
+          repo,
+          baseBranch: project.githubBranch,
+        });
+
+        if (changes.length === 0) {
+          // Rollback: delete the created edits
+          await prisma.edit.deleteMany({
+            where: { id: { in: createdEdits.map((e) => e.id) } },
+          });
+          return c.json(
+            { error: "Could not generate any code changes. The content may not exist in the source files." },
+            400
+          );
+        }
+
+        // Generate PR title and description
+        const prTitle = generatePRTitle(editElementPairs);
+        const prDescription = generatePRDescription(editElementPairs);
+
+        // Create the PR
+        const { prNumber, prUrl, branchName } = await createContentPR(
+          project.name,
+          changes,
+          prTitle,
+          prDescription,
+          {
+            accessToken: project.organization.githubAccessToken,
+            owner,
+            repo,
+            baseBranch: project.githubBranch,
+          }
+        );
+
+        // Create PR record and update edits
+        const pullRequest = await prisma.pullRequest.create({
+          data: {
+            projectId,
+            userId: user.id,
+            githubPrNumber: prNumber,
+            githubPrUrl: prUrl,
+            title: prTitle,
+            description: prDescription,
+            status: "open",
+          },
+        });
+
+        await prisma.edit.updateMany({
+          where: { id: { in: createdEdits.map((e) => e.id) } },
+          data: {
+            status: "pending_review",
+            pullRequestId: pullRequest.id,
+          },
+        });
+
+        return c.json(
+          {
+            pullRequest: {
+              id: pullRequest.id,
+              githubPrNumber: prNumber,
+              githubPrUrl: prUrl,
+              title: prTitle,
+              branchName,
+              status: "open",
+              editCount: createdEdits.length,
+              createdAt: pullRequest.createdAt.toISOString(),
+            },
+          },
+          201
+        );
+      } catch (error) {
+        console.error("Failed to publish edits:", error);
         return c.json(
           {
             error:

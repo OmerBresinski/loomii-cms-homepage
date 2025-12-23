@@ -93,5 +93,66 @@ export const logger = {
       }
     },
   },
+
+  // PR generation logging
+  pr: {
+    start: (projectName: string, editCount: number) => {
+      console.log(
+        `\n${COLORS.bright}${COLORS.magenta}━━━ PR GENERATION: ${projectName} ━━━${COLORS.reset}`
+      );
+      console.log(`${COLORS.dim}${timestamp()}${COLORS.reset}`);
+      console.log(`${COLORS.dim}Edits to process: ${editCount}${COLORS.reset}`);
+    },
+    editStart: (elementName: string, filePath: string) => {
+      console.log(`\n${COLORS.blue}▶ Processing: ${elementName}${COLORS.reset}`);
+      console.log(`  ${COLORS.dim}File: ${filePath}${COLORS.reset}`);
+    },
+    editChange: (oldValue: string, newValue: string) => {
+      const oldPreview = oldValue.length > 50 ? oldValue.slice(0, 50) + "..." : oldValue;
+      const newPreview = newValue.length > 50 ? newValue.slice(0, 50) + "..." : newValue;
+      console.log(`  ${COLORS.red}- "${oldPreview}"${COLORS.reset}`);
+      console.log(`  ${COLORS.green}+ "${newPreview}"${COLORS.reset}`);
+    },
+    aiEdit: (status: "start" | "success" | "fallback" | "failed", details?: string) => {
+      switch (status) {
+        case "start":
+          console.log(`  ${COLORS.yellow}🤖 AI editing...${COLORS.reset}`);
+          break;
+        case "success":
+          console.log(`  ${COLORS.green}✓ AI edit applied${COLORS.reset}${details ? ` ${COLORS.dim}(line ${details})${COLORS.reset}` : ""}`);
+          break;
+        case "fallback":
+          console.log(`  ${COLORS.yellow}⚠ AI failed, using string replacement${COLORS.reset}`);
+          if (details) console.log(`    ${COLORS.dim}Reason: ${details}${COLORS.reset}`);
+          break;
+        case "failed":
+          console.log(`  ${COLORS.red}✗ Edit failed${COLORS.reset}`);
+          if (details) console.log(`    ${COLORS.dim}Reason: ${details}${COLORS.reset}`);
+          break;
+      }
+    },
+    fileChange: (filePath: string, status: "added" | "modified") => {
+      const icon = status === "added" ? "+" : "~";
+      const color = status === "added" ? COLORS.green : COLORS.yellow;
+      console.log(`  ${color}${icon} ${filePath}${COLORS.reset}`);
+    },
+    github: (action: string, details?: string) => {
+      console.log(`  ${COLORS.cyan}⬆ GitHub: ${action}${COLORS.reset}${details ? ` ${COLORS.dim}(${details})${COLORS.reset}` : ""}`);
+    },
+    complete: (prNumber: number, prUrl: string, durationMs: number) => {
+      console.log(
+        `\n${COLORS.green}✓ PR CREATED: #${prNumber}${COLORS.reset} ${COLORS.dim}(${formatDuration(durationMs)})${COLORS.reset}`
+      );
+      console.log(`  ${COLORS.dim}${prUrl}${COLORS.reset}`);
+      console.log(`${COLORS.magenta}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${COLORS.reset}\n`);
+    },
+    error: (message: string, error?: Error) => {
+      console.log(`\n${COLORS.red}✗ PR GENERATION FAILED${COLORS.reset}`);
+      console.log(`  ${COLORS.red}${message}${COLORS.reset}`);
+      if (error?.stack) {
+        console.log(`  ${COLORS.dim}${error.stack}${COLORS.reset}`);
+      }
+    },
+  },
 };
 

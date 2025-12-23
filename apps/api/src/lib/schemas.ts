@@ -78,6 +78,17 @@ export const submitEditSchema = z.object({
   prDescription: z.string().optional(),
 });
 
+// Schema for creating PR directly from pending edits (without pre-creating Edit records)
+export const publishEditsSchema = z.object({
+  edits: z.array(z.object({
+    elementId: z.string().uuid(),
+    originalValue: z.string(),
+    newValue: z.string(),
+    originalHref: z.string().optional(),
+    newHref: z.string().optional(),
+  })).min(1),
+});
+
 export const inviteTeamMemberSchema = z.object({
   email: z.string().email(),
   role: teamRoleSchema,
@@ -103,6 +114,7 @@ export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 export type CreateEditInput = z.infer<typeof createEditSchema>;
 export type SubmitEditInput = z.infer<typeof submitEditSchema>;
+export type PublishEditsInput = z.infer<typeof publishEditsSchema>;
 export type InviteTeamMemberInput = z.infer<typeof inviteTeamMemberSchema>;
 export type UpdateTeamMemberInput = z.infer<typeof updateTeamMemberSchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;

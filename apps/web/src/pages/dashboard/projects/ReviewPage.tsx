@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { projectDetailQuery } from "@/lib/queries";
+import { usePublishEdits } from "@/lib/mutations";
 import { useProjectContext, type PendingEdit } from "./context/ProjectContext";
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
@@ -10,9 +11,13 @@ import {
   IconArrowLeft,
   IconFile,
   IconGitPullRequest,
+  IconLoader2,
+  IconCheck,
+  IconExternalLink,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { toast } from "sonner";
 
 // Parse source context to get individual lines with their numbers
 function parseSourceContext(context: string): Array<{ lineNum: number; content: string }> {
@@ -210,23 +215,76 @@ function highlightChange(line: string, change: string, type: "removed" | "added"
 export function ReviewPage() {
   const { projectId } = useParams({ from: "/dashboard/projects/$projectId/review" });
   const navigate = useNavigate();
-  const { editCount, getEditsByFile, clearAllEdits } = useProjectContext();
+  const { editCount, getEditsByFile, clearAllEdits, pendingEdits } = useProjectContext();
+  const [createdPR, setCreatedPR] = useState<{ url: string; number: number } | null>(null);
 
   const { data: projectData } = useQuery(projectDetailQuery(projectId));
   const project = projectData?.project;
 
+  const publishEdits = usePublishEdits(projectId);
+
   const editsByFile = getEditsByFile();
   const files = Array.from(editsByFile.keys()).sort();
 
-  const handleCreatePR = () => {
-    // TODO: Implement PR creation
-    console.log("Creating PR with edits:", editsByFile);
-    alert("PR creation coming soon!");
+  const handlePublish = () => {
+    // Convert pending edits to the format expected by the API
+    const editsArray = Array.from(pendingEdits.values()).map((edit) => ({
+      elementId: edit.elementId,
+      originalValue: edit.originalValue,
+      newValue: edit.newValue,
+      originalHref: edit.originalHref,
+      newHref: edit.newHref,
+    }));
+
+    publishEdits.mutate(
+      { edits: editsArray },
+      {
+        onSuccess: (data) => {
+          setCreatedPR({
+            url: data.pullRequest.githubPrUrl,
+            number: data.pullRequest.githubPrNumber,
+          });
+          clearAllEdits();
+          toast.success(`Pull request #${data.pullRequest.githubPrNumber} created!`);
+        },
+        onError: (error) => {
+          toast.error(error instanceof Error ? error.message : "Failed to create PR");
+        },
+      }
+    );
   };
 
   const handleGoBack = () => {
     navigate({ to: `/dashboard/projects/${projectId}` });
   };
+
+  if (createdPR) {
+    return (
+      <div className="p-6 min-h-screen">
+        <div className="text-center py-16">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-green-500/10 flex items-center justify-center">
+            <IconCheck className="w-8 h-8 text-green-500" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Pull Request Created!</h2>
+          <p className="text-muted-foreground mb-6">
+            Your changes have been published as PR #{createdPR.number}
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Button onClick={handleGoBack} variant="outline">
+              <IconArrowLeft className="w-4 h-4 mr-2" />
+              Back to Project
+            </Button>
+            <Button asChild>
+              <a href={createdPR.url} target="_blank" rel="noopener noreferrer">
+                <IconExternalLink className="w-4 h-4 mr-2" />
+                View on GitHub
+              </a>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (editCount === 0) {
     return (
@@ -283,9 +341,13 @@ export function ReviewPage() {
             <Button variant="outline" onClick={clearAllEdits}>
               Discard All
             </Button>
-            <Button onClick={handleCreatePR}>
-              <IconGitPullRequest className="w-4 h-4 mr-2" />
-              Create Pull Request
+            <Button onClick={handlePublish} disabled={publishEdits.isPending}>
+              {publishEdits.isPending ? (
+                <IconLoader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <IconGitPullRequest className="w-4 h-4 mr-2" />
+              )}
+              {publishEdits.isPending ? "Publishing..." : "Publish"}
             </Button>
           </div>
         </div>
@@ -335,9 +397,13 @@ export function ReviewPage() {
             <Button variant="outline" onClick={clearAllEdits}>
               Discard All
             </Button>
-            <Button onClick={handleCreatePR} size="lg">
-              <IconGitPullRequest className="w-4 h-4 mr-2" />
-              Create Pull Request
+            <Button onClick={handlePublish} size="lg" disabled={publishEdits.isPending}>
+              {publishEdits.isPending ? (
+                <IconLoader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <IconGitPullRequest className="w-4 h-4 mr-2" />
+              )}
+              {publishEdits.isPending ? "Publishing..." : "Publish"}
             </Button>
           </div>
         </div>
