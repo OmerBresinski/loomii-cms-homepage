@@ -21,7 +21,7 @@ export function ProjectsPage() {
   if (!organization) return null;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6 min-h-screen">
+    <div className="p-6 space-y-6 min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

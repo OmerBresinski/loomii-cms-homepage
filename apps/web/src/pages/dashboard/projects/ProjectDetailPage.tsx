@@ -510,7 +510,7 @@ export function ProjectDetailPage() {
 
 function ProjectDetailSkeleton() {
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8 animate-pulse">
+    <div className="p-6 space-y-6 animate-pulse">
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Skeleton className="h-4 w-16" />

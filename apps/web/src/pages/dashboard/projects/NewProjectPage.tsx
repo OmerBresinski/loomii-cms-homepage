@@ -103,7 +103,7 @@ export function NewProjectPage() {
   const hasGitHubConnected = orgData?.organization?.hasGitHubConnected;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-10">
+    <div className="p-6 space-y-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight">Create Project</h1>
         <p className="text-muted-foreground">Analyze a repository to start managing its content.</p>

@@ -16,6 +16,7 @@ import { editRoutes } from "./routes/edits";
 import { analysisRoutes } from "./routes/analysis";
 import { teamRoutes } from "./routes/team";
 import { healthRoutes } from "./routes/health";
+import { dashboardRoutes } from "./routes/dashboard";
 
 // Create the main Hono app
 const app = new Hono();
@@ -56,6 +57,7 @@ const routes = app
   .route("/auth", authRoutes)
   .route("/organizations", organizationRoutes)
   .route("/github", githubRoutes)
+  .route("/dashboard", dashboardRoutes)
   .route("/projects", projectRoutes)
   .route("/projects/:projectId/elements", elementRoutes)
   .route("/projects/:projectId/sections", sectionRoutes)

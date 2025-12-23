@@ -6,4 +6,5 @@ export * from "@/api/useElements";
 export * from "@/api/useSections";
 export * from "@/api/useEdits";
 export * from "@/api/useAnalysis";
+export * from "@/api/useDashboard";
 
