@@ -360,32 +360,31 @@ export interface AnalysisResult {
 }
 
 // Generate a reasonable name for an element based on its type and content (fallback)
-function generateElementName(type: string, content: string): string {
-  const truncated =
-    content.length > 40 ? content.slice(0, 37) + "..." : content;
-
+// Names should be short, descriptive role-based titles WITHOUT the content itself
+function generateElementName(type: string, content: string, index: number = 0): string {
+  // Create a clean, role-based name without echoing the content
   switch (type) {
     case "heading-h1":
-      return `Main Heading: ${truncated}`;
+      return "Main Headline";
     case "heading-h2":
-      return `Section Heading: ${truncated}`;
+      return index === 0 ? "Section Title" : `Section Title ${index + 1}`;
     case "heading-h3":
     case "heading-h4":
     case "heading-h5":
     case "heading-h6":
-      return `Subheading: ${truncated}`;
+      return index === 0 ? "Subheading" : `Subheading ${index + 1}`;
     case "paragraph":
-      return `Text: ${truncated}`;
+      return index === 0 ? "Description" : `Paragraph ${index + 1}`;
     case "button":
-      return `Button: ${truncated}`;
+      return index === 0 ? "Primary Button" : `Button ${index + 1}`;
     case "link":
-      return `Link: ${truncated}`;
+      return index === 0 ? "Link" : `Link ${index + 1}`;
     case "image-alt":
-      return `Image Alt: ${truncated}`;
+      return index === 0 ? "Image Description" : `Image ${index + 1}`;
     case "attribute":
-      return `Attribute: ${truncated}`;
+      return index === 0 ? "Attribute" : `Attribute ${index + 1}`;
     default:
-      return `Content: ${truncated}`;
+      return index === 0 ? "Text Content" : `Text ${index + 1}`;
   }
 }
 
@@ -414,60 +413,54 @@ async function groupElementsWithAI(
     `  Sending ${elementsForAI.length} elements to AI for grouping...`
   );
 
-  const prompt = `You are analyzing a website's content elements to group them into logical sections.
+  const prompt = `Analyze these website content elements and group them into logical sections.
 
-Here are all the content elements found, sorted by their position in the file (top to bottom):
-
+ELEMENTS (sorted by position, top to bottom):
 ${JSON.stringify(elementsForAI, null, 2)}
 
-Group these elements into logical UI sections. Each section should represent a distinct part of the UI like:
-- Site header/title
-- Navigation menu
-- Hero section
-- Feature cards
-- Testimonials
-- Footer
-- etc.
+YOUR TASK:
+1. Group elements into logical UI sections (navigation, hero, features, footer, etc.)
+2. Name each section with a descriptive 2-4 word title
+3. Give each element a role-based title (NOT its content)
 
-Rules:
-1. Group elements that belong together semantically (e.g., a heading and its related paragraphs)
-2. Keep sections reasonably sized (typically 1-10 elements per section)
-3. Maintain the order from top to bottom based on line numbers
-4. Each element can only belong to ONE section
-5. Use clear, human-readable section names
-6. Give each element a title that describes its ROLE or POSITION in the UI, NOT its content
+SECTION NAMING RULES:
+- Use descriptive names like "Hero Section", "Navigation Menu", "Feature Cards", "Contact Form"
+- Section names should describe WHAT the section IS
+- Keep names to 2-4 words
 
-CRITICAL: Element titles must describe WHAT the element IS, not WHAT IT SAYS.
-- BAD titles: "Edit Content Text", "Learn More Button", "Welcome Heading" (these echo the content)
-- GOOD titles: "Primary CTA", "Second Navigation Link", "Section Subheading", "Description Text" (these describe the role)
+ELEMENT TITLE RULES (CRITICAL):
+- Titles describe the element's ROLE, not its content
+- BAD: "Learn More Button" (echoes content)
+- GOOD: "Primary CTA" (describes role)
+- BAD: "Welcome to Our Site" (echoes content)
+- GOOD: "Main Headline" (describes role)
 
-Think about it this way: if someone changes the content, the title should still make sense.
-For example, if "Learn More" changes to "Get Started", the title "Primary CTA" still works, but "Learn More Button" wouldn't.
+EXAMPLES OF GOOD ELEMENT TITLES:
+- "Main Headline" (not the actual heading text)
+- "Primary CTA" (not "Learn More Button")
+- "Description" (not the paragraph text)
+- "Navigation Link 1", "Navigation Link 2"
+- "Feature Title", "Feature Description"
+- "Hero Image Alt"
 
-Return ONLY a JSON array in this exact format:
+Return ONLY valid JSON in this exact format:
 [
   {
     "name": "Hero Section",
-    "description": "Main hero area with headline and CTA",
+    "description": "Main hero with headline and CTA",
     "elements": [
       { "idx": 0, "title": "Main Headline" },
-      { "idx": 1, "title": "Subheading" },
+      { "idx": 1, "title": "Supporting Text" },
       { "idx": 2, "title": "Primary CTA" }
-    ]
-  },
-  {
-    "name": "Navigation Menu", 
-    "description": "Top navigation with links",
-    "elements": [
-      { "idx": 3, "title": "First Link" },
-      { "idx": 4, "title": "Second Link" },
-      { "idx": 5, "title": "Third Link" },
-      { "idx": 6, "title": "CTA Button" }
     ]
   }
 ]
 
-The idx values should reference the "idx" values from the input. Titles should be 2-4 words describing the element's role.`;
+IMPORTANT:
+- idx values MUST match the "idx" from the input
+- Every element MUST have both "idx" and "title"
+- Include ALL elements from the input
+- Return ONLY the JSON array, no other text`;
 
   try {
     const response = await (generateText as any)({
@@ -490,11 +483,14 @@ Group related content together - a heading typically starts a new section.`,
     const aiSections = JSON.parse(jsonMatch[0]);
     const sections: SectionGroup[] = [];
 
+    // Track type counts for fallback naming
+    const typeCounters = new Map<string, number>();
+
     for (const aiSection of aiSections) {
       // Support both old format (elementIndices) and new format (elements with titles)
-      const elementsWithTitles = aiSection.elements || 
+      const elementsWithTitles = aiSection.elements ||
         (aiSection.elementIndices?.map((idx: number) => ({ idx, title: null })) || []);
-      
+
       if (elementsWithTitles.length === 0) {
         continue;
       }
@@ -502,10 +498,19 @@ Group related content together - a heading typically starts a new section.`,
       const sectionElements = elementsWithTitles
         .map((el: { idx: number; title?: string }) => {
           const rawElement = sorted[el.idx];
-          if (!rawElement || !el.title) return null; // Skip elements without AI-generated title
+          if (!rawElement) return null;
+
+          // Use AI title if provided, otherwise generate fallback
+          let title = el.title;
+          if (!title || title.trim() === "") {
+            const typeCount = typeCounters.get(rawElement.type) || 0;
+            typeCounters.set(rawElement.type, typeCount + 1);
+            title = generateElementName(rawElement.type, rawElement.content, typeCount);
+          }
+
           return {
             ...rawElement,
-            aiTitle: el.title,
+            aiTitle: title,
           };
         })
         .filter(Boolean) as (RawElement & { aiTitle: string })[];
@@ -525,15 +530,31 @@ Group related content together - a heading typically starts a new section.`,
       const sectionPageRoute = [...pageRouteCounts.entries()]
         .sort((a, b) => b[1] - a[1])[0]?.[0] || "/";
 
+      // Generate section name - use AI name or derive from elements
+      let sectionName = aiSection.name;
+      if (!sectionName || sectionName === "Untitled Section" || sectionName.match(/^Section \d+$/)) {
+        // Convert sectionElements back to RawElement format for generateSectionName
+        const rawElems = sectionElements.map(e => ({
+          type: e.type,
+          content: e.content,
+          line: e.line,
+          context: e.context,
+          sourceContext: e.sourceContext,
+          filePath: e.filePath,
+          href: e.href,
+          pageRoute: e.pageRoute,
+        }));
+        sectionName = generateSectionName(rawElems, sections.length);
+      }
+
       sections.push({
-        name: aiSection.name || "Untitled Section",
+        name: sectionName,
         description: aiSection.description,
         sourceFile: sectionElements[0]!.filePath,
         startLine,
         endLine,
         pageRoute: sectionPageRoute,
         elements: sectionElements.map((e) => ({
-          // Use AI-generated title (required)
           name: e.aiTitle,
           type: e.type,
           filePath: e.filePath,
@@ -562,11 +583,50 @@ Group related content together - a heading typically starts a new section.`,
   }
 }
 
+// Generate a section name based on the first heading or content
+function generateSectionName(elements: RawElement[], index: number): string {
+  // Look for a heading in the elements to derive the section name
+  const heading = elements.find(e => e.type.startsWith("heading"));
+  if (heading) {
+    // Clean up the heading content to create a section name
+    const cleanContent = heading.content
+      .replace(/[^\w\s]/g, "") // Remove special chars
+      .trim()
+      .split(/\s+/)
+      .slice(0, 4) // Max 4 words
+      .join(" ");
+    if (cleanContent.length > 0 && cleanContent.length <= 40) {
+      return cleanContent;
+    }
+  }
+
+  // Look for buttons to identify CTA sections
+  const hasButtons = elements.some(e => e.type === "button");
+  const hasLinks = elements.some(e => e.type === "link");
+  const hasHeadings = elements.some(e => e.type.startsWith("heading"));
+  const hasParagraphs = elements.some(e => e.type === "paragraph");
+
+  // Generate contextual names based on content types
+  if (hasHeadings && hasButtons) {
+    return index === 0 ? "Hero Section" : `Call to Action ${index}`;
+  }
+  if (hasLinks && !hasHeadings && !hasParagraphs) {
+    return index === 0 ? "Navigation" : `Links ${index}`;
+  }
+  if (hasParagraphs && !hasButtons) {
+    return index === 0 ? "Content" : `Content Block ${index}`;
+  }
+
+  // Default fallback with better naming
+  const sectionTypes = ["Header", "Main Content", "Features", "Details", "Footer"];
+  return sectionTypes[index % sectionTypes.length] || `Section ${index + 1}`;
+}
+
 // Fallback grouping when AI fails - group by headings
 function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
   const sections: SectionGroup[] = [];
   let currentElements: RawElement[] = [];
-  let sectionCount = 0;
+  let sectionIndex = 0;
 
   // Helper to get the most common page route from a list of elements
   const getMostCommonPageRoute = (elems: RawElement[]): string => {
@@ -578,6 +638,9 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
     return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "/";
   };
 
+  // Track element type counts for better naming within sections
+  const typeCounters = new Map<string, number>();
+
   for (const elem of elements) {
     // Start new section on headings
     const firstElem = currentElements[0];
@@ -586,17 +649,54 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
       currentElements.length > 0 &&
       firstElem
     ) {
-      sectionCount++;
       const lines = currentElements.map((e) => e.line);
       const pageRoute = getMostCommonPageRoute(currentElements);
+      typeCounters.clear();
       sections.push({
-        name: `Section ${sectionCount}`,
+        name: generateSectionName(currentElements, sectionIndex),
         sourceFile: firstElem.filePath,
         startLine: Math.min(...lines),
         endLine: Math.max(...lines),
         pageRoute,
-        elements: currentElements.map((e) => ({
-          name: generateElementName(e.type, e.content),
+        elements: currentElements.map((e, i) => {
+          const typeCount = typeCounters.get(e.type) || 0;
+          typeCounters.set(e.type, typeCount + 1);
+          return {
+            name: generateElementName(e.type, e.content, typeCount),
+            type: e.type,
+            filePath: e.filePath,
+            line: e.line,
+            currentValue: e.content,
+            sourceContext: e.sourceContext,
+            confidence: 0.9,
+            href: e.href,
+            pageRoute: e.pageRoute,
+          };
+        }),
+      });
+      currentElements = [];
+      sectionIndex++;
+    }
+    currentElements.push(elem);
+  }
+
+  // Don't forget the last section
+  const lastFirstElem = currentElements[0];
+  if (currentElements.length > 0 && lastFirstElem) {
+    const lines = currentElements.map((e) => e.line);
+    const pageRoute = getMostCommonPageRoute(currentElements);
+    typeCounters.clear();
+    sections.push({
+      name: generateSectionName(currentElements, sectionIndex),
+      sourceFile: lastFirstElem.filePath,
+      startLine: Math.min(...lines),
+      endLine: Math.max(...lines),
+      pageRoute,
+      elements: currentElements.map((e, i) => {
+        const typeCount = typeCounters.get(e.type) || 0;
+        typeCounters.set(e.type, typeCount + 1);
+        return {
+          name: generateElementName(e.type, e.content, typeCount),
           type: e.type,
           filePath: e.filePath,
           line: e.line,
@@ -605,36 +705,8 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
           confidence: 0.9,
           href: e.href,
           pageRoute: e.pageRoute,
-        })),
-      });
-      currentElements = [];
-    }
-    currentElements.push(elem);
-  }
-
-  // Don't forget the last section
-  const lastFirstElem = currentElements[0];
-  if (currentElements.length > 0 && lastFirstElem) {
-    sectionCount++;
-    const lines = currentElements.map((e) => e.line);
-    const pageRoute = getMostCommonPageRoute(currentElements);
-    sections.push({
-      name: `Section ${sectionCount}`,
-      sourceFile: lastFirstElem.filePath,
-      startLine: Math.min(...lines),
-      endLine: Math.max(...lines),
-      pageRoute,
-      elements: currentElements.map((e) => ({
-        name: generateElementName(e.type, e.content),
-        type: e.type,
-        filePath: e.filePath,
-        line: e.line,
-        currentValue: e.content,
-        sourceContext: e.sourceContext,
-        confidence: 0.9,
-        href: e.href,
-        pageRoute: e.pageRoute,
-      })),
+        };
+      }),
     });
   }
 

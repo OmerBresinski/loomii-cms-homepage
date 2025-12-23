@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider, useAuth } from "@clerk/clerk-react";
+import { dark } from "@clerk/themes";
 
 import { createAppRouter } from "./routes";
 import { setAuthTokenGetter } from "./lib/api";
@@ -48,7 +49,11 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <React.StrictMode>
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
+      <ClerkProvider
+        publishableKey={PUBLISHABLE_KEY}
+        afterSignOutUrl="/"
+        appearance={{ baseTheme: dark }}
+      >
         <AuthTokenSetup>
           <QueryClientProvider client={queryClient}>
             <RouterProvider router={router} />

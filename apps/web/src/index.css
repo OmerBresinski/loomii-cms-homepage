@@ -137,6 +137,145 @@
   display: none !important;
 }
 
+/* Clerk component overrides for full-width and theme consistency */
+.cl-rootBox,
+.cl-card,
+.cl-cardBox,
+.cl-pageScrollBox,
+.cl-profilePage,
+.cl-page {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.cl-navbar,
+.cl-header,
+.cl-footer,
+.cl-internal,
+.cl-footerAction {
+  display: none !important;
+}
+
+.cl-profileSection {
+  border: 1px solid oklch(1 0 0 / 10%);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  background: oklch(0.216 0.006 56.043 / 50%);
+}
+
+.cl-profileSectionTitle {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid oklch(1 0 0 / 10%);
+}
+
+.cl-profileSectionTitleText {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: oklch(0.985 0.001 106.423) !important;
+}
+
+.cl-accordionTriggerButton {
+  background: oklch(0.216 0.006 56.043 / 50%) !important;
+  border: 1px solid oklch(1 0 0 / 10%) !important;
+  border-radius: 0.5rem !important;
+}
+
+.cl-accordionTriggerButton:hover {
+  background: oklch(0.268 0.007 34.298 / 50%) !important;
+}
+
+.cl-accordionContent {
+  border: 1px solid oklch(1 0 0 / 10%) !important;
+  border-top: none !important;
+  border-radius: 0 0 0.5rem 0.5rem !important;
+  background: oklch(0.216 0.006 56.043 / 30%) !important;
+}
+
+.cl-formFieldInput,
+.cl-phoneInputBox,
+.cl-selectButton {
+  background: oklch(0.268 0.007 34.298 / 50%) !important;
+  border-color: oklch(1 0 0 / 15%) !important;
+}
+
+.cl-formFieldInput:focus,
+.cl-phoneInputBox:focus-within,
+.cl-selectButton:focus {
+  border-color: oklch(0.645 0.246 16.439) !important;
+  box-shadow: 0 0 0 2px oklch(0.645 0.246 16.439 / 20%) !important;
+}
+
+.cl-formButtonPrimary,
+.cl-membersPageInviteButton,
+.cl-profileSectionPrimaryButton {
+  background: oklch(0.645 0.246 16.439) !important;
+  color: oklch(0.969 0.015 12.422) !important;
+}
+
+.cl-formButtonPrimary:hover,
+.cl-membersPageInviteButton:hover,
+.cl-profileSectionPrimaryButton:hover {
+  background: oklch(0.586 0.253 17.585) !important;
+}
+
+.cl-badge {
+  background: oklch(0.645 0.246 16.439 / 10%) !important;
+  color: oklch(0.645 0.246 16.439) !important;
+  border: none !important;
+}
+
+.cl-userPreviewMainIdentifier,
+.cl-organizationPreviewMainIdentifier {
+  color: oklch(0.985 0.001 106.423) !important;
+  font-weight: 500 !important;
+}
+
+.cl-userPreviewSecondaryIdentifier,
+.cl-organizationPreviewSecondaryIdentifier {
+  color: oklch(0.709 0.01 56.259) !important;
+}
+
+.cl-membersListItem,
+.cl-invitationsListItem {
+  padding: 0.75rem !important;
+  border-radius: 0.5rem !important;
+  transition: all 0.15s ease !important;
+}
+
+.cl-membersListItem:hover,
+.cl-invitationsListItem:hover {
+  background: oklch(0.268 0.007 34.298 / 50%) !important;
+}
+
+.cl-avatarBox {
+  border-radius: 0.5rem !important;
+}
+
+/* Modal overrides */
+.cl-modalBackdrop {
+  background: oklch(0.147 0.004 49.25 / 80%) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.cl-modalContent {
+  background: oklch(0.216 0.006 56.043) !important;
+  border: 1px solid oklch(1 0 0 / 10%) !important;
+  border-radius: 0.75rem !important;
+}
+
+/* Danger zone styling */
+.cl-profileSection__danger {
+  border-color: oklch(0.704 0.191 22.216 / 30%) !important;
+  background: oklch(0.704 0.191 22.216 / 5%) !important;
+}
+
+.cl-profileSection__danger .cl-profileSectionTitleText {
+  color: oklch(0.704 0.191 22.216) !important;
+}
+
 /* Subtle dot grid background pattern for dark mode */
 .bg-grid-pattern {
   background-image: radial-gradient(circle at center, oklch(1 0 0 / 4%) 1px, transparent 1px);
