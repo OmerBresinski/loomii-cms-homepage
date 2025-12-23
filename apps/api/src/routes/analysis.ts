@@ -374,6 +374,7 @@ async function runAnalysis(
               sourceFile: el.filePath,
               sourceLine: el.line,
               currentValue: el.currentValue,
+              sourceContext: el.sourceContext,  // 3 lines before/after for diff view
               confidence: el.confidence,
               pageUrl: el.pageRoute,  // Use the detected page route instead of file path
               schema: (el as any).href ? { href: (el as any).href } : undefined,

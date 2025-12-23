@@ -10,7 +10,9 @@ import { DashboardHome } from "@/pages/dashboard/DashboardHome";
 import { SettingsPage } from "@/pages/dashboard/SettingsPage";
 import { ProjectsPage } from "@/pages/dashboard/projects/ProjectsPage";
 import { NewProjectPage } from "@/pages/dashboard/projects/NewProjectPage";
+import { ProjectLayout } from "@/pages/dashboard/projects/ProjectLayout";
 import { ProjectDetailPage } from "@/pages/dashboard/projects/ProjectDetailPage";
+import { ReviewPage } from "@/pages/dashboard/projects/ReviewPage";
 
 // Router context type
 interface RouterContext {
@@ -76,10 +78,23 @@ const newProjectRoute = createRoute({
   component: NewProjectPage,
 });
 
-const projectDetailRoute = createRoute({
+// Project layout route (wraps with ProjectProvider for shared state)
+const projectLayoutRoute = createRoute({
   getParentRoute: () => projectsRoute,
   path: "/$projectId",
+  component: ProjectLayout,
+});
+
+const projectDetailRoute = createRoute({
+  getParentRoute: () => projectLayoutRoute,
+  path: "/",
   component: ProjectDetailPage,
+});
+
+const projectReviewRoute = createRoute({
+  getParentRoute: () => projectLayoutRoute,
+  path: "/review",
+  component: ReviewPage,
 });
 
 // Build the route tree
@@ -92,7 +107,10 @@ const routeTree = rootRoute.addChildren([
     projectsRoute.addChildren([
       projectsIndexRoute,
       newProjectRoute,
-      projectDetailRoute,
+      projectLayoutRoute.addChildren([
+        projectDetailRoute,
+        projectReviewRoute,
+      ]),
     ]),
   ]),
 ]);

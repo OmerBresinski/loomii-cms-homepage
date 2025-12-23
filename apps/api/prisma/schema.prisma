@@ -175,6 +175,7 @@ model Element {
   sourceLine    Int?        // Line number in source file
   sourceColumn  Int?
   currentValue  String?     @db.Text
+  sourceContext String?     @db.Text  // 3 lines before/after for diff view
   schema        Json?
   parentId      String?
   pageUrl       String

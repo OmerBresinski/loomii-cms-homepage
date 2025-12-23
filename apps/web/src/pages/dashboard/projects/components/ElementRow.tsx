@@ -4,8 +4,7 @@ import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
 import { Badge } from "@/ui/badge";
 import { Label } from "@/ui/label";
-import { IconDeviceFloppy, IconLoader2 } from "@tabler/icons-react";
-import { useUpdateElement } from "@/lib/mutations";
+import { IconDeviceFloppy, IconCheck } from "@tabler/icons-react";
 import { useProjectContext } from "../context/ProjectContext";
 import { cn } from "@/lib/utils";
 
@@ -29,35 +28,38 @@ const elementTypeColors: Record<string, string> = {
 interface ElementRowProps {
   element: any;
   projectId: string;
+  sectionId: string;
+  sectionName: string;
 }
 
-export function ElementRow({ element, projectId }: ElementRowProps) {
-  const [value, setValue] = useState(element.currentValue || "");
-  const [hrefValue, setHrefValue] = useState(element.schema?.href || "");
-  const [isDirty, setIsDirty] = useState(false);
-  const updateElement = useUpdateElement(projectId);
-  const { setElementDirty } = useProjectContext();
+export function ElementRow({ element, projectId, sectionId, sectionName }: ElementRowProps) {
+  const { saveEdit, hasEdit, getEdit } = useProjectContext();
+
+  // Get existing edit if any
+  const existingEdit = getEdit(element.id);
+
+  // Original values
+  const originalValue = element.currentValue || "";
+  const originalHref = element.schema?.href || "";
+
+  // Initialize with edited value if exists, otherwise use original
+  const [value, setValue] = useState(existingEdit?.newValue ?? originalValue);
+  const [hrefValue, setHrefValue] = useState(existingEdit?.newHref ?? originalHref);
+
+  // Check if current value differs from original
+  const valueChanged = value !== originalValue;
+  const hrefChanged = hrefValue !== originalHref;
+  const isDirty = valueChanged || hrefChanged;
+  const hasSavedEdit = hasEdit(element.id);
 
   // Sync state when element prop changes (e.g. after refetch)
   useEffect(() => {
-    setValue(element.currentValue || "");
-    setHrefValue(element.schema?.href || "");
-    setIsDirty(false);
-  }, [element.id, element.currentValue, element.schema]);
-
-  // Report dirty state to global context
-  useEffect(() => {
-    setIsDirty(
-      value !== (element.currentValue || "") ||
-        hrefValue !== (element.schema?.href || "")
-    );
-  }, [value, hrefValue, element.currentValue, element.schema]);
-
-  useEffect(() => {
-    setElementDirty(element.id, isDirty);
-    // Clean up on unmount
-    return () => setElementDirty(element.id, false);
-  }, [element.id, isDirty, setElementDirty]);
+    // Only reset if there's no pending edit for this element
+    if (!hasEdit(element.id)) {
+      setValue(element.currentValue || "");
+      setHrefValue(element.schema?.href || "");
+    }
+  }, [element.id, element.currentValue, element.schema, hasEdit]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
@@ -68,28 +70,47 @@ export function ElementRow({ element, projectId }: ElementRowProps) {
   };
 
   const handleSave = () => {
-    updateElement.mutate(
-      {
-        elementId: element.id,
-        content: value,
-        schema:
-          element.type === "link"
-            ? { ...element.schema, href: hrefValue }
-            : element.schema,
-      },
-      {
-        onSuccess: () => {
-          setIsDirty(false);
-        },
-      }
-    );
+    // Save edit locally (not to backend)
+    saveEdit({
+      elementId: element.id,
+      elementName: element.name || "Untitled Element",
+      sectionId,
+      sectionName,
+      originalValue,
+      newValue: value,
+      originalHref: element.type === "link" ? originalHref : undefined,
+      newHref: element.type === "link" ? hrefValue : undefined,
+      sourceFile: element.sourceFile || "",
+      sourceLine: element.sourceLine || 0,
+      sourceContext: element.sourceContext || "",
+      pageUrl: element.pageUrl || "/",
+    });
   };
 
+  // Determine button state - check if current values differ from saved edit values
+  const savedValue = existingEdit?.newValue ?? originalValue;
+  const savedHref = existingEdit?.newHref ?? originalHref;
+  const hasUnsavedChanges = (value !== savedValue) || (hrefValue !== savedHref);
+  const needsSave = isDirty && !hasSavedEdit;
+
   return (
-    <Item variant="outline" className="flex-col items-stretch">
+    <Item
+      variant="outline"
+      className={cn(
+        "flex-col items-stretch transition-colors",
+        hasSavedEdit && "border-l-2 border-l-primary bg-primary/5"
+      )}
+    >
       <div className="flex items-center gap-3 w-full">
         <ItemContent className="flex-1">
-          <ItemTitle>{element.name || "Untitled Element"}</ItemTitle>
+          <div className="flex items-center gap-2">
+            <ItemTitle>{element.name || "Untitled Element"}</ItemTitle>
+            {hasSavedEdit && (
+              <Badge variant="default" className="text-[10px] bg-primary/20 text-primary">
+                Edited
+              </Badge>
+            )}
+          </div>
         </ItemContent>
 
         {element.type && (
@@ -107,16 +128,16 @@ export function ElementRow({ element, projectId }: ElementRowProps) {
         <ItemActions>
           <Button
             size="sm"
-            variant={isDirty ? "default" : "ghost"}
+            variant={needsSave || hasUnsavedChanges ? "default" : hasSavedEdit ? "outline" : "ghost"}
             onClick={handleSave}
-            disabled={!isDirty || updateElement.isPending}
+            disabled={!isDirty}
           >
-            {updateElement.isPending ? (
-              <IconLoader2 className="w-3.5 h-3.5 animate-spin" />
+            {hasSavedEdit && !hasUnsavedChanges ? (
+              <IconCheck className="w-3.5 h-3.5" />
             ) : (
               <IconDeviceFloppy className="w-3.5 h-3.5" />
             )}
-            Save
+            {hasSavedEdit && !hasUnsavedChanges ? "Saved" : "Save"}
           </Button>
         </ItemActions>
       </div>
@@ -135,6 +156,7 @@ export function ElementRow({ element, projectId }: ElementRowProps) {
             value={value}
             onChange={handleChange}
             placeholder="No content"
+            className={cn(hasSavedEdit && "border-primary/50")}
           />
         </div>
 

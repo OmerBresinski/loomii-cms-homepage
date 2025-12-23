@@ -325,6 +325,7 @@ interface RawElement {
   content: string;
   line: number;
   context: string;
+  sourceContext: string;  // 3 lines before/after for diff view
   filePath: string;
   href?: string;
   pageRoute: string;  // URL route this element belongs to
@@ -344,6 +345,7 @@ export interface SectionGroup {
     filePath: string;
     line: number;
     currentValue: string;
+    sourceContext: string;  // 3 lines before/after for diff view
     confidence: number;
     href?: string;
     pageRoute: string;  // URL route this element belongs to
@@ -537,6 +539,7 @@ Group related content together - a heading typically starts a new section.`,
           filePath: e.filePath,
           line: e.line,
           currentValue: e.content,
+          sourceContext: e.sourceContext,
           confidence: 0.9,
           href: e.href,
           pageRoute: e.pageRoute,
@@ -598,6 +601,7 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
           filePath: e.filePath,
           line: e.line,
           currentValue: e.content,
+          sourceContext: e.sourceContext,
           confidence: 0.9,
           href: e.href,
           pageRoute: e.pageRoute,
@@ -626,6 +630,7 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
         filePath: e.filePath,
         line: e.line,
         currentValue: e.content,
+        sourceContext: e.sourceContext,
         confidence: 0.9,
         href: e.href,
         pageRoute: e.pageRoute,
@@ -763,6 +768,7 @@ export async function analyzeRepository(
               content: elem.content,
               line: elem.line,
               context: elem.context,
+              sourceContext: elem.sourceContext,
               filePath: file.path,
               href: elem.href,
               pageRoute,

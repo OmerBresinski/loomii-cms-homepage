@@ -73,6 +73,7 @@ export const sectionRoutes = new Hono()
             sourceFile: e.sourceFile,
             sourceLine: e.sourceLine,
             currentValue: e.currentValue,
+            sourceContext: e.sourceContext,
             schema: e.schema,
             confidence: e.confidence,
             pageUrl: e.pageUrl,

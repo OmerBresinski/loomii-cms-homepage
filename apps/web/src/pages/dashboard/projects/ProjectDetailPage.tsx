@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "@tanstack/react-router";
+import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { projectDetailQuery, analysisStatusQuery, projectPagesQuery, queryKeys } from "@/lib/queries";
 import { useTriggerAnalysis, useCancelAnalysis } from "@/lib/mutations";
@@ -41,19 +41,12 @@ import { cn } from "@/lib/utils";
 import { Accordion } from "@/ui/accordion";
 import { SectionRow } from "./components/SectionRow";
 
-import { ProjectProvider, useProjectContext } from "./context/ProjectContext";
+import { useProjectContext } from "./context/ProjectContext";
 
 export function ProjectDetailPage() {
-  return (
-    <ProjectProvider>
-      <ProjectDetailContent />
-    </ProjectProvider>
-  );
-}
-
-function ProjectDetailContent() {
-  const { projectId } = useParams({ from: "/dashboard/projects/$projectId" });
-  const { isDirty, clearDirtyStates } = useProjectContext();
+  const { projectId } = useParams({ from: "/dashboard/projects/$projectId/" });
+  const { isDirty, editCount, pendingEdits, clearAllEdits } = useProjectContext();
+  const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
@@ -156,10 +149,8 @@ function ProjectDetailContent() {
   };
 
   const handlePublish = () => {
-    console.log("Publishing...");
-    toast.success("Project publishing...");
-    // Clear dirty states locally for now as it's a demo
-    clearDirtyStates();
+    // Navigate to the review page
+    navigate({ to: `/dashboard/projects/${projectId}/review` });
   };
 
   const isLoading = isProjectLoading;
@@ -343,7 +334,7 @@ function ProjectDetailContent() {
             <Button
               size="sm"
               className={cn(
-                "font-bold uppercase tracking-widest px-6 transition-all",
+                "font-bold uppercase tracking-widest px-6 transition-all gap-2",
                 isDirty
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:scale-105 active:scale-95"
                   : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
@@ -351,7 +342,12 @@ function ProjectDetailContent() {
               onClick={handlePublish}
               disabled={!isDirty}
             >
-              Publish
+              Review Changes
+              {editCount > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-primary-foreground text-primary">
+                  {editCount}
+                </span>
+              )}
             </Button>
           </div>
         </div>
@@ -418,9 +414,8 @@ function ProjectDetailContent() {
               <CardContent className="p-0">
                 <div className="flex items-center h-18">
                   {stats.map((stat, index) => (
-                    <>
+                    <div key={stat.label} className="contents">
                       <Item
-                        key={stat.label}
                         className="border-none rounded-none px-6 py-4 flex-1"
                       >
                         <ItemContent>
@@ -432,12 +427,11 @@ function ProjectDetailContent() {
                       </Item>
                       {index < stats.length - 1 && (
                         <Separator
-                          key={`sep-${index}`}
                           orientation="vertical"
                           className="!self-center h-[60%]"
                         />
                       )}
-                    </>
+                    </div>
                   ))}
                 </div>
               </CardContent>

@@ -344,6 +344,7 @@ Return valid JSON only.`,
           content: string;
           line: number;
           context: string;
+          sourceContext: string;
           href?: string;
         }> = [];
 
@@ -351,13 +352,26 @@ Return valid JSON only.`,
           const jsonMatch = response.text?.match(/\[[\s\S]*\]/);
           if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);
-            elements = parsed.map((el: any) => ({
-              type: el.type || "text",
-              content: el.content || "",
-              line: el.line || 1,
-              context: lines[Math.max(0, (el.line || 1) - 1)]?.trim() || "",
-              href: el.href || undefined,
-            }));
+            elements = parsed.map((el: any) => {
+              const lineNum = el.line || 1;
+              // Capture 3 lines before and after for diff context
+              const startLine = Math.max(0, lineNum - 4); // 3 lines before (0-indexed)
+              const endLine = Math.min(lines.length, lineNum + 3); // 3 lines after
+              const contextLines = lines.slice(startLine, endLine);
+              // Format with line numbers for the diff view
+              const sourceContext = contextLines
+                .map((line, idx) => `${startLine + idx + 1}|${line}`)
+                .join("\n");
+
+              return {
+                type: el.type || "text",
+                content: el.content || "",
+                line: lineNum,
+                context: lines[Math.max(0, lineNum - 1)]?.trim() || "",
+                sourceContext, // Full context with surrounding lines
+                href: el.href || undefined,
+              };
+            });
           }
         } catch (parseError) {
           console.log(`  Warning: Failed to parse AI response for ${path}`);

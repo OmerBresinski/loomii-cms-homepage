@@ -5,6 +5,9 @@ import { IconLoader2 } from "@tabler/icons-react";
 import { sectionDetailQuery } from "@/lib/queries";
 import { ElementRow } from "./ElementRow";
 import { Empty, EmptyDescription } from "@/ui/empty";
+import { Badge } from "@/ui/badge";
+import { useProjectContext } from "../context/ProjectContext";
+import { cn } from "@/lib/utils";
 
 interface SectionRowProps {
     section: any;
@@ -16,6 +19,7 @@ interface SectionRowProps {
 export function SectionRow({ section, projectId, searchTerm, selectedPage }: SectionRowProps) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const { pendingEdits } = useProjectContext();
 
   // Prefetch on hover
   const onMouseEnter = () => {
@@ -34,6 +38,11 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
 
   // Use the fetched details (with elements) or fallback to basic info
   const elements = sectionDetail?.section?.elements || [];
+
+  // Count pending edits for this section
+  const sectionEditCount = Array.from(pendingEdits.values()).filter(
+    edit => edit.sectionId === section.id
+  ).length;
 
   // Filter elements by search term and selected page
   const displayedElements = elements.filter((el: any) => {
@@ -54,13 +63,23 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
   });
 
   return (
-    <AccordionItem value={section.id}>
+    <AccordionItem
+      value={section.id}
+      className={cn(sectionEditCount > 0 && "border-l-2 border-l-primary")}
+    >
       <AccordionTrigger
         onMouseEnter={onMouseEnter}
         onClick={() => setIsOpen(true)}
       >
-        <div className="text-left">
-          <div className="font-medium">{section.name}</div>
+        <div className="text-left flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{section.name}</span>
+            {sectionEditCount > 0 && (
+              <Badge variant="default" className="text-[10px] bg-primary/20 text-primary">
+                {sectionEditCount} edit{sectionEditCount !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </div>
           <div className="text-muted-foreground text-xs">
             {section.elementCount || elements.length} components
           </div>
@@ -87,6 +106,8 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
                 key={`${element.id}-${element.currentValue}`}
                 element={element}
                 projectId={projectId}
+                sectionId={section.id}
+                sectionName={section.name}
               />
             ))
           )}
