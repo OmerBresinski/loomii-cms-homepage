@@ -137,6 +137,22 @@
   display: none !important;
 }
 
+/* Make Clerk profile components fill available width */
+.cl-rootBox,
+.cl-card,
+.cl-cardBox,
+.cl-pageScrollBox,
+.cl-profilePage,
+.cl-page {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* Fix grid layout for Clerk card to fill available width */
+.cl-cardBox {
+  grid-template-columns: 1fr 100% !important;
+}
+
 /* Subtle dot grid background pattern for dark mode */
 .bg-grid-pattern {
   background-image: radial-gradient(circle at center, oklch(1 0 0 / 4%) 1px, transparent 1px);
