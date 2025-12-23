@@ -10,9 +10,10 @@ interface SectionRowProps {
     section: any;
     projectId: string;
     searchTerm: string;
+    selectedPage: string | null;
 }
 
-export function SectionRow({ section, projectId, searchTerm }: SectionRowProps) {
+export function SectionRow({ section, projectId, searchTerm, selectedPage }: SectionRowProps) {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -34,12 +35,23 @@ export function SectionRow({ section, projectId, searchTerm }: SectionRowProps) 
   // Use the fetched details (with elements) or fallback to basic info
   const elements = sectionDetail?.section?.elements || [];
 
-  // Local filtering of elements if search term exists
-  const displayedElements = elements.filter((el: any) =>
-    !searchTerm ||
-    (el.currentValue || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (el.name || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter elements by search term and selected page
+  const displayedElements = elements.filter((el: any) => {
+    // Filter by selected page (using pageUrl field)
+    if (selectedPage !== null && el.pageUrl !== selectedPage) {
+      return false;
+    }
+    // Filter by search term
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      const matchesValue = (el.currentValue || "").toLowerCase().includes(lowerSearch);
+      const matchesName = (el.name || "").toLowerCase().includes(lowerSearch);
+      if (!matchesValue && !matchesName) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   return (
     <AccordionItem value={section.id}>
@@ -63,7 +75,11 @@ export function SectionRow({ section, projectId, searchTerm }: SectionRowProps) 
             </div>
           ) : displayedElements.length === 0 ? (
             <Empty className="py-4">
-              <EmptyDescription>No elements matching search.</EmptyDescription>
+              <EmptyDescription>
+                {selectedPage
+                  ? "No elements on this page matching your filters."
+                  : "No elements matching search."}
+              </EmptyDescription>
             </Empty>
           ) : (
             displayedElements.map((element: any) => (

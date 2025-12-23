@@ -148,6 +148,49 @@ export const analysisRoutes = new Hono()
     }
   )
 
+  // Get list of pages for a project
+  .get("/pages", requireAuth, requireProjectAccess(), async (c) => {
+    const projectId = c.req.param("projectId");
+
+    // Group elements by pageUrl to get page list with element counts
+    const pageGroups = await prisma.element.groupBy({
+      by: ["pageUrl"],
+      where: { projectId },
+      _count: { id: true },
+    });
+
+    // Helper to generate concise page name from route
+    const generatePageName = (route: string): string => {
+      if (route === "/") return "Homepage";
+
+      // Get the last segment of the route
+      const segment = route.split("/").filter(Boolean).pop() || "Page";
+
+      // Convert to title case and replace hyphens with spaces
+      const name = segment
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+      // Keep it concise - if too long, truncate
+      return name.length > 20 ? name.slice(0, 17) + "..." : name;
+    };
+
+    // Sort pages: "/" first, then alphabetically
+    const pages = pageGroups
+      .map((p) => ({
+        pageRoute: p.pageUrl,
+        elementCount: p._count.id,
+        pageName: generatePageName(p.pageUrl),
+      }))
+      .sort((a, b) => {
+        if (a.pageRoute === "/") return -1;
+        if (b.pageRoute === "/") return 1;
+        return a.pageRoute.localeCompare(b.pageRoute);
+      });
+
+    return c.json({ pages }, 200);
+  })
+
   // Get analysis results (elements by page)
   .get("/results", requireAuth, requireProjectAccess(), async (c) => {
     const projectId = c.req.param("projectId");
@@ -332,7 +375,7 @@ async function runAnalysis(
               sourceLine: el.line,
               currentValue: el.currentValue,
               confidence: el.confidence,
-              pageUrl: el.filePath,
+              pageUrl: el.pageRoute,  // Use the detected page route instead of file path
               schema: (el as any).href ? { href: (el as any).href } : undefined,
             })),
           });

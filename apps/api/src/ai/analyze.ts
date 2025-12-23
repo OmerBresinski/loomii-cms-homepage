@@ -1,8 +1,23 @@
 import { generateText } from "ai";
-import { createToolExecutors, type GitHubContext } from "./tools/github";
+import { createToolExecutors, type GitHubContext, type ToolExecutors } from "./tools/github";
 import { logger } from "./logger";
 
 const MODEL = "xai/grok-code-fast-1";
+
+// Detected page information
+export interface DetectedPage {
+  pagePath: string;      // File path in repo (e.g., "src/pages/about.tsx")
+  pageRoute: string;     // URL route (e.g., "/about")
+  pageName: string;      // Human-readable name (e.g., "About Page")
+}
+
+// Framework detection result
+export interface FrameworkInfo {
+  framework: string;     // "nextjs" | "react-vite" | "astro" | "static-html" | "unknown"
+  routingType: string;   // "file-based" | "code-based" | "none"
+  pagesDirectory?: string;  // e.g., "pages", "src/pages", "app"
+  pages: DetectedPage[];
+}
 
 // File extensions we care about for content analysis
 const SOURCE_EXTENSIONS = [
@@ -37,6 +52,273 @@ function shouldSkipPath(path: string): boolean {
   );
 }
 
+// AI-powered framework detection and page discovery
+async function detectFrameworkAndPages(
+  executors: ToolExecutors,
+  rootPath: string
+): Promise<FrameworkInfo> {
+  console.log("  🔍 Detecting framework and pages...");
+
+  // Step 1: Get the file listing to understand structure
+  const files = await executors.listFiles({
+    path: rootPath,
+    recursive: true,
+  });
+
+  const filePaths = files.map(f => f.path);
+
+  // Try to read package.json if it exists
+  let packageJsonContent = "";
+  const packageJsonPath = rootPath ? `${rootPath}/package.json` : "package.json";
+  const hasPackageJson = filePaths.some(f => f === packageJsonPath || f.endsWith("/package.json"));
+
+  if (hasPackageJson) {
+    try {
+      const data = await executors.readFile({ path: packageJsonPath });
+      packageJsonContent = data.preview;
+    } catch {
+      console.log("  ⚠️ Could not read package.json");
+    }
+  }
+
+  // Get a summary of the directory structure for AI
+  const dirStructure = filePaths
+    .filter(p => !shouldSkipPath(p))
+    .slice(0, 200)
+    .join("\n");
+
+  // Use AI to detect framework and find pages
+  const prompt = `Analyze this project to detect the framework and find all pages/routes.
+
+${packageJsonContent ? `PACKAGE.JSON (preview):
+${packageJsonContent}
+` : "No package.json found - might be a static HTML site."}
+
+FILE STRUCTURE:
+${dirStructure}
+
+TASK: Identify the framework and list ALL pages in this project.
+
+FRAMEWORK DETECTION RULES:
+- Next.js: Has "next" in dependencies, uses "pages/" or "app/" directory
+- React + Vite/CRA: Has "react" + "vite" or "react-scripts", routes usually in code
+- Astro: Has "astro" in dependencies, uses "src/pages/" directory
+- Static HTML: Has .html files in root or public folder, no JS framework
+- Vue/Nuxt: Has "vue" or "nuxt" in dependencies
+- SvelteKit: Has "@sveltejs/kit" in dependencies
+
+PAGE DETECTION RULES BY FRAMEWORK:
+1. Next.js Pages Router: Each file in "pages/" is a route (except _app, _document, api/)
+   - pages/index.tsx → /
+   - pages/about.tsx → /about
+   - pages/blog/[slug].tsx → /blog/:slug
+
+2. Next.js App Router: Each folder in "app/" with page.tsx is a route
+   - app/page.tsx → /
+   - app/about/page.tsx → /about
+
+3. Astro: Each file in "src/pages/" is a route
+   - src/pages/index.astro → /
+   - src/pages/about.astro → /about
+
+4. Static HTML: Each .html file is a page
+   - index.html → /
+   - about.html → /about
+   - pitch.html → /pitch
+
+5. React + Vite/CRA: Look for route definitions in App.tsx, routes.tsx, or similar
+   - Find <Route path="/about" element={...} /> patterns
+
+Return ONLY a JSON object in this exact format:
+{
+  "framework": "nextjs" | "react-vite" | "astro" | "static-html" | "sveltekit" | "nuxt" | "unknown",
+  "routingType": "file-based" | "code-based" | "none",
+  "pagesDirectory": "pages" | "src/pages" | "app" | null,
+  "pages": [
+    { "pagePath": "src/pages/index.tsx", "pageRoute": "/", "pageName": "Homepage" },
+    { "pagePath": "src/pages/about.tsx", "pageRoute": "/about", "pageName": "About Us" }
+  ]
+}
+
+PAGE NAMING RULES - Names must be CONCISE (1-3 words max):
+- Homepage (not "Home Page" or "Index")
+- About Us, Pricing, Contact
+- For specific topics: "Buy - Bitcoin", "Docs - API"
+- Use Title Case
+- Derive from file name AND context if available
+
+Be thorough - find ALL pages. For static HTML sites, include ALL .html files.`;
+
+  try {
+    const response = await (generateText as any)({
+      model: MODEL,
+      prompt,
+      system: `You are an expert at analyzing web project structures to identify frameworks and pages.
+You understand Next.js, React, Astro, Vue, Svelte, and static HTML projects.
+Be thorough in finding all pages - don't miss any routes.
+Return valid JSON only.`,
+    });
+
+    const jsonMatch = response.text?.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const result = JSON.parse(jsonMatch[0]) as FrameworkInfo;
+      console.log(`  ✅ Detected framework: ${result.framework} (${result.routingType} routing)`);
+      console.log(`  📄 Found ${result.pages.length} pages`);
+      return result;
+    }
+  } catch (error) {
+    console.log(`  ⚠️ AI framework detection failed: ${(error as Error).message}`);
+  }
+
+  // Fallback: Manual detection for common patterns
+  return fallbackFrameworkDetection(filePaths, rootPath);
+}
+
+// Fallback framework detection when AI fails
+function fallbackFrameworkDetection(filePaths: string[], rootPath: string): FrameworkInfo {
+  console.log("  Using fallback framework detection...");
+
+  const pages: DetectedPage[] = [];
+  const prefix = rootPath ? `${rootPath}/` : "";
+
+  // Check for HTML files (static site)
+  const htmlFiles = filePaths.filter(f =>
+    f.endsWith(".html") &&
+    !shouldSkipPath(f) &&
+    (rootPath ? f.startsWith(prefix) : true)
+  );
+
+  if (htmlFiles.length > 0) {
+    for (const htmlFile of htmlFiles) {
+      const relativePath = rootPath ? htmlFile.replace(prefix, "") : htmlFile;
+      const fileName = relativePath.replace(".html", "");
+      const route = fileName === "index" ? "/" : `/${fileName}`;
+      // Generate concise name
+      const name = fileName === "index"
+        ? "Homepage"
+        : fileName.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+      pages.push({
+        pagePath: htmlFile,
+        pageRoute: route,
+        pageName: name,
+      });
+    }
+
+    return {
+      framework: "static-html",
+      routingType: "none",
+      pages,
+    };
+  }
+
+  // Check for Next.js pages directory
+  const nextPagesFiles = filePaths.filter(f =>
+    (f.includes("/pages/") || f.startsWith("pages/")) &&
+    (f.endsWith(".tsx") || f.endsWith(".jsx") || f.endsWith(".ts") || f.endsWith(".js")) &&
+    !f.includes("_app") && !f.includes("_document") && !f.includes("/api/")
+  );
+
+  if (nextPagesFiles.length > 0) {
+    for (const pageFile of nextPagesFiles) {
+      const match = pageFile.match(/pages\/(.+)\.(tsx|jsx|ts|js)$/);
+      if (match && match[1]) {
+        const routePath = match[1];
+        const route = routePath === "index" ? "/" : `/${routePath.replace(/\/index$/, "")}`;
+        const segment = routePath.split("/").pop() || "Page";
+        // Generate concise name
+        const name = segment === "index"
+          ? "Homepage"
+          : segment.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+        pages.push({
+          pagePath: pageFile,
+          pageRoute: route,
+          pageName: name,
+        });
+      }
+    }
+
+    return {
+      framework: "nextjs",
+      routingType: "file-based",
+      pagesDirectory: "pages",
+      pages,
+    };
+  }
+
+  // Check for Next.js app directory
+  const nextAppFiles = filePaths.filter(f =>
+    f.includes("/app/") && f.endsWith("page.tsx")
+  );
+
+  if (nextAppFiles.length > 0) {
+    for (const pageFile of nextAppFiles) {
+      const match = pageFile.match(/app\/(.*)\/page\.tsx$/);
+      const routePath = match?.[1] ?? "";
+      const route = routePath === "" ? "/" : `/${routePath}`;
+      const segment = routePath.split("/").pop() || "";
+      // Generate concise name
+      const name = segment === "" || routePath === ""
+        ? "Homepage"
+        : segment.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+      pages.push({
+        pagePath: pageFile,
+        pageRoute: route,
+        pageName: name,
+      });
+    }
+
+    return {
+      framework: "nextjs",
+      routingType: "file-based",
+      pagesDirectory: "app",
+      pages,
+    };
+  }
+
+  // Check for Astro pages
+  const astroPages = filePaths.filter(f =>
+    f.includes("/pages/") && f.endsWith(".astro")
+  );
+
+  if (astroPages.length > 0) {
+    for (const pageFile of astroPages) {
+      const match = pageFile.match(/pages\/(.+)\.astro$/);
+      if (match && match[1]) {
+        const routePath = match[1];
+        const route = routePath === "index" ? "/" : `/${routePath.replace(/\/index$/, "")}`;
+        const segment = routePath.split("/").pop() || "Page";
+        // Generate concise name
+        const name = segment === "index"
+          ? "Homepage"
+          : segment.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+        pages.push({
+          pagePath: pageFile,
+          pageRoute: route,
+          pageName: name,
+        });
+      }
+    }
+
+    return {
+      framework: "astro",
+      routingType: "file-based",
+      pagesDirectory: "src/pages",
+      pages,
+    };
+  }
+
+  // Default: assume all source files are potential pages
+  return {
+    framework: "unknown",
+    routingType: "unknown",
+    pages: [],
+  };
+}
+
 // Raw element from file analysis
 interface RawElement {
   type: string;
@@ -45,6 +327,7 @@ interface RawElement {
   context: string;
   filePath: string;
   href?: string;
+  pageRoute: string;  // URL route this element belongs to
 }
 
 // Section group
@@ -54,6 +337,7 @@ export interface SectionGroup {
   sourceFile: string;
   startLine: number;
   endLine: number;
+  pageRoute: string;  // URL route this section belongs to (e.g., "/", "/about")
   elements: Array<{
     name: string;
     type: string;
@@ -62,12 +346,15 @@ export interface SectionGroup {
     currentValue: string;
     confidence: number;
     href?: string;
+    pageRoute: string;  // URL route this element belongs to
   }>;
 }
 
 export interface AnalysisResult {
   sections: SectionGroup[];
   filesAnalyzed: string[];
+  frameworkInfo: FrameworkInfo;
+  pages: DetectedPage[];
 }
 
 // Generate a reasonable name for an element based on its type and content (fallback)
@@ -227,12 +514,22 @@ Group related content together - a heading typically starts a new section.`,
       const startLine = Math.min(...lines);
       const endLine = Math.max(...lines);
 
+      // Get the most common page route for this section
+      const pageRouteCounts = new Map<string, number>();
+      for (const e of sectionElements) {
+        const count = pageRouteCounts.get(e.pageRoute) || 0;
+        pageRouteCounts.set(e.pageRoute, count + 1);
+      }
+      const sectionPageRoute = [...pageRouteCounts.entries()]
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || "/";
+
       sections.push({
         name: aiSection.name || "Untitled Section",
         description: aiSection.description,
         sourceFile: sectionElements[0]!.filePath,
         startLine,
         endLine,
+        pageRoute: sectionPageRoute,
         elements: sectionElements.map((e) => ({
           // Use AI-generated title (required)
           name: e.aiTitle,
@@ -242,6 +539,7 @@ Group related content together - a heading typically starts a new section.`,
           currentValue: e.content,
           confidence: 0.9,
           href: e.href,
+          pageRoute: e.pageRoute,
         })),
       });
     }
@@ -267,6 +565,16 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
   let currentElements: RawElement[] = [];
   let sectionCount = 0;
 
+  // Helper to get the most common page route from a list of elements
+  const getMostCommonPageRoute = (elems: RawElement[]): string => {
+    const counts = new Map<string, number>();
+    for (const e of elems) {
+      const count = counts.get(e.pageRoute) || 0;
+      counts.set(e.pageRoute, count + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "/";
+  };
+
   for (const elem of elements) {
     // Start new section on headings
     const firstElem = currentElements[0];
@@ -277,11 +585,13 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
     ) {
       sectionCount++;
       const lines = currentElements.map((e) => e.line);
+      const pageRoute = getMostCommonPageRoute(currentElements);
       sections.push({
         name: `Section ${sectionCount}`,
         sourceFile: firstElem.filePath,
         startLine: Math.min(...lines),
         endLine: Math.max(...lines),
+        pageRoute,
         elements: currentElements.map((e) => ({
           name: generateElementName(e.type, e.content),
           type: e.type,
@@ -290,6 +600,7 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
           currentValue: e.content,
           confidence: 0.9,
           href: e.href,
+          pageRoute: e.pageRoute,
         })),
       });
       currentElements = [];
@@ -302,11 +613,13 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
   if (currentElements.length > 0 && lastFirstElem) {
     sectionCount++;
     const lines = currentElements.map((e) => e.line);
+    const pageRoute = getMostCommonPageRoute(currentElements);
     sections.push({
       name: `Section ${sectionCount}`,
       sourceFile: lastFirstElem.filePath,
       startLine: Math.min(...lines),
       endLine: Math.max(...lines),
+      pageRoute,
       elements: currentElements.map((e) => ({
         name: generateElementName(e.type, e.content),
         type: e.type,
@@ -315,6 +628,7 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
         currentValue: e.content,
         confidence: 0.9,
         href: e.href,
+        pageRoute: e.pageRoute,
       })),
     });
   }
@@ -353,8 +667,43 @@ export async function analyzeRepository(
   };
 
   try {
-    // Step 1: List all files in the repository/subdirectory (0-10%)
-    await reportProgress(5, "Listing repository files");
+    // Step 1: Detect framework and pages (0-10%)
+    await reportProgress(2, "Detecting framework and pages");
+    logger.workflow.step("Detecting framework and pages");
+    const frameworkInfo = await detectFrameworkAndPages(executors, rootPath);
+
+    console.log(`  🔧 Framework: ${frameworkInfo.framework} (${frameworkInfo.routingType} routing)`);
+    console.log(`  📄 Detected ${frameworkInfo.pages.length} pages`);
+    frameworkInfo.pages.forEach(p => console.log(`    - ${p.pageRoute}: ${p.pagePath}`));
+
+    // Create a mapping from file paths to page routes
+    const fileToPageRoute = new Map<string, string>();
+    for (const page of frameworkInfo.pages) {
+      fileToPageRoute.set(page.pagePath, page.pageRoute);
+    }
+
+    // Helper to find the page route for a file
+    const getPageRouteForFile = (filePath: string): string => {
+      // Direct match
+      if (fileToPageRoute.has(filePath)) {
+        return fileToPageRoute.get(filePath)!;
+      }
+      // For components, try to find the closest page (check if file is in same directory as a page)
+      const fileDir = filePath.split("/").slice(0, -1).join("/");
+      for (const [pagePath, pageRoute] of fileToPageRoute) {
+        const pageDir = pagePath.split("/").slice(0, -1).join("/");
+        if (fileDir.startsWith(pageDir) || pageDir.startsWith(fileDir)) {
+          return pageRoute;
+        }
+      }
+      // Default to first page if single page site, otherwise "/"
+      return frameworkInfo.pages.length === 1 && frameworkInfo.pages[0]
+        ? frameworkInfo.pages[0].pageRoute
+        : "/";
+    };
+
+    // Step 2: List all files in the repository/subdirectory (10-15%)
+    await reportProgress(10, "Listing repository files");
     logger.workflow.step("Listing repository files");
     const files = await executors.listFiles({
       path: rootPath,
@@ -369,7 +718,7 @@ export async function analyzeRepository(
       )
       .slice(0, 50); // Limit to prevent too many API calls
 
-    await reportProgress(10, `Found ${sourceFiles.length} source files`);
+    await reportProgress(15, `Found ${sourceFiles.length} source files`);
     console.log(`  Found ${sourceFiles.length} source files to analyze`);
 
     if (sourceFiles.length === 0) {
@@ -379,28 +728,35 @@ export async function analyzeRepository(
         sectionsFound: 0,
         filesAnalyzed: 0,
       });
-      return { sections: [], filesAnalyzed: [] };
+      return {
+        sections: [],
+        filesAnalyzed: [],
+        frameworkInfo,
+        pages: frameworkInfo.pages,
+      };
     }
 
-    // Step 2: Analyze each source file (10-85%)
+    // Step 3: Analyze each source file (15-85%)
     logger.workflow.step(`Analyzing ${sourceFiles.length} source files`);
 
     for (let i = 0; i < sourceFiles.length; i++) {
       const file = sourceFiles[i]!;
-      // Progress from 10% to 85% based on file count
-      const fileProgress = 10 + Math.round((i / sourceFiles.length) * 75);
+      // Progress from 15% to 85% based on file count
+      const fileProgress = 15 + Math.round((i / sourceFiles.length) * 70);
       await reportProgress(fileProgress, `Analyzing ${file.name} (${i + 1}/${sourceFiles.length})`);
-      
+
       try {
         const analysis = await executors.analyzeSourceFile({ path: file.path });
         filesAnalyzed.push(file.path);
 
         if (analysis.elements.length > 0) {
+          // Determine page route for this file
+          const pageRoute = getPageRouteForFile(file.path);
           console.log(
-            `  📄 ${file.path}: ${analysis.elements.length} elements found`
+            `  📄 ${file.path}: ${analysis.elements.length} elements found (page: ${pageRoute})`
           );
 
-          // Add raw elements with file path (no parentContext needed anymore)
+          // Add raw elements with file path and page route
           for (const elem of analysis.elements) {
             allRawElements.push({
               type: elem.type,
@@ -409,6 +765,7 @@ export async function analyzeRepository(
               context: elem.context,
               filePath: file.path,
               href: elem.href,
+              pageRoute,
             });
           }
         }
@@ -419,11 +776,11 @@ export async function analyzeRepository(
       }
     }
 
-    // Step 3: Use AI to group elements into sections (85-95%)
+    // Step 4: Use AI to group elements into sections (85-95%)
     await reportProgress(85, "AI grouping elements into sections");
     logger.workflow.step("AI grouping elements into sections");
     const sections = await groupElementsWithAI(allRawElements);
-    
+
     await reportProgress(95, `Created ${sections.length} sections`);
     console.log(
       `  Created ${sections.length} sections from ${allRawElements.length} elements`
@@ -433,13 +790,28 @@ export async function analyzeRepository(
     if (sections.length > 0) {
       console.log("📝 Section breakdown:");
       sections.forEach((s, i) => {
-        console.log(`  ${i + 1}. "${s.name}" - ${s.elements.length} elements`);
+        console.log(`  ${i + 1}. "${s.name}" (${s.pageRoute}) - ${s.elements.length} elements`);
       });
+    }
+
+    // Log page summary
+    const pageElementCounts = new Map<string, number>();
+    for (const section of sections) {
+      for (const element of section.elements) {
+        const count = pageElementCounts.get(element.pageRoute) || 0;
+        pageElementCounts.set(element.pageRoute, count + 1);
+      }
+    }
+    console.log("📄 Elements by page:");
+    for (const [route, count] of pageElementCounts) {
+      console.log(`    ${route}: ${count} elements`);
     }
 
     const result: AnalysisResult = {
       sections,
       filesAnalyzed,
+      frameworkInfo,
+      pages: frameworkInfo.pages,
     };
 
     logger.workflow.complete("analyzeRepository", Date.now() - startTime, {
@@ -449,6 +821,7 @@ export async function analyzeRepository(
         0
       ),
       filesAnalyzed: result.filesAnalyzed.length,
+      pagesFound: result.pages.length,
     });
 
     return result;

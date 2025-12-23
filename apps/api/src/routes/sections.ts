@@ -70,6 +70,7 @@ export const sectionRoutes = new Hono()
             currentValue: e.currentValue,
             schema: e.schema,
             confidence: e.confidence,
+            pageUrl: e.pageUrl,
           })),
         },
       },

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { projectDetailQuery, analysisStatusQuery } from "@/lib/queries";
+import { projectDetailQuery, analysisStatusQuery, projectPagesQuery, queryKeys } from "@/lib/queries";
 import { useTriggerAnalysis, useCancelAnalysis } from "@/lib/mutations";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
@@ -57,6 +57,7 @@ function ProjectDetailContent() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
+  const [selectedPage, setSelectedPage] = useState<string | null>(null);
 
   // Data Queries
   const { data: projectData, isLoading: isProjectLoading } = useQuery(
@@ -64,10 +65,16 @@ function ProjectDetailContent() {
   );
   const { data: analysisStatus } = useQuery(analysisStatusQuery(projectId));
 
-  // Conditionally fetch sections only when ready
+  // Conditionally fetch sections and pages only when ready
   const isReady =
     projectData?.project?.status === "ready" ||
     analysisStatus?.projectStatus === "ready";
+
+  const { data: pagesData } = useQuery({
+    ...projectPagesQuery(projectId),
+    enabled: isReady,
+  });
+
   const { data: sectionsData } = useQuery({
     queryKey: ["project", projectId, "sections"],
     queryFn: async () => {
@@ -79,6 +86,11 @@ function ProjectDetailContent() {
     enabled: isReady,
   });
 
+  const pages = pagesData?.pages || [];
+
+  // Use first page as default if none selected
+  const effectiveSelectedPage = selectedPage ?? pages[0]?.pageRoute ?? null;
+
   const project = projectData?.project;
   const sections = sectionsData || [];
 
@@ -86,34 +98,49 @@ function ProjectDetailContent() {
   const triggerAnalysis = useTriggerAnalysis(projectId);
   const cancelAnalysis = useCancelAnalysis(projectId);
 
-  // Derived State
-  const isAnalyzing =
-    analysisStatus?.projectStatus === "analyzing" || triggerAnalysis.isPending;
   const analysisProgress = analysisStatus?.currentJob?.progress || 0;
   const queryClient = useQueryClient();
 
   // Track if we started analyzing to show toast on completion
   const [wasAnalyzingState, setWasAnalyzingState] = useState(false);
+  // Track local "forcing" state to prevent flicker during mutation -> status query race
+  const [localAnalyzing, setLocalAnalyzing] = useState(false);
+
+  // Effective analyzing state: either API says so, mutation pending, or local override
+  const isAnalyzingEffective =
+    analysisStatus?.projectStatus === "analyzing" ||
+    triggerAnalysis.isPending ||
+    localAnalyzing;
 
   // Update wasAnalyzingState when starting analysis
-  if (isAnalyzing && !wasAnalyzingState) {
+  if (isAnalyzingEffective && !wasAnalyzingState) {
     setWasAnalyzingState(true);
+  }
+
+  // Clear local analyzing state once API confirms we're analyzing
+  if (localAnalyzing && analysisStatus?.projectStatus === "analyzing") {
+    setLocalAnalyzing(false);
   }
 
   // When analysis completes, refetch sections and show toast
   if (
     wasAnalyzingState &&
-    !isAnalyzing &&
+    !isAnalyzingEffective &&
     analysisStatus?.projectStatus === "ready"
   ) {
     setWasAnalyzingState(false);
     queryClient.invalidateQueries({
       queryKey: ["project", projectId, "sections"],
     });
+    queryClient.invalidateQueries({
+      queryKey: [...queryKeys.projectDetail(projectId), "pages"],
+    });
     toast.success("Analysis complete!");
   }
 
   const handleAnalysis = () => {
+    // Set local analyzing state immediately to prevent flicker
+    setLocalAnalyzing(true);
     triggerAnalysis.mutate(
       {},
       {
@@ -121,6 +148,7 @@ function ProjectDetailContent() {
           toast.success("Analysis started");
         },
         onError: (err) => {
+          setLocalAnalyzing(false);
           toast.error("Failed to start analysis: " + err.message);
         },
       }
@@ -143,14 +171,44 @@ function ProjectDetailContent() {
     section.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalElements = sections.reduce(
-    (acc: number, s: any) => acc + (s.elementCount || 0),
-    0
-  );
-  const visibleElements = "-";
+  // Calculate stats based on selected page
+  const selectedPageData = effectiveSelectedPage
+    ? pages.find((p) => p.pageRoute === effectiveSelectedPage)
+    : null;
+  const totalElements = selectedPageData?.elementCount
+    ?? sections.reduce((acc: number, s: any) => acc + (s.elementCount || 0), 0);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8 pb-24">
+    <div className="flex">
+      {/* Left Sidebar - Pages (attached to app sidebar) */}
+      {isReady && !isAnalyzingEffective && pages.length > 0 && (
+        <div className="w-44 border-r p-3 shrink-0 hidden lg:block">
+          <div className="sticky top-4">
+            <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Pages
+            </h3>
+            <div className="space-y-0.5">
+              {pages.map((page) => (
+                <button
+                  key={page.pageRoute}
+                  onClick={() => setSelectedPage(page.pageRoute)}
+                  className={cn(
+                    "w-full text-left px-2 py-1 rounded text-xs transition-colors",
+                    effectiveSelectedPage === page.pageRoute
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {page.pageName}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 p-8 max-w-5xl space-y-8 pb-24">
       {/* Header */}
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -171,10 +229,10 @@ function ProjectDetailContent() {
                 {project.name}
               </h1>
               <Badge
-                variant={isAnalyzing ? "outline" : "success"}
+                variant={isAnalyzingEffective ? "outline" : "success"}
                 className="px-3 py-1 font-bold"
               >
-                {isAnalyzing ? "Analyzing..." : "Active"}
+                {isAnalyzingEffective ? "Analyzing..." : "Active"}
               </Badge>
             </div>
 
@@ -260,13 +318,13 @@ function ProjectDetailContent() {
               variant="outline"
               size="sm"
               onClick={handleAnalysis}
-              disabled={isAnalyzing}
-              className={cn(isAnalyzing ? "opacity-100" : "")}
+              disabled={isAnalyzingEffective}
+              className={cn(isAnalyzingEffective ? "opacity-100" : "")}
             >
               <IconRefresh
-                className={cn("w-4 h-4 mr-2", isAnalyzing && "animate-spin")}
+                className={cn("w-4 h-4 mr-2", isAnalyzingEffective && "animate-spin")}
               />
-              {isAnalyzing ? "Analyzing..." : "Begin Analysis"}
+              {isAnalyzingEffective ? "Analyzing..." : "Begin Analysis"}
             </Button>
 
             <Button size="sm" variant="secondary" className="group shadow-md">
@@ -291,7 +349,7 @@ function ProjectDetailContent() {
         </div>
       </div>
 
-      {isAnalyzing && (
+      {isAnalyzingEffective && (
         <Card className="bg-primary/5 border-primary/20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-500">
           <CardContent className="pt-6">
             <div className="space-y-4">
@@ -330,13 +388,16 @@ function ProjectDetailContent() {
 
       {/* Stats - hide during analysis */}
       {isReady &&
-        !isAnalyzing &&
+        !isAnalyzingEffective &&
         sections.length > 0 &&
         (() => {
           const stats = [
+            {
+              label: "Page",
+              value: selectedPageData?.pageName || effectiveSelectedPage || "-",
+            },
+            { label: "Elements", value: totalElements },
             { label: "Sections", value: sections.length },
-            { label: "Total Elements", value: totalElements },
-            { label: "Visible", value: visibleElements },
             {
               label: "Last Analysis",
               value: analysisStatus?.lastAnalyzedAt
@@ -377,7 +438,7 @@ function ProjectDetailContent() {
         })()}
 
       {/* Content Area - hide during analysis */}
-      {isReady && !isAnalyzing ? (
+      {isReady && !isAnalyzingEffective ? (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
           <InputGroup className="flex-1">
             <InputGroupAddon>
@@ -412,13 +473,14 @@ function ProjectDetailContent() {
                   section={section}
                   projectId={projectId}
                   searchTerm={searchTerm}
+                  selectedPage={effectiveSelectedPage}
                 />
               ))}
             </Accordion>
           )}
         </div>
       ) : (
-        !isAnalyzing && (
+        !isAnalyzingEffective && (
           <Empty className="py-16 border animate-in fade-in duration-500">
             <EmptyHeader>
               <EmptyMedia variant="icon">
@@ -445,6 +507,7 @@ function ProjectDetailContent() {
           onClose={() => setEditingElementId(null)}
         />
       )}
+      </div>
     </div>
   );
 }
