@@ -218,7 +218,7 @@ export function ProjectDetailPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
-              <h1 className="text-4xl font-black tracking-tight leading-none">
+              <h1 className="text-4xl font-serif font-bold tracking-tight leading-none text-title">
                 {project.name}
               </h1>
               <Badge

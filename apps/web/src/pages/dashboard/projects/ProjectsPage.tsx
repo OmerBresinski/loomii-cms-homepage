@@ -34,7 +34,7 @@ export function ProjectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
+          <h1 className="text-2xl font-serif font-semibold tracking-tight text-title">Projects</h1>
           <p className="text-sm text-muted-foreground">
             Manage your repository content
           </p>

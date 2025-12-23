@@ -269,7 +269,7 @@ export function ReviewPage() {
 
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Review Changes</h1>
+            <h1 className="text-3xl font-serif font-bold tracking-tight text-title">Review Changes</h1>
             <p className="text-muted-foreground mt-1">
               {editCount} edit{editCount !== 1 ? "s" : ""} across {files.length} file{files.length !== 1 ? "s" : ""}
             </p>

@@ -100,7 +100,7 @@ export function DashboardHome() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
+          <h1 className="text-2xl font-serif font-semibold tracking-tight text-title">Overview</h1>
           <p className="text-sm text-muted-foreground">{organization.name}</p>
         </div>
         <Button

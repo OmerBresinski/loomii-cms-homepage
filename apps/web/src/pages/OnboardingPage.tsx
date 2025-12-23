@@ -56,7 +56,7 @@ export function OnboardingPage() {
              <IconLoader2 className="w-8 h-8 text-primary animate-spin" />
           </div>
           <div className="space-y-2">
-            <h2 className="text-xl font-bold tracking-tight">Setting things up...</h2>
+            <h2 className="text-xl font-serif font-bold tracking-tight text-title">Setting things up...</h2>
             <p className="text-muted-foreground text-sm">
               We're preparing your workspace. This will only take a moment.
             </p>
