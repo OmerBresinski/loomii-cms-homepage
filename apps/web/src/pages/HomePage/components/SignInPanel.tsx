@@ -1,4 +1,5 @@
 import { SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
+import { dark } from "@clerk/themes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/card";
 import { IconCircleCheck, IconLayoutDashboard, IconSparkles } from "@tabler/icons-react";
 import { Link } from "@tanstack/react-router";
@@ -6,6 +7,7 @@ import { Button } from "@/ui/button";
 import { Badge } from "@/ui/badge";
 
 const clerkAppearance = {
+  baseTheme: dark,
   elements: {
     rootBox: "w-full bg-transparent",
     cardBox: "w-full shadow-none bg-transparent",

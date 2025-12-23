@@ -1,10 +1,10 @@
 import { Link, useLocation } from "@tanstack/react-router"
-import { useUser, UserButton, OrganizationSwitcher } from "@clerk/clerk-react"
+import { UserButton, OrganizationSwitcher } from "@clerk/clerk-react"
 import { dark } from "@clerk/themes"
 import { useQuery } from "@tanstack/react-query"
 import { currentOrgQuery } from "@/lib/queries"
 import { cn } from "@/lib/utils"
-import { IconHome, IconFolder, IconSettings, IconChevronUp } from "@tabler/icons-react"
+import { IconHome, IconFolder, IconSettings } from "@tabler/icons-react"
 import {
   Sidebar,
   SidebarContent,
@@ -19,7 +19,6 @@ import {
 import { Separator } from "@/ui/separator"
 
 export function AppSidebar() {
-  const { user } = useUser()
   const { data: orgData } = useQuery(currentOrgQuery())
   const location = useLocation()
   const hasGitHub = orgData?.organization?.hasGitHubConnected
@@ -34,7 +33,6 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-3">
         <OrganizationSwitcher
-          afterCreateOrganizationUrl="/onboarding"
           afterSelectOrganizationUrl="/dashboard"
           afterLeaveOrganizationUrl="/onboarding"
           hidePersonal
@@ -52,12 +50,15 @@ export function AppSidebar() {
               organizationPreviewAvatarBox: "w-8 h-8 rounded-lg",
               organizationPreviewMainIdentifier: "text-foreground font-semibold text-sm",
               organizationPreviewTextContainer: "gap-0",
+              organizationSwitcherPopoverActionButton__createOrganization: "!hidden",
             },
           }}
         />
       </SidebarHeader>
 
-      <Separator className="mx-3 w-auto" />
+      <div className="px-3">
+        <Separator />
+      </div>
 
       <SidebarContent className="pt-2">
         <SidebarGroup>
@@ -94,47 +95,27 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-3">
-        <Separator className="mb-3" />
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <div className="relative group/user px-2 py-2 rounded-lg hover:bg-sidebar-accent transition-colors cursor-pointer flex items-center gap-3">
-              {/* Visuals (Avatar, Name, Email) */}
-              <div className="flex items-center gap-3 w-full pointer-events-none">
-                <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-border/30">
-                   <UserButton
-                    appearance={{
-                      baseTheme: dark,
-                      elements: {
-                        avatarBox: "w-9 h-9 rounded-lg",
-                        userButtonTrigger: "pointer-events-none"
-                      }
-                    }}
-                  />
-                </div>
-                <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium text-foreground truncate">{user?.fullName || "User"}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{user?.primaryEmailAddress?.emailAddress}</p>
-                </div>
-                <IconChevronUp className="w-4 h-4 text-muted-foreground/50" />
-              </div>
-
-              {/* The Actual Trigger (Transparent Overlay) */}
-              <div className="absolute inset-0 opacity-0">
-                <UserButton
-                  appearance={{
-                    baseTheme: dark,
-                    elements: {
-                      rootBox: "w-full h-full",
-                      userButtonTrigger: "w-full h-full",
-                      userButtonAvatarBox: "hidden"
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="p-3 pt-0">
+        <div className="px-0">
+          <Separator className="mb-3" />
+        </div>
+        <UserButton
+          appearance={{
+            baseTheme: dark,
+            elements: {
+              rootBox: "w-full",
+              userButtonTrigger: cn(
+                "w-full px-3 py-2.5 rounded-lg",
+                "hover:bg-sidebar-accent transition-colors",
+                "flex items-center gap-3"
+              ),
+              userButtonAvatarBox: "w-8 h-8 rounded-lg shrink-0 order-first",
+              userButtonOuterIdentifier: "text-sm font-medium text-foreground truncate order-last flex-1 text-left",
+              userButtonBox: "flex-row items-center gap-3 w-full",
+            }
+          }}
+          showName
+        />
       </SidebarFooter>
     </Sidebar>
   )

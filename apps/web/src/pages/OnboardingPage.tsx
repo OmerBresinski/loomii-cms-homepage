@@ -1,4 +1,5 @@
 import { useUser, useOrganizationList, CreateOrganization } from "@clerk/clerk-react";
+import { dark } from "@clerk/themes";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
@@ -142,9 +143,10 @@ export function OnboardingPage() {
                   <div className="h-px bg-border flex-1" />
                </div>
                
-               <CreateOrganization 
+               <CreateOrganization
                  afterCreateOrganizationUrl="/dashboard"
                  appearance={{
+                   baseTheme: dark,
                    elements: {
                      rootBox: "w-full flex justify-center",
                      card: "shadow-none border-none bg-transparent p-0",

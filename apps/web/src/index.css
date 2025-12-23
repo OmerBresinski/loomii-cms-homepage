@@ -132,6 +132,11 @@
     }
 }
 
+/* Hide Clerk create organization button */
+.cl-organizationSwitcherPopoverActionButton__createOrganization {
+  display: none !important;
+}
+
 /* Subtle dot grid background pattern for dark mode */
 .bg-grid-pattern {
   background-image: radial-gradient(circle at center, oklch(1 0 0 / 4%) 1px, transparent 1px);
