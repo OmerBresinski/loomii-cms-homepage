@@ -2,13 +2,16 @@ import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { projectListQuery } from "@/lib/queries";
 import { useOrganization } from "@clerk/clerk-react";
-import { IconPlus, IconFolder, IconSearch, IconFilter, IconExternalLink, IconBrandGithub } from "@tabler/icons-react";
+import {
+  IconPlus,
+  IconFolder,
+  IconBrandGithub,
+  IconGitBranch,
+  IconChevronRight,
+} from "@tabler/icons-react";
 import { Button } from "@/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/ui/card";
 import { Badge } from "@/ui/badge";
-import { Input } from "@/ui/input";
-import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/ui/item";
-import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/ui/empty";
+import { cn } from "@/lib/utils";
 
 export function ProjectsPage() {
   const { organization } = useOrganization();
@@ -18,97 +21,107 @@ export function ProjectsPage() {
   if (!organization) return null;
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground">Manage and edit your repository content.</p>
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your repository content
+          </p>
         </div>
-        <Button render={<Link to="/dashboard/projects/new" />} nativeButton={false}>
-          <IconPlus className="w-4 h-4 mr-2" />
+        <Button
+          size="sm"
+          render={<Link to="/dashboard/projects/new" />}
+          nativeButton={false}
+        >
+          <IconPlus className="w-4 h-4 mr-1.5" />
           New Project
         </Button>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <IconSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search projects..." className="pl-9" />
-        </div>
-        <Button variant="outline" size="icon">
-          <IconFilter className="w-4 h-4" />
-        </Button>
+      {/* Projects List */}
+      <div className="border rounded-lg overflow-hidden bg-card">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-4">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+              <IconFolder className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <h3 className="font-medium mb-1">No projects yet</h3>
+            <p className="text-sm text-muted-foreground text-center mb-4">
+              Connect a GitHub repository to get started
+            </p>
+            <Button
+              size="sm"
+              render={<Link to="/dashboard/projects/new" />}
+              nativeButton={false}
+            >
+              <IconPlus className="w-4 h-4 mr-1.5" />
+              Create Project
+            </Button>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {projects.map((project) => (
+              <Link
+                key={project.id}
+                to="/dashboard/projects/$projectId"
+                params={{ projectId: project.id }}
+                className={cn(
+                  "flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors group"
+                )}
+              >
+                {/* Icon */}
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <IconFolder className="w-4 h-4 text-primary" />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium truncate group-hover:text-primary transition-colors">
+                      {project.name}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] h-5 shrink-0"
+                    >
+                      Active
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                    <span className="flex items-center gap-1 truncate">
+                      <IconBrandGithub className="w-3 h-3 shrink-0" />
+                      {project.githubRepo}
+                    </span>
+                    <span className="flex items-center gap-1 shrink-0">
+                      <IconGitBranch className="w-3 h-3" />
+                      {project.githubBranch}
+                    </span>
+                    {project.rootPath && project.rootPath !== "/" && (
+                      <span className="truncate">{project.rootPath}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Arrow */}
+                <IconChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
-      <Card className="min-h-[400px]">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-[400px]">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          ) : projects.length === 0 ? (
-            <div className="flex items-center justify-center h-[400px]">
-              <Empty className="border-none max-w-md">
-                <EmptyMedia>
-                  <IconFolder className="w-12 h-12 text-muted-foreground opacity-20" />
-                </EmptyMedia>
-                <EmptyTitle className="text-xl">No projects found</EmptyTitle>
-                <EmptyDescription className="text-base">
-                  You haven't created any projects yet. Connect a repository to get started.
-                </EmptyDescription>
-                <Button size="lg" className="mt-6" render={<Link to="/dashboard/projects/new" />} nativeButton={false}>
-                  Create your first project
-                </Button>
-              </Empty>
-            </div>
-          ) : (
-            <ItemGroup className="gap-0">
-              {projects.map((project) => (
-                <Item key={project.id} variant="default" className="px-8 py-6 border-b last:border-0 rounded-none hover:bg-accent/30 group">
-                  <ItemMedia variant="icon" className="w-12 h-12 rounded-xl bg-primary/10 text-primary shrink-0 transition-all group-hover:scale-110 group-hover:rotate-3">
-                    <IconFolder className="w-6 h-6" />
-                  </ItemMedia>
-                  <ItemContent className="ml-6 gap-2">
-                    <ItemTitle className="text-lg font-bold group-hover:text-primary transition-colors">
-                      {project.name}
-                    </ItemTitle>
-                    <div className="flex items-center gap-3">
-                      <ItemDescription className="flex items-center gap-1.5">
-                        <IconBrandGithub className="w-3.5 h-3.5" />
-                        {project.githubRepo}
-                      </ItemDescription>
-                      <span className="text-border">|</span>
-                      <ItemDescription>
-                        {project.githubBranch}
-                      </ItemDescription>
-                      {project.rootPath && project.rootPath !== "/" && (
-                        <>
-                          <span className="text-border">|</span>
-                          <ItemDescription>
-                            {project.rootPath}
-                          </ItemDescription>
-                        </>
-                      )}
-                    </div>
-                  </ItemContent>
-                  <ItemActions className="gap-4">
-                    <div className="flex flex-col items-end gap-1.5 mr-4 hidden sm:flex">
-                      <Badge variant="success" className="h-5">Active</Badge>
-                      <span className="text-[10px] text-muted-foreground italic">Last analyzed 2 days ago</span>
-                    </div>
-                    <Button variant="outline" size="sm" className="hidden sm:flex" render={<Link to="/dashboard/projects/$projectId" params={{ projectId: project.id }} />} nativeButton={false}>
-                      Manage
-                    </Button>
-                    <Button variant="ghost" size="icon" render={<Link to="/dashboard/projects/$projectId" params={{ projectId: project.id }} />} nativeButton={false}>
-                      <IconExternalLink className="w-4 h-4" />
-                    </Button>
-                  </ItemActions>
-                </Item>
-              ))}
-            </ItemGroup>
-          )}
-        </CardContent>
-      </Card>
+      {/* Footer hint */}
+      {projects.length > 0 && (
+        <p className="text-xs text-muted-foreground text-center">
+          {projects.length} project{projects.length !== 1 ? "s" : ""}
+        </p>
+      )}
     </div>
   );
 }
