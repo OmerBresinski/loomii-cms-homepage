@@ -167,9 +167,17 @@ function ProjectDetailContent() {
   if (isLoading) return <ProjectDetailSkeleton />;
   if (!project) return <div>Project not found</div>;
 
-  const filteredSections = sections.filter((section: any) =>
-    section.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSections = sections.filter((section: any) => {
+    // Filter by search term
+    if (!section.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+    // Filter by selected page - only show sections that have elements on this page
+    if (effectiveSelectedPage && section.pages) {
+      return section.pages.includes(effectiveSelectedPage);
+    }
+    return true;
+  });
 
   // Calculate stats based on selected page
   const selectedPageData = effectiveSelectedPage
@@ -389,7 +397,7 @@ function ProjectDetailContent() {
       {/* Stats - hide during analysis */}
       {isReady &&
         !isAnalyzingEffective &&
-        sections.length > 0 &&
+        filteredSections.length > 0 &&
         (() => {
           const stats = [
             {
@@ -397,7 +405,7 @@ function ProjectDetailContent() {
               value: selectedPageData?.pageName || effectiveSelectedPage || "-",
             },
             { label: "Elements", value: totalElements },
-            { label: "Sections", value: sections.length },
+            { label: "Sections", value: filteredSections.length },
             {
               label: "Last Analysis",
               value: analysisStatus?.lastAnalyzedAt

@@ -13,6 +13,10 @@ export const sectionRoutes = new Hono()
         _count: {
           select: { elements: true },
         },
+        elements: {
+          select: { pageUrl: true },
+          distinct: ["pageUrl"],
+        },
       },
       orderBy: [{ sourceFile: "asc" }, { startLine: "asc" }],
     });
@@ -27,6 +31,7 @@ export const sectionRoutes = new Hono()
           startLine: s.startLine,
           endLine: s.endLine,
           elementCount: s._count.elements,
+          pages: s.elements.map((e) => e.pageUrl),
           createdAt: s.createdAt.toISOString(),
         })),
       },
