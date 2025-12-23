@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { AccordionItem, AccordionTrigger, AccordionContent } from "@/ui/accordion";
-import { Badge } from "@/ui/badge";
 import { IconLoader2 } from "@tabler/icons-react";
 import { sectionDetailQuery } from "@/lib/queries";
 import { ElementRow } from "./ElementRow";
@@ -48,14 +47,11 @@ export function SectionRow({ section, projectId, searchTerm }: SectionRowProps) 
         onMouseEnter={onMouseEnter}
         onClick={() => setIsOpen(true)}
       >
-        <div className="flex items-center gap-3">
-          <div className="text-left">
-            <div className="font-medium">{section.name}</div>
-            <div className="text-muted-foreground text-xs">
-              {section.elementCount || elements.length} components
-            </div>
+        <div className="text-left">
+          <div className="font-medium">{section.name}</div>
+          <div className="text-muted-foreground text-xs">
+            {section.elementCount || elements.length} components
           </div>
-          <Badge variant="secondary">Section</Badge>
         </div>
       </AccordionTrigger>
       <AccordionContent>

@@ -5,29 +5,37 @@ import { projectDetailQuery, analysisStatusQuery } from "@/lib/queries";
 import { useTriggerAnalysis, useCancelAnalysis } from "@/lib/mutations";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
-import { 
-  IconExternalLink, 
-  IconRefresh, 
+import {
+  IconExternalLink,
+  IconRefresh,
   IconCalendar,
   IconChevronRight,
-
   IconBrandGithub,
   IconGitBranch,
   IconSearch,
-  IconLoader2
+  IconLoader2,
 } from "@tabler/icons-react";
 import { Button } from "@/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/ui/card";
+import { Card, CardContent } from "@/ui/card";
 import { Badge } from "@/ui/badge";
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/ui/input-group";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from "@/ui/input-group";
+import { Item, ItemContent, ItemTitle, ItemDescription } from "@/ui/item";
+import { Separator } from "@/ui/separator";
 import { Progress } from "@/ui/progress";
 import { Skeleton } from "@/ui/skeleton";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/ui/empty";
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/ui/hover-card";
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/ui/empty";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/ui/hover-card";
 import { ElementEditor } from "@/components/editor/ElementEditor";
 import { cn } from "@/lib/utils";
 import { Accordion } from "@/ui/accordion";
@@ -46,23 +54,29 @@ export function ProjectDetailPage() {
 function ProjectDetailContent() {
   const { projectId } = useParams({ from: "/dashboard/projects/$projectId" });
   const { isDirty, clearDirtyStates } = useProjectContext();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
 
   // Data Queries
-  const { data: projectData, isLoading: isProjectLoading } = useQuery(projectDetailQuery(projectId));
+  const { data: projectData, isLoading: isProjectLoading } = useQuery(
+    projectDetailQuery(projectId)
+  );
   const { data: analysisStatus } = useQuery(analysisStatusQuery(projectId));
-  
+
   // Conditionally fetch sections only when ready
-  const isReady = projectData?.project?.status === "ready" || analysisStatus?.projectStatus === "ready";
+  const isReady =
+    projectData?.project?.status === "ready" ||
+    analysisStatus?.projectStatus === "ready";
   const { data: sectionsData } = useQuery({
     queryKey: ["project", projectId, "sections"],
     queryFn: async () => {
-      const response = await apiFetch<{ sections: any[] }>(`/projects/${projectId}/sections`);
+      const response = await apiFetch<{ sections: any[] }>(
+        `/projects/${projectId}/sections`
+      );
       return response.sections;
     },
-    enabled: isReady
+    enabled: isReady,
   });
 
   const project = projectData?.project;
@@ -73,34 +87,44 @@ function ProjectDetailContent() {
   const cancelAnalysis = useCancelAnalysis(projectId);
 
   // Derived State
-  const isAnalyzing = analysisStatus?.projectStatus === "analyzing" || triggerAnalysis.isPending;
+  const isAnalyzing =
+    analysisStatus?.projectStatus === "analyzing" || triggerAnalysis.isPending;
   const analysisProgress = analysisStatus?.currentJob?.progress || 0;
   const queryClient = useQueryClient();
-  
+
   // Track if we started analyzing to show toast on completion
   const [wasAnalyzingState, setWasAnalyzingState] = useState(false);
-  
+
   // Update wasAnalyzingState when starting analysis
   if (isAnalyzing && !wasAnalyzingState) {
     setWasAnalyzingState(true);
   }
-  
+
   // When analysis completes, refetch sections and show toast
-  if (wasAnalyzingState && !isAnalyzing && analysisStatus?.projectStatus === "ready") {
+  if (
+    wasAnalyzingState &&
+    !isAnalyzing &&
+    analysisStatus?.projectStatus === "ready"
+  ) {
     setWasAnalyzingState(false);
-    queryClient.invalidateQueries({ queryKey: ["project", projectId, "sections"] });
+    queryClient.invalidateQueries({
+      queryKey: ["project", projectId, "sections"],
+    });
     toast.success("Analysis complete!");
   }
-  
+
   const handleAnalysis = () => {
-    triggerAnalysis.mutate({}, {
-      onSuccess: () => {
-        toast.success("Analysis started");
-      },
-      onError: (err) => {
-        toast.error("Failed to start analysis: " + err.message);
+    triggerAnalysis.mutate(
+      {},
+      {
+        onSuccess: () => {
+          toast.success("Analysis started");
+        },
+        onError: (err) => {
+          toast.error("Failed to start analysis: " + err.message);
+        },
       }
-    });
+    );
   };
 
   const handlePublish = () => {
@@ -115,19 +139,27 @@ function ProjectDetailContent() {
   if (isLoading) return <ProjectDetailSkeleton />;
   if (!project) return <div>Project not found</div>;
 
-  const filteredSections = sections.filter((section: any) => 
+  const filteredSections = sections.filter((section: any) =>
     section.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const totalElements = sections.reduce((acc: number, s: any) => acc + (s.elementCount || 0), 0);
-  const visibleElements = "-"; 
+  const totalElements = sections.reduce(
+    (acc: number, s: any) => acc + (s.elementCount || 0),
+    0
+  );
+  const visibleElements = "-";
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 pb-24">
       {/* Header */}
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link to="/dashboard/projects" className="hover:text-primary transition-colors">Projects</Link>
+          <Link
+            to="/dashboard/projects"
+            className="hover:text-primary transition-colors"
+          >
+            Projects
+          </Link>
           <IconChevronRight className="w-3 h-3" />
           <span className="text-foreground font-medium">{project.name}</span>
         </div>
@@ -135,15 +167,20 @@ function ProjectDetailContent() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3">
-              <h1 className="text-4xl font-black tracking-tight leading-none">{project.name}</h1>
-              <Badge variant={isAnalyzing ? "outline" : "success"} className="px-3 py-1 font-bold">
+              <h1 className="text-4xl font-black tracking-tight leading-none">
+                {project.name}
+              </h1>
+              <Badge
+                variant={isAnalyzing ? "outline" : "success"}
+                className="px-3 py-1 font-bold"
+              >
                 {isAnalyzing ? "Analyzing..." : "Active"}
               </Badge>
             </div>
-            
+
             <div className="flex items-center gap-4 text-muted-foreground">
               <HoverCard>
-                <HoverCardTrigger 
+                <HoverCardTrigger
                   render={
                     <button className="flex items-center gap-2 cursor-help group bg-transparent border-none p-0 text-inherit focus:outline-none" />
                   }
@@ -160,51 +197,75 @@ function ProjectDetailContent() {
                         <IconBrandGithub className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold uppercase tracking-widest text-primary">Connected Repository</div>
-                        <div className="text-sm font-bold truncate">{project.githubRepo}</div>
+                        <div className="text-xs font-bold uppercase tracking-widest text-primary">
+                          Connected Repository
+                        </div>
+                        <div className="text-sm font-bold truncate">
+                          {project.githubRepo}
+                        </div>
                       </div>
                     </div>
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <IconGitBranch className="w-3 h-3" />
-                      Branch: <span className="font-bold text-foreground">{project.githubBranch}</span>
+                      Branch:{" "}
+                      <span className="font-bold text-foreground">
+                        {project.githubBranch}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                       <IconCalendar className="w-3 h-3" />
-                       Last synced: <span className="font-bold text-foreground">
-                         {analysisStatus?.lastAnalyzedAt 
-                           ? new Date(analysisStatus.lastAnalyzedAt).toLocaleDateString()
-                           : "Never"}
-                       </span>
+                      <IconCalendar className="w-3 h-3" />
+                      Last synced:{" "}
+                      <span className="font-bold text-foreground">
+                        {analysisStatus?.lastAnalyzedAt
+                          ? new Date(
+                              analysisStatus.lastAnalyzedAt
+                            ).toLocaleDateString()
+                          : "Never"}
+                      </span>
                     </div>
-                     <div className="pt-2">
-                        <Button
-                          // @ts-ignore - nativeButton is missing from types but required by Base UI
-                          nativeButton={false}
-                          size="sm" variant="outline" className="w-full text-[10px] font-bold uppercase tracking-widest h-8" render={<a href={`https://github.com/${project.githubRepo}`} target="_blank" rel="noreferrer" />}>
-                          View on GitHub
-                        </Button>
-                     </div>
+                    <div className="pt-2">
+                      <Button
+                        // @ts-ignore - nativeButton is missing from types but required by Base UI
+                        nativeButton={false}
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-[10px] font-bold uppercase tracking-widest h-8"
+                        render={
+                          <a
+                            href={`https://github.com/${project.githubRepo}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          />
+                        }
+                      >
+                        View on GitHub
+                      </Button>
+                    </div>
                   </div>
                 </HoverCardContent>
               </HoverCard>
 
               <div className="flex items-center gap-2">
-                 <IconGitBranch className="w-4 h-4" />
-                 <span className="font-mono text-xs">{project.githubBranch}</span>
+                <IconGitBranch className="w-4 h-4" />
+                <span className="font-mono text-xs">
+                  {project.githubBranch}
+                </span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleAnalysis} 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAnalysis}
               disabled={isAnalyzing}
               className={cn(isAnalyzing ? "opacity-100" : "")}
             >
-              <IconRefresh className={cn("w-4 h-4 mr-2", isAnalyzing && "animate-spin")} />
+              <IconRefresh
+                className={cn("w-4 h-4 mr-2", isAnalyzing && "animate-spin")}
+              />
               {isAnalyzing ? "Analyzing..." : "Begin Analysis"}
             </Button>
 
@@ -212,13 +273,13 @@ function ProjectDetailContent() {
               <IconExternalLink className="w-4 h-4 mr-2 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               View Site
             </Button>
-            
-            <Button 
-              size="sm" 
+
+            <Button
+              size="sm"
               className={cn(
                 "font-bold uppercase tracking-widest px-6 transition-all",
-                isDirty 
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:scale-105 active:scale-95" 
+                isDirty
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:scale-105 active:scale-95"
                   : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
               )}
               onClick={handlePublish}
@@ -241,16 +302,17 @@ function ProjectDetailContent() {
                 </span>
                 <div className="flex items-center gap-4">
                   <span className="text-primary">{analysisProgress}%</span>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       cancelAnalysis.mutate(undefined, {
                         onSuccess: () => {
                           toast.success("Analysis cancelled");
                           setWasAnalyzingState(false);
                         },
-                        onError: (err) => toast.error("Failed to cancel: " + err.message)
+                        onError: (err) =>
+                          toast.error("Failed to cancel: " + err.message),
                       });
                     }}
                     disabled={cancelAnalysis.isPending}
@@ -267,9 +329,11 @@ function ProjectDetailContent() {
       )}
 
       {/* Stats - hide during analysis */}
-      {isReady && !isAnalyzing && sections.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in duration-500">
-          {[
+      {isReady &&
+        !isAnalyzing &&
+        sections.length > 0 &&
+        (() => {
+          const stats = [
             { label: "Sections", value: sections.length },
             { label: "Total Elements", value: totalElements },
             { label: "Visible", value: visibleElements },
@@ -278,25 +342,39 @@ function ProjectDetailContent() {
               value: analysisStatus?.lastAnalyzedAt
                 ? new Date(analysisStatus.lastAnalyzedAt).toLocaleDateString()
                 : "-",
-              icon: IconCalendar
             },
-          ].map((stat) => (
-            <Card key={stat.label}>
-              <CardHeader className="pb-2">
-                <CardDescription className="text-xs uppercase tracking-wider">
-                  {stat.label}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-end justify-between">
-                  <CardTitle className="text-2xl">{stat.value}</CardTitle>
-                  {stat.icon && <stat.icon className="w-4 h-4 text-muted-foreground" />}
+          ];
+          return (
+            <Card className="animate-in fade-in duration-500">
+              <CardContent className="p-0">
+                <div className="flex items-center h-18">
+                  {stats.map((stat, index) => (
+                    <>
+                      <Item
+                        key={stat.label}
+                        className="border-none rounded-none px-6 py-4 flex-1"
+                      >
+                        <ItemContent>
+                          <ItemDescription>{stat.label}</ItemDescription>
+                          <ItemTitle className="text-xl font-semibold">
+                            {stat.value}
+                          </ItemTitle>
+                        </ItemContent>
+                      </Item>
+                      {index < stats.length - 1 && (
+                        <Separator
+                          key={`sep-${index}`}
+                          orientation="vertical"
+                          className="!self-center h-[60%]"
+                        />
+                      )}
+                    </>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          );
+        })()}
 
       {/* Content Area - hide during analysis */}
       {isReady && !isAnalyzing ? (
@@ -348,7 +426,8 @@ function ProjectDetailContent() {
               </EmptyMedia>
               <EmptyTitle>No Analysis Data</EmptyTitle>
               <EmptyDescription>
-                Run the analysis to discover editable sections and components in your codebase.
+                Run the analysis to discover editable sections and components in
+                your codebase.
               </EmptyDescription>
             </EmptyHeader>
             <Button onClick={handleAnalysis}>
@@ -369,9 +448,6 @@ function ProjectDetailContent() {
     </div>
   );
 }
-
-
-
 
 function ProjectDetailSkeleton() {
   return (
@@ -395,11 +471,15 @@ function ProjectDetailSkeleton() {
         </div>
       </div>
       <div className="grid grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 w-full rounded-2xl" />)}
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+        ))}
       </div>
       <div className="space-y-4 pt-10">
         <Skeleton className="h-14 w-full rounded-2xl" />
-        {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)}
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+        ))}
       </div>
     </div>
   );
