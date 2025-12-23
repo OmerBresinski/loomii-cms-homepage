@@ -15,8 +15,8 @@ import {
   SidebarMenuItem,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
 } from "@/ui/sidebar"
+import { Separator } from "@/ui/separator"
 
 export function AppSidebar() {
   const { user } = useUser()
@@ -32,47 +32,37 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="h-16 flex justify-center px-4">
-        <Link to="/" className="flex items-center gap-2 font-semibold">
-          <div className="w-7 h-7 bg-primary rounded flex items-center justify-center">
-            <span className="text-primary-foreground text-xs font-bold">L</span>
-          </div>
-          <span>Loomii</span>
-        </Link>
+      <SidebarHeader className="p-3">
+        <OrganizationSwitcher
+          afterCreateOrganizationUrl="/onboarding"
+          afterSelectOrganizationUrl="/dashboard"
+          afterLeaveOrganizationUrl="/onboarding"
+          hidePersonal
+          appearance={{
+            baseTheme: dark,
+            elements: {
+              rootBox: "w-full",
+              organizationSwitcherTrigger: cn(
+                "w-full px-3 py-2.5 rounded-lg",
+                "bg-transparent border-0",
+                "hover:bg-sidebar-accent",
+                "transition-all text-sm"
+              ),
+              organizationSwitcherTriggerIcon: "text-muted-foreground",
+              organizationPreviewAvatarBox: "w-8 h-8 rounded-lg",
+              organizationPreviewMainIdentifier: "text-foreground font-semibold text-sm",
+              organizationPreviewTextContainer: "gap-0",
+            },
+          }}
+        />
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent className="px-2 py-4">
-            <OrganizationSwitcher
-              afterCreateOrganizationUrl="/onboarding"
-              afterSelectOrganizationUrl="/dashboard"
-              afterLeaveOrganizationUrl="/onboarding"
-              hidePersonal
-              appearance={{
-                baseTheme: dark,
-                elements: {
-                  rootBox: "w-full",
-                  organizationSwitcherTrigger: cn(
-                    "w-full px-3 py-2 rounded-md",
-                    "bg-secondary border border-border",
-                    "hover:bg-accent",
-                    "transition-all text-sm font-bold text-white"
-                  ),
-                  organizationSwitcherTriggerTitle: "text-white font-bold",
-                  organizationSwitcherTriggerTitleText: "text-white font-bold",
-                  organizationPreviewMainIdentifier: "text-white font-bold",
-                  organizationPreviewTextContainer: "text-white",
-                },
-              }}
-            />
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <Separator className="mx-3 w-auto" />
 
+      <SidebarContent className="pt-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1 px-2">
               {navItems.map((item) => {
                 const isActive = item.exact
                   ? location.pathname === item.to
@@ -80,11 +70,20 @@ export function AppSidebar() {
 
                 return (
                   <SidebarMenuItem key={item.to}>
-                    <SidebarMenuButton render={<Link to={item.to} />} isActive={isActive} >
-                      <item.icon />
+                    <SidebarMenuButton
+                      render={<Link to={item.to} />}
+                      isActive={isActive}
+                      className={cn(
+                        "h-10 px-3 rounded-lg transition-all",
+                        isActive
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+                      )}
+                    >
+                      <item.icon className={cn("w-4 h-4", isActive && "text-primary")} />
                       <span>{item.label}</span>
                       {item.label === "Settings" && !hasGitHub && (
-                        <span className="ml-auto w-2 h-2 rounded-full bg-amber-500" />
+                        <span className="ml-auto w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                       )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -95,41 +94,42 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="p-3">
+        <Separator className="mb-3" />
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="relative group/user px-2 py-2 rounded-lg hover:bg-accent transition-colors cursor-pointer flex items-center gap-3">
+            <div className="relative group/user px-2 py-2 rounded-lg hover:bg-sidebar-accent transition-colors cursor-pointer flex items-center gap-3">
               {/* Visuals (Avatar, Name, Email) */}
               <div className="flex items-center gap-3 w-full pointer-events-none">
-                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-border/50">
-                   <UserButton 
-                    appearance={{ 
+                <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 border border-border/30">
+                   <UserButton
+                    appearance={{
                       baseTheme: dark,
-                      elements: { 
-                        avatarBox: "w-8 h-8",
+                      elements: {
+                        avatarBox: "w-9 h-9 rounded-lg",
                         userButtonTrigger: "pointer-events-none"
-                      } 
-                    }} 
+                      }
+                    }}
                   />
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-bold text-white truncate">{user?.fullName || "User"}</p>
-                  <p className="text-xs text-muted-foreground/80 truncate">{user?.primaryEmailAddress?.emailAddress}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{user?.fullName || "User"}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{user?.primaryEmailAddress?.emailAddress}</p>
                 </div>
-                <IconChevronUp className="w-4 h-4 ml-auto text-muted-foreground/60" />
+                <IconChevronUp className="w-4 h-4 text-muted-foreground/50" />
               </div>
 
               {/* The Actual Trigger (Transparent Overlay) */}
               <div className="absolute inset-0 opacity-0">
-                <UserButton 
-                  appearance={{ 
+                <UserButton
+                  appearance={{
                     baseTheme: dark,
-                    elements: { 
+                    elements: {
                       rootBox: "w-full h-full",
                       userButtonTrigger: "w-full h-full",
                       userButtonAvatarBox: "hidden"
-                    } 
-                  }} 
+                    }
+                  }}
                 />
               </div>
             </div>
