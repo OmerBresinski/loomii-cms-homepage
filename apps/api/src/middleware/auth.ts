@@ -37,15 +37,45 @@ export const requireAuth = createMiddleware(async (c, next) => {
 
   if (!user) {
     // User doesn't exist yet - create a minimal user record
-    // Email and other details will be synced from Clerk
-    user = await prisma.user.create({
-      data: {
-        clerkId: auth.userId,
-        email: "", // Will be updated from Clerk webhook or profile sync
-        name: null,
-        avatarUrl: null,
-      },
-    });
+    // Get session claims for user info
+    const sessionClaims = auth.sessionClaims as Record<string, unknown> | undefined;
+    const email = (sessionClaims?.email as string) ||
+                  (sessionClaims?.primary_email as string) ||
+                  `${auth.userId}@placeholder.local`;
+    const name = (sessionClaims?.name as string) ||
+                 (sessionClaims?.full_name as string) ||
+                 null;
+    const avatarUrl = (sessionClaims?.image_url as string) ||
+                      (sessionClaims?.profile_image_url as string) ||
+                      null;
+
+    try {
+      user = await prisma.user.create({
+        data: {
+          clerkId: auth.userId,
+          email,
+          name,
+          avatarUrl,
+        },
+      });
+    } catch (error: unknown) {
+      // Handle unique constraint violation on email
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+        // Email already exists - update the existing user's clerkId or find by email
+        user = await prisma.user.upsert({
+          where: { clerkId: auth.userId },
+          update: { email, name, avatarUrl },
+          create: {
+            clerkId: auth.userId,
+            email: `${auth.userId}@user.local`, // Fallback unique email
+            name,
+            avatarUrl,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
   }
 
   // Add user to context
