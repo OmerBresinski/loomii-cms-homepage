@@ -13,10 +13,9 @@ import {
   IconGitPullRequest,
   IconLoader2,
   IconCheck,
-  IconGitBranch,
-  IconFileText,
+  IconExternalLink,
+  IconCopy,
 } from "@tabler/icons-react";
-import { Separator } from "@/ui/separator";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -327,28 +326,6 @@ function highlightMultiple(line: string, changes: string[], type: "removed" | "a
   return <>{result}</>;
 }
 
-// Highlight the changed part of a line (single change)
-function highlightChange(line: string, change: string, type: "removed" | "added") {
-  const idx = line.indexOf(change);
-  if (idx === -1) return line;
-
-  const before = line.slice(0, idx);
-  const after = line.slice(idx + change.length);
-
-  return (
-    <>
-      {before}
-      <span className={cn(
-        "px-0.5 rounded",
-        type === "removed" ? "bg-red-500/30" : "bg-green-500/30"
-      )}>
-        {change}
-      </span>
-      {after}
-    </>
-  );
-}
-
 export function ReviewPage() {
   const { projectId } = useParams({ from: "/dashboard/projects/$projectId/review" });
   const navigate = useNavigate();
@@ -411,63 +388,65 @@ export function ReviewPage() {
 
   if (createdPR) {
     return (
-      <div className="p-6 min-h-screen flex items-start justify-center pt-20">
-        <Card className="w-full max-w-md">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                <IconCheck className="w-5 h-5 text-green-500" />
+      <div className="p-6 min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-sm">
+          <CardContent className="pt-6 pb-4 space-y-4">
+            {/* Success Icon & Title */}
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+                <IconCheck className="w-6 h-6 text-green-500" />
               </div>
-              <div className="min-w-0">
-                <CardTitle className="text-lg">Pull Request Created</CardTitle>
-                <p className="text-sm text-muted-foreground truncate">
-                  {createdPR.title}
+              <div>
+                <h2 className="font-semibold">Pull Request Created</h2>
+                <p className="text-xs text-muted-foreground">
+                  {createdPR.editCount} edit{createdPR.editCount !== 1 ? "s" : ""} • {createdPR.fileCount} file{createdPR.fileCount !== 1 ? "s" : ""}
                 </p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Stats */}
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <IconFileText className="w-4 h-4" />
-                <span>{createdPR.editCount} edit{createdPR.editCount !== 1 ? "s" : ""}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-muted-foreground">
-                <IconFile className="w-4 h-4" />
-                <span>{createdPR.fileCount} file{createdPR.fileCount !== 1 ? "s" : ""}</span>
-              </div>
-            </div>
 
-            <Separator />
-
-            {/* PR Details */}
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">PR Number</span>
-                <Badge variant="secondary">#{createdPR.number}</Badge>
+            {/* PR Info */}
+            <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">PR</span>
+                <Badge variant="outline" className="font-mono">#{createdPR.number}</Badge>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Branch</span>
-                <div className="flex items-center gap-1.5 text-xs font-mono bg-muted px-2 py-0.5 rounded">
-                  <IconGitBranch className="w-3 h-3" />
-                  <span className="truncate max-w-[180px]">{createdPR.branchName}</span>
+                <div className="flex items-center gap-1">
+                  <code className="text-xs bg-background px-1.5 py-0.5 rounded truncate max-w-[140px]">
+                    {createdPR.branchName}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdPR.branchName);
+                      toast.success("Branch name copied");
+                    }}
+                    className="p-1 hover:bg-muted rounded transition-colors"
+                  >
+                    <IconCopy className="w-3 h-3 text-muted-foreground" />
+                  </button>
                 </div>
               </div>
             </div>
 
-            <Separator />
-
             {/* Actions */}
-            <a
-              href={createdPR.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full inline-flex items-center justify-center gap-2 h-8 px-3 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/80 transition-colors"
-            >
-              <IconGitPullRequest className="w-4 h-4 shrink-0" />
-              View Pull Request
-            </a>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={handleGoBack}>
+                <IconArrowLeft className="w-4 h-4 mr-1.5" />
+                Back
+              </Button>
+              <a
+                href={createdPR.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1"
+              >
+                <Button className="w-full">
+                  <IconExternalLink className="w-4 h-4 mr-1.5" />
+                  View PR
+                </Button>
+              </a>
+            </div>
           </CardContent>
         </Card>
       </div>
