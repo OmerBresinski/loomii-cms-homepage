@@ -3,31 +3,84 @@ import { dark } from "@clerk/themes";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/card";
-import { Button } from "@/ui/button";
-import { Item, ItemGroup, ItemContent, ItemTitle, ItemDescription, ItemMedia, ItemActions } from "@/ui/item";
-import { Empty, EmptyMedia, EmptyTitle, EmptyDescription } from "@/ui/empty";
-import { IconBuilding, IconArrowRight, IconLoader2, IconSparkles } from "@tabler/icons-react";
+import { Badge } from "@/ui/badge";
+import { IconArrowRight, IconLoader2 } from "@tabler/icons-react";
+
+const clerkAppearance = {
+  baseTheme: dark,
+  elements: {
+    rootBox: "w-full bg-transparent",
+    cardBox: "w-full shadow-none bg-transparent",
+    card: "w-full shadow-none p-0 bg-transparent",
+    main: "bg-transparent",
+    form: "bg-transparent",
+    formContainer: "bg-transparent",
+    header: "hidden",
+    footer: "hidden",
+    headerTitle: "hidden",
+    headerSubtitle: "hidden",
+    formFieldLabel: "text-zinc-400 text-xs font-medium mb-1.5",
+    formFieldInput:
+      "bg-zinc-800/50 border-zinc-700/50 text-zinc-100 focus:border-zinc-500 focus:ring-0 rounded-lg h-10 text-sm placeholder:text-zinc-500",
+    formButtonPrimary:
+      "bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-lg h-10 text-sm",
+  },
+};
+
+const clerkHideStyles = `
+  .cl-internal-b3fm6y,
+  .cl-footerAction,
+  .cl-footer,
+  .cl-badge,
+  .cl-logoBox,
+  .cl-headerTitle,
+  .cl-headerSubtitle {
+    display: none !important;
+  }
+  .cl-rootBox,
+  .cl-cardBox,
+  .cl-card,
+  .cl-main,
+  .cl-form,
+  .cl-formContainer {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+  .cl-formButtonPrimary {
+    background: #f43f5e !important;
+    color: white !important;
+    border: none !important;
+    border-width: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+  }
+  .cl-formButtonPrimary:hover {
+    background: #e11d48 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .cl-formButtonPrimary:focus {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+`;
 
 export function OnboardingPage() {
   const { user, isLoaded: userLoaded } = useUser();
   const { userMemberships, isLoaded: orgsLoaded, setActive } = useOrganizationList({
-    userMemberships: {
-      infinite: true,
-    },
+    userMemberships: { infinite: true },
   });
   const navigate = useNavigate();
   const [isSyncing, setIsSyncing] = useState(false);
 
-
-
-    const handleSelectOrg = async (orgId: string) => {
+  const handleSelectOrg = async (orgId: string) => {
     setIsSyncing(true);
     try {
       const org = userMemberships.data?.find((o) => o.organization.id === orgId)?.organization;
       if (!org) return;
 
-      // Sync with backend
       await apiFetch<{ organization: { id: string } }>("/organizations/sync", {
         method: "POST",
         body: JSON.stringify({
@@ -51,118 +104,97 @@ export function OnboardingPage() {
 
   if (!userLoaded || !orgsLoaded || isSyncing) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a]">
-        <div className="flex flex-col items-center gap-6 max-w-sm text-center">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-             <IconLoader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-xl font-serif font-bold tracking-tight text-title">Setting things up...</h2>
-            <p className="text-muted-foreground text-sm">
-              We're preparing your workspace. This will only take a moment.
-            </p>
-          </div>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <IconLoader2 className="w-6 h-6 text-primary animate-spin" />
+          <p className="text-sm text-zinc-500">Setting things up...</p>
         </div>
       </div>
     );
   }
 
+  const hasOrgs = (userMemberships?.data || []).length > 0;
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-[#0a0a0a] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background">
-      <div className="max-w-xl w-full space-y-12">
-        <div className="flex flex-col items-center text-center space-y-4">
-          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg transform rotate-3">
-             <span className="text-primary-foreground text-xl font-black">L</span>
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+      <style>{clerkHideStyles}</style>
+      <div className="fixed inset-0 bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900" />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 blur-[120px] rounded-full" />
+
+      <div className="relative z-10 w-full max-w-sm">
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-2.5 mb-8">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-primary-foreground text-lg font-bold">L</span>
           </div>
-          <div className="space-y-1">
-            <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
-              Welcome to Loomii
-              <IconSparkles className="w-6 h-6 text-primary fill-primary/20" />
-            </h1>
-            <p className="text-muted-foreground text-lg">Choose where you'll be working today.</p>
-          </div>
+          <span className="text-xl font-semibold text-zinc-100">Loomii</span>
+          <Badge variant="secondary" className="bg-zinc-800 text-zinc-400 border-0 text-[10px] px-1.5">
+            Beta
+          </Badge>
         </div>
 
-        <Card className="border-border/40 shadow-2xl bg-card/50 backdrop-blur-xl overflow-hidden">
-          <CardHeader className="pb-8 pt-8 px-8">
-            <CardTitle className="text-2xl">Your Organizations</CardTitle>
-            <CardDescription className="text-base">
-              Select an existing organization or create a new one to get started.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-0 border-t">
-            {(userMemberships?.data || []).length === 0 ? (
-              <Empty className="py-20 border-none">
-                <EmptyMedia>
-                  <IconBuilding className="w-16 h-16 text-muted-foreground opacity-10" />
-                </EmptyMedia>
-                <EmptyTitle className="text-xl">No organizations found</EmptyTitle>
-                <EmptyDescription className="text-base max-w-xs mx-auto mb-8">
-                  You need to be part of an organization to manage projects.
-                </EmptyDescription>
-              </Empty>
-            ) : (
-              <ItemGroup className="gap-0">
-                {(userMemberships.data || []).map((membership) => (
-                  <Item 
-                    key={membership.organization.id} 
-                    className="px-8 py-6 border-b last:border-0 rounded-none hover:bg-primary/5 transition-all group"
-                  >
-                    <ItemMedia variant="image" className="w-14 h-14 rounded-xl border-2 border-border/50 group-hover:border-primary/30 group-hover:scale-105 transition-all">
-                       {membership.organization.imageUrl ? (
-                         <img src={membership.organization.imageUrl} alt={membership.organization.name} />
-                       ) : (
-                         <div className="w-full h-full bg-muted flex items-center justify-center font-bold text-lg">
-                           {membership.organization.name.charAt(0)}
-                         </div>
-                       )}
-                    </ItemMedia>
-                    <ItemContent className="ml-6">
-                      <ItemTitle className="text-lg font-bold group-hover:text-primary transition-colors">
-                        {membership.organization.name}
-                      </ItemTitle>
-                      <ItemDescription className="text-sm">
-                        {membership.role === "org:admin" ? "Administrator" : "Member"}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <Button onClick={() => handleSelectOrg(membership.organization.id)} size="lg" className="rounded-full shadow-lg group-hover:translate-x-1 transition-transform">
-                         Enter Workspace
-                         <IconArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </ItemActions>
-                  </Item>
-                ))}
-              </ItemGroup>
-            )}
+        <div className="p-6">
+          <div className="text-center mb-6">
+            <h1 className="text-xl font-semibold text-zinc-100 mb-1">
+              {hasOrgs ? "Select workspace" : "Create workspace"}
+            </h1>
+            <p className="text-sm text-zinc-500">
+              {hasOrgs ? "Choose an organization to continue" : "Set up your first organization"}
+            </p>
+          </div>
 
-            <div className="p-8 bg-muted/20 border-t flex flex-col items-center gap-6">
-               <div className="flex items-center gap-4 w-full">
-                  <div className="h-px bg-border flex-1" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">or create new</span>
-                  <div className="h-px bg-border flex-1" />
-               </div>
-               
-               <CreateOrganization
-                 afterCreateOrganizationUrl="/dashboard"
-                 appearance={{
-                   baseTheme: dark,
-                   elements: {
-                     rootBox: "w-full flex justify-center",
-                     card: "shadow-none border-none bg-transparent p-0",
-                     headerTitle: "hidden",
-                     headerSubtitle: "hidden",
-                     organizationCreateTrigger: "w-full py-6 rounded-2xl border-dashed border-2 hover:bg-primary/5 hover:border-primary/50 transition-all font-bold text-lg flex gap-3 items-center justify-center",
-                   }
-                 }}
-               />
+          {/* Existing Organizations */}
+          {hasOrgs && (
+            <div className="space-y-2 mb-6">
+              {(userMemberships.data || []).map((membership) => (
+                <button
+                  key={membership.organization.id}
+                  onClick={() => handleSelectOrg(membership.organization.id)}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50 hover:bg-zinc-800 hover:border-zinc-600 transition-all group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-zinc-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {membership.organization.imageUrl ? (
+                      <img src={membership.organization.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-medium text-zinc-300">
+                        {membership.organization.name.charAt(0)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-sm font-medium text-zinc-100">{membership.organization.name}</p>
+                    <p className="text-xs text-zinc-500">
+                      {membership.role === "org:admin" ? "Admin" : "Member"}
+                    </p>
+                  </div>
+                  <IconArrowRight className="w-4 h-4 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+                </button>
+              ))}
             </div>
-          </CardContent>
-        </Card>
+          )}
 
-        <p className="text-center text-xs text-muted-foreground opacity-50">
-           Logged in as <span className="font-semibold text-foreground/70">{user?.primaryEmailAddress?.emailAddress}</span>
-        </p>
+          {/* Divider */}
+          {hasOrgs && (
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-px bg-zinc-800 flex-1" />
+              <span className="text-xs text-zinc-600">or create new</span>
+              <div className="h-px bg-zinc-800 flex-1" />
+            </div>
+          )}
+
+          {/* Create Organization */}
+          <CreateOrganization
+            afterCreateOrganizationUrl="/dashboard"
+            appearance={clerkAppearance}
+          />
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-zinc-600">
+            Signed in as {user?.primaryEmailAddress?.emailAddress}
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,21 +1,25 @@
 import { generateText } from "ai";
-import { createToolExecutors, type GitHubContext, type ToolExecutors } from "./tools/github";
+import {
+  createToolExecutors,
+  type GitHubContext,
+  type ToolExecutors,
+} from "./tools/github";
 import { logger } from "./logger";
 
 const MODEL = "xai/grok-code-fast-1";
 
 // Detected page information
 export interface DetectedPage {
-  pagePath: string;      // File path in repo (e.g., "src/pages/about.tsx")
-  pageRoute: string;     // URL route (e.g., "/about")
-  pageName: string;      // Human-readable name (e.g., "About Page")
+  pagePath: string; // File path in repo (e.g., "src/pages/about.tsx")
+  pageRoute: string; // URL route (e.g., "/about")
+  pageName: string; // Human-readable name (e.g., "About Page")
 }
 
 // Framework detection result
 export interface FrameworkInfo {
-  framework: string;     // "nextjs" | "react-vite" | "astro" | "static-html" | "unknown"
-  routingType: string;   // "file-based" | "code-based" | "none"
-  pagesDirectory?: string;  // e.g., "pages", "src/pages", "app"
+  framework: string; // "nextjs" | "react-vite" | "astro" | "static-html" | "unknown"
+  routingType: string; // "file-based" | "code-based" | "none"
+  pagesDirectory?: string; // e.g., "pages", "src/pages", "app"
   pages: DetectedPage[];
 }
 
@@ -65,12 +69,16 @@ async function detectFrameworkAndPages(
     recursive: true,
   });
 
-  const filePaths = files.map(f => f.path);
+  const filePaths = files.map((f) => f.path);
 
   // Try to read package.json if it exists
   let packageJsonContent = "";
-  const packageJsonPath = rootPath ? `${rootPath}/package.json` : "package.json";
-  const hasPackageJson = filePaths.some(f => f === packageJsonPath || f.endsWith("/package.json"));
+  const packageJsonPath = rootPath
+    ? `${rootPath}/package.json`
+    : "package.json";
+  const hasPackageJson = filePaths.some(
+    (f) => f === packageJsonPath || f.endsWith("/package.json")
+  );
 
   if (hasPackageJson) {
     try {
@@ -83,16 +91,20 @@ async function detectFrameworkAndPages(
 
   // Get a summary of the directory structure for AI
   const dirStructure = filePaths
-    .filter(p => !shouldSkipPath(p))
+    .filter((p) => !shouldSkipPath(p))
     .slice(0, 200)
     .join("\n");
 
   // Use AI to detect framework and find pages
   const prompt = `Analyze this project to detect the framework and find all pages/routes.
 
-${packageJsonContent ? `PACKAGE.JSON (preview):
+${
+  packageJsonContent
+    ? `PACKAGE.JSON (preview):
 ${packageJsonContent}
-` : "No package.json found - might be a static HTML site."}
+`
+    : "No package.json found - might be a static HTML site."
+}
 
 FILE STRUCTURE:
 ${dirStructure}
@@ -162,12 +174,16 @@ Return valid JSON only.`,
     const jsonMatch = response.text?.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const result = JSON.parse(jsonMatch[0]) as FrameworkInfo;
-      console.log(`  ✅ Detected framework: ${result.framework} (${result.routingType} routing)`);
+      console.log(
+        `  ✅ Detected framework: ${result.framework} (${result.routingType} routing)`
+      );
       console.log(`  📄 Found ${result.pages.length} pages`);
       return result;
     }
   } catch (error) {
-    console.log(`  ⚠️ AI framework detection failed: ${(error as Error).message}`);
+    console.log(
+      `  ⚠️ AI framework detection failed: ${(error as Error).message}`
+    );
   }
 
   // Fallback: Manual detection for common patterns
@@ -175,17 +191,21 @@ Return valid JSON only.`,
 }
 
 // Fallback framework detection when AI fails
-function fallbackFrameworkDetection(filePaths: string[], rootPath: string): FrameworkInfo {
+function fallbackFrameworkDetection(
+  filePaths: string[],
+  rootPath: string
+): FrameworkInfo {
   console.log("  Using fallback framework detection...");
 
   const pages: DetectedPage[] = [];
   const prefix = rootPath ? `${rootPath}/` : "";
 
   // Check for HTML files (static site)
-  const htmlFiles = filePaths.filter(f =>
-    f.endsWith(".html") &&
-    !shouldSkipPath(f) &&
-    (rootPath ? f.startsWith(prefix) : true)
+  const htmlFiles = filePaths.filter(
+    (f) =>
+      f.endsWith(".html") &&
+      !shouldSkipPath(f) &&
+      (rootPath ? f.startsWith(prefix) : true)
   );
 
   if (htmlFiles.length > 0) {
@@ -194,9 +214,12 @@ function fallbackFrameworkDetection(filePaths: string[], rootPath: string): Fram
       const fileName = relativePath.replace(".html", "");
       const route = fileName === "index" ? "/" : `/${fileName}`;
       // Generate concise name
-      const name = fileName === "index"
-        ? "Homepage"
-        : fileName.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const name =
+        fileName === "index"
+          ? "Homepage"
+          : fileName
+              .replace(/-/g, " ")
+              .replace(/\b\w/g, (c) => c.toUpperCase());
 
       pages.push({
         pagePath: htmlFile,
@@ -213,10 +236,16 @@ function fallbackFrameworkDetection(filePaths: string[], rootPath: string): Fram
   }
 
   // Check for Next.js pages directory
-  const nextPagesFiles = filePaths.filter(f =>
-    (f.includes("/pages/") || f.startsWith("pages/")) &&
-    (f.endsWith(".tsx") || f.endsWith(".jsx") || f.endsWith(".ts") || f.endsWith(".js")) &&
-    !f.includes("_app") && !f.includes("_document") && !f.includes("/api/")
+  const nextPagesFiles = filePaths.filter(
+    (f) =>
+      (f.includes("/pages/") || f.startsWith("pages/")) &&
+      (f.endsWith(".tsx") ||
+        f.endsWith(".jsx") ||
+        f.endsWith(".ts") ||
+        f.endsWith(".js")) &&
+      !f.includes("_app") &&
+      !f.includes("_document") &&
+      !f.includes("/api/")
   );
 
   if (nextPagesFiles.length > 0) {
@@ -224,12 +253,16 @@ function fallbackFrameworkDetection(filePaths: string[], rootPath: string): Fram
       const match = pageFile.match(/pages\/(.+)\.(tsx|jsx|ts|js)$/);
       if (match && match[1]) {
         const routePath = match[1];
-        const route = routePath === "index" ? "/" : `/${routePath.replace(/\/index$/, "")}`;
+        const route =
+          routePath === "index" ? "/" : `/${routePath.replace(/\/index$/, "")}`;
         const segment = routePath.split("/").pop() || "Page";
         // Generate concise name
-        const name = segment === "index"
-          ? "Homepage"
-          : segment.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        const name =
+          segment === "index"
+            ? "Homepage"
+            : segment
+                .replace(/-/g, " ")
+                .replace(/\b\w/g, (c) => c.toUpperCase());
 
         pages.push({
           pagePath: pageFile,
@@ -248,8 +281,8 @@ function fallbackFrameworkDetection(filePaths: string[], rootPath: string): Fram
   }
 
   // Check for Next.js app directory
-  const nextAppFiles = filePaths.filter(f =>
-    f.includes("/app/") && f.endsWith("page.tsx")
+  const nextAppFiles = filePaths.filter(
+    (f) => f.includes("/app/") && f.endsWith("page.tsx")
   );
 
   if (nextAppFiles.length > 0) {
@@ -259,9 +292,10 @@ function fallbackFrameworkDetection(filePaths: string[], rootPath: string): Fram
       const route = routePath === "" ? "/" : `/${routePath}`;
       const segment = routePath.split("/").pop() || "";
       // Generate concise name
-      const name = segment === "" || routePath === ""
-        ? "Homepage"
-        : segment.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const name =
+        segment === "" || routePath === ""
+          ? "Homepage"
+          : segment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
       pages.push({
         pagePath: pageFile,
@@ -279,8 +313,8 @@ function fallbackFrameworkDetection(filePaths: string[], rootPath: string): Fram
   }
 
   // Check for Astro pages
-  const astroPages = filePaths.filter(f =>
-    f.includes("/pages/") && f.endsWith(".astro")
+  const astroPages = filePaths.filter(
+    (f) => f.includes("/pages/") && f.endsWith(".astro")
   );
 
   if (astroPages.length > 0) {
@@ -288,12 +322,16 @@ function fallbackFrameworkDetection(filePaths: string[], rootPath: string): Fram
       const match = pageFile.match(/pages\/(.+)\.astro$/);
       if (match && match[1]) {
         const routePath = match[1];
-        const route = routePath === "index" ? "/" : `/${routePath.replace(/\/index$/, "")}`;
+        const route =
+          routePath === "index" ? "/" : `/${routePath.replace(/\/index$/, "")}`;
         const segment = routePath.split("/").pop() || "Page";
         // Generate concise name
-        const name = segment === "index"
-          ? "Homepage"
-          : segment.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        const name =
+          segment === "index"
+            ? "Homepage"
+            : segment
+                .replace(/-/g, " ")
+                .replace(/\b\w/g, (c) => c.toUpperCase());
 
         pages.push({
           pagePath: pageFile,
@@ -325,10 +363,10 @@ interface RawElement {
   content: string;
   line: number;
   context: string;
-  sourceContext: string;  // 3 lines before/after for diff view
+  sourceContext: string; // 3 lines before/after for diff view
   filePath: string;
   href?: string;
-  pageRoute: string;  // URL route this element belongs to
+  pageRoute: string; // URL route this element belongs to
 }
 
 // Section group
@@ -338,17 +376,17 @@ export interface SectionGroup {
   sourceFile: string;
   startLine: number;
   endLine: number;
-  pageRoute: string;  // URL route this section belongs to (e.g., "/", "/about")
+  pageRoute: string; // URL route this section belongs to (e.g., "/", "/about")
   elements: Array<{
     name: string;
     type: string;
     filePath: string;
     line: number;
     currentValue: string;
-    sourceContext: string;  // 3 lines before/after for diff view
+    sourceContext: string; // 3 lines before/after for diff view
     confidence: number;
     href?: string;
-    pageRoute: string;  // URL route this element belongs to
+    pageRoute: string; // URL route this element belongs to
   }>;
 }
 
@@ -361,7 +399,11 @@ export interface AnalysisResult {
 
 // Generate a reasonable name for an element based on its type and content (fallback)
 // Names should be short, descriptive role-based titles WITHOUT the content itself
-function generateElementName(type: string, content: string, index: number = 0): string {
+function generateElementName(
+  type: string,
+  content: string,
+  index: number = 0
+): string {
   // Create a clean, role-based name without echoing the content
   switch (type) {
     case "heading-h1":
@@ -467,7 +509,7 @@ IMPORTANT:
 
   try {
     const response = await (generateText as any)({
-      model: MODEL,
+      model: "openai/gpt-5-mini",
       prompt,
       system: `You are an expert at understanding website structure and content organization. 
 You analyze HTML/JSX elements and group them into meaningful UI sections.
@@ -491,8 +533,13 @@ Group related content together - a heading typically starts a new section.`,
 
     for (const aiSection of aiSections) {
       // Support both old format (elementIndices) and new format (elements with titles)
-      const elementsWithTitles = aiSection.elements ||
-        (aiSection.elementIndices?.map((idx: number) => ({ idx, title: null })) || []);
+      const elementsWithTitles =
+        aiSection.elements ||
+        aiSection.elementIndices?.map((idx: number) => ({
+          idx,
+          title: null,
+        })) ||
+        [];
 
       if (elementsWithTitles.length === 0) {
         continue;
@@ -508,7 +555,11 @@ Group related content together - a heading typically starts a new section.`,
           if (!title || title.trim() === "") {
             const typeCount = typeCounters.get(rawElement.type) || 0;
             typeCounters.set(rawElement.type, typeCount + 1);
-            title = generateElementName(rawElement.type, rawElement.content, typeCount);
+            title = generateElementName(
+              rawElement.type,
+              rawElement.content,
+              typeCount
+            );
           }
 
           return {
@@ -530,14 +581,19 @@ Group related content together - a heading typically starts a new section.`,
         const count = pageRouteCounts.get(e.pageRoute) || 0;
         pageRouteCounts.set(e.pageRoute, count + 1);
       }
-      const sectionPageRoute = [...pageRouteCounts.entries()]
-        .sort((a, b) => b[1] - a[1])[0]?.[0] || "/";
+      const sectionPageRoute =
+        [...pageRouteCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ||
+        "/";
 
       // Generate section name - use AI name or derive from elements
       let sectionName = aiSection.name;
-      if (!sectionName || sectionName === "Untitled Section" || sectionName.match(/^Section \d+$/)) {
+      if (
+        !sectionName ||
+        sectionName === "Untitled Section" ||
+        sectionName.match(/^Section \d+$/)
+      ) {
         // Convert sectionElements back to RawElement format for generateSectionName
-        const rawElems = sectionElements.map(e => ({
+        const rawElems = sectionElements.map((e) => ({
           type: e.type,
           content: e.content,
           line: e.line,
@@ -589,7 +645,7 @@ Group related content together - a heading typically starts a new section.`,
 // Generate a section name based on the first heading or content
 function generateSectionName(elements: RawElement[], index: number): string {
   // Look for a heading in the elements to derive the section name
-  const heading = elements.find(e => e.type.startsWith("heading"));
+  const heading = elements.find((e) => e.type.startsWith("heading"));
   if (heading) {
     // Clean up the heading content to create a section name
     const cleanContent = heading.content
@@ -604,24 +660,30 @@ function generateSectionName(elements: RawElement[], index: number): string {
   }
 
   // Look for buttons to identify CTA sections
-  const hasButtons = elements.some(e => e.type === "button");
-  const hasLinks = elements.some(e => e.type === "link");
-  const hasHeadings = elements.some(e => e.type.startsWith("heading"));
-  const hasParagraphs = elements.some(e => e.type === "paragraph");
+  const hasButtons = elements.some((e) => e.type === "button");
+  const hasLinks = elements.some((e) => e.type === "link");
+  const hasHeadings = elements.some((e) => e.type.startsWith("heading"));
+  const hasParagraphs = elements.some((e) => e.type === "paragraph");
 
   // Generate contextual names based on content types
   if (hasHeadings && hasButtons) {
-    return index === 0 ? "Hero" : `CTA ${index}`;
+    return index === 0 ? "Hero Section" : `Call to Action ${index}`;
   }
   if (hasLinks && !hasHeadings && !hasParagraphs) {
     return index === 0 ? "Navigation" : `Links ${index}`;
   }
   if (hasParagraphs && !hasButtons) {
-    return index === 0 ? "Content" : `Content ${index}`;
+    return index === 0 ? "Content" : `Content Block ${index}`;
   }
 
   // Default fallback with better naming
-  const sectionTypes = ["Header", "Content", "Features", "Details", "Footer"];
+  const sectionTypes = [
+    "Header",
+    "Main Content",
+    "Features",
+    "Details",
+    "Footer",
+  ];
   return sectionTypes[index % sectionTypes.length] || `Section ${index + 1}`;
 }
 
@@ -717,7 +779,10 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
 }
 
 // Progress callback type
-export type ProgressCallback = (progress: number, message: string) => void | Promise<void>;
+export type ProgressCallback = (
+  progress: number,
+  message: string
+) => void | Promise<void>;
 
 export async function analyzeRepository(
   ctx: GitHubContext,
@@ -752,9 +817,13 @@ export async function analyzeRepository(
     logger.workflow.step("Detecting framework and pages");
     const frameworkInfo = await detectFrameworkAndPages(executors, rootPath);
 
-    console.log(`  🔧 Framework: ${frameworkInfo.framework} (${frameworkInfo.routingType} routing)`);
+    console.log(
+      `  🔧 Framework: ${frameworkInfo.framework} (${frameworkInfo.routingType} routing)`
+    );
     console.log(`  📄 Detected ${frameworkInfo.pages.length} pages`);
-    frameworkInfo.pages.forEach(p => console.log(`    - ${p.pageRoute}: ${p.pagePath}`));
+    frameworkInfo.pages.forEach((p) =>
+      console.log(`    - ${p.pageRoute}: ${p.pagePath}`)
+    );
 
     // Create a mapping from file paths to page routes
     const fileToPageRoute = new Map<string, string>();
@@ -823,7 +892,10 @@ export async function analyzeRepository(
       const file = sourceFiles[i]!;
       // Progress from 15% to 85% based on file count
       const fileProgress = 15 + Math.round((i / sourceFiles.length) * 70);
-      await reportProgress(fileProgress, `Analyzing ${file.name} (${i + 1}/${sourceFiles.length})`);
+      await reportProgress(
+        fileProgress,
+        `Analyzing ${file.name} (${i + 1}/${sourceFiles.length})`
+      );
 
       try {
         const analysis = await executors.analyzeSourceFile({ path: file.path });
@@ -871,7 +943,11 @@ export async function analyzeRepository(
     if (sections.length > 0) {
       console.log("📝 Section breakdown:");
       sections.forEach((s, i) => {
-        console.log(`  ${i + 1}. "${s.name}" (${s.pageRoute}) - ${s.elements.length} elements`);
+        console.log(
+          `  ${i + 1}. "${s.name}" (${s.pageRoute}) - ${
+            s.elements.length
+          } elements`
+        );
       });
     }
 
