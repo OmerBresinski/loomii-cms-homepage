@@ -226,19 +226,6 @@ export async function createContentPR(
       logger.pr.fileChange(change.filePath, "modified");
     }
 
-    // Build PR body
-    const changesMarkdown = changes
-      .map(
-        (c) =>
-          `### \`${c.filePath}\`\n${c.description
-            .split("\n")
-            .map((d) => `- ${d}`)
-            .join("\n")}`
-      )
-      .join("\n\n");
-
-    const fullDescription = `${prDescription}\n\n## Changes\n\n${changesMarkdown}\n\n---\n*Created by [AI CMS](https://github.com)*`;
-
     // Create the pull request
     logger.pr.github("Creating pull request");
     const pr = await createPullRequest(
@@ -246,7 +233,7 @@ export async function createContentPR(
       owner,
       repo,
       prTitle,
-      fullDescription,
+      prDescription,
       branchName,
       baseBranch
     );
@@ -284,17 +271,23 @@ export function generatePRDescription(
 ): string {
   const fileCount = new Set(edits.map((e) => e.element.sourceFile)).size;
   const elementTypes = [...new Set(edits.map((e) => e.element.type))];
+  const hasLinkChanges = edits.some((e) => {
+    const oldHref = (e.edit as any).oldHref;
+    const newHref = (e.edit as any).newHref;
+    return oldHref && newHref && oldHref !== newHref;
+  });
 
   const lines: string[] = [
-    "## Overview",
+    "# ✏️ Content Update",
     "",
-    "This PR updates website content managed through AI CMS.",
+    `> **${edits.length} element${edits.length !== 1 ? "s" : ""}** updated across **${fileCount} file${fileCount !== 1 ? "s" : ""}**`,
     "",
-    "| Metric | Value |",
-    "| ------ | ----- |",
-    `| Elements updated | ${edits.length} |`,
-    `| Files modified | ${fileCount} |`,
-    `| Element types | ${elementTypes.join(", ")} |`,
+    "> [!NOTE]",
+    "> This PR contains automated content changes from Loomii CMS.",
+    "> ",
+    `> 📝 **${edits.length}** element${edits.length !== 1 ? "s" : ""} modified`,
+    `> 📁 **${fileCount}** file${fileCount !== 1 ? "s" : ""} changed`,
+    `> 🏷️ Types: ${elementTypes.map((t) => `\`${t}\``).join(", ")}`,
     "",
     "---",
     "",
@@ -316,30 +309,50 @@ export function generatePRDescription(
     lines.push("");
 
     for (const { edit, element } of fileEdits) {
-      const oldValue = (edit.oldValue || element.currentValue || "").slice(0, 80);
-      const newValue = edit.newValue.slice(0, 80);
+      const oldValue = edit.oldValue || element.currentValue || "";
+      const newValue = edit.newValue;
       const oldHref = (edit as any).oldHref;
       const newHref = (edit as any).newHref;
       const hrefChanged = oldHref && newHref && oldHref !== newHref;
 
-      lines.push(`<details>`);
-      lines.push(`<summary><strong>${element.name}</strong> <code>${element.type}</code></summary>`);
+      lines.push(`#### ${element.name} \`${element.type}\``);
       lines.push("");
-      lines.push("| | Before | After |");
-      lines.push("|---|---|---|");
-      lines.push(`| **Content** | \`${oldValue}${oldValue.length >= 80 ? "..." : ""}\` | \`${newValue}${newValue.length >= 80 ? "..." : ""}\` |`);
+      lines.push("```diff");
+      lines.push(`- ${oldValue}`);
+      lines.push(`+ ${newValue}`);
+      lines.push("```");
+
       if (hrefChanged) {
-        lines.push(`| **Link** | \`${oldHref}\` | \`${newHref}\` |`);
+        lines.push("");
+        lines.push("**Link changed:**");
+        lines.push("```diff");
+        lines.push(`- ${oldHref}`);
+        lines.push(`+ ${newHref}`);
+        lines.push("```");
       }
-      lines.push("");
-      lines.push("</details>");
+
+      if (element.sourceLine) {
+        lines.push("");
+        lines.push(`📍 **Line ${element.sourceLine}**`);
+      }
+
       lines.push("");
     }
   }
 
   lines.push("---");
   lines.push("");
-  lines.push("*Automated content update via [AI CMS](https://github.com)*");
+  lines.push("## ✅ Review Checklist");
+  lines.push("");
+  lines.push("- [ ] Content changes look correct");
+  lines.push("- [ ] No unintended formatting changes");
+  if (hasLinkChanges) {
+    lines.push("- [ ] Links are valid");
+  }
+  lines.push("");
+  lines.push("---");
+  lines.push("");
+  lines.push("*Automated content update via [Loomii](https://loomii.dev)*");
 
   return lines.join("\n");
 }
