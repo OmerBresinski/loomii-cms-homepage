@@ -20,10 +20,6 @@ const updateOrgSchema = z.object({
   logoUrl: z.string().url().optional().nullable(),
 });
 
-const githubLinkSchema = z.object({
-  code: z.string(),
-});
-
 export const organizationRoutes = new Hono()
   // Get current organization (from Clerk context)
   .get("/current", requireAuth, async (c) => {
@@ -88,7 +84,7 @@ export const organizationRoutes = new Hono()
         logoUrl: string | null;
       } = {
         name: input.name,
-        logoUrl: input.logoUrl,
+        logoUrl: input.logoUrl ?? null,
       };
 
       if (existingOrg) {

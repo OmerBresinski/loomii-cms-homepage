@@ -3,7 +3,6 @@ import { useParams, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { projectDetailQuery, analysisStatusQuery, projectPagesQuery, sectionListQuery, queryKeys } from "@/lib/queries";
 import { useTriggerAnalysis, useCancelAnalysis } from "@/lib/mutations";
-import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import {
   IconExternalLink,
@@ -45,7 +44,7 @@ import { useProjectContext } from "./context/ProjectContext";
 
 export function ProjectDetailPage() {
   const { projectId } = useParams({ from: "/dashboard/projects/$projectId/" });
-  const { isDirty, editCount, pendingEdits, clearAllEdits } = useProjectContext();
+  const { isDirty, editCount } = useProjectContext();
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -416,7 +415,7 @@ export function ProjectDetailPage() {
                       {index < stats.length - 1 && (
                         <Separator
                           orientation="vertical"
-                          className="!self-center h-[60%]"
+                          className="self-center! h-[60%]"
                         />
                       )}
                     </div>

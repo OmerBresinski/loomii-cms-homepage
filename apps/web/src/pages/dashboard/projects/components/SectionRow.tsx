@@ -105,7 +105,6 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
               <ElementRow
                 key={`${element.id}-${element.currentValue}`}
                 element={element}
-                projectId={projectId}
                 sectionId={section.id}
                 sectionName={section.name}
               />

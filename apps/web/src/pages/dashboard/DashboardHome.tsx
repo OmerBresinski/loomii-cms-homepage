@@ -159,7 +159,7 @@ export function DashboardHome() {
                 {index < statItems.length - 1 && (
                   <Separator
                     orientation="vertical"
-                    className="!self-center h-[60%]"
+                    className="self-center! h-[60%]"
                   />
                 )}
               </div>

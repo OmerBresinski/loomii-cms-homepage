@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAuth, requireProjectAccess } from "../middleware/auth";
 import { RATE_LIMIT_ANALYSIS_PER_HOUR } from "../lib/constants";
 import { analyzeRepository } from "../ai";
+import { getInstallationToken } from "../services/github";
 
 const triggerAnalysisSchema = z.object({
   fullRescan: z.boolean().default(false),
@@ -52,11 +53,11 @@ export const analysisRoutes = new Hono()
   .post(
     "/trigger",
     requireAuth,
-    requireProjectAccess("editor"),
+    requireProjectAccess(),
     zValidator("json", triggerAnalysisSchema),
     async (c) => {
-      const projectId = c.req.param("projectId");
-      const input = c.req.valid("json");
+      const projectId = c.req.param("projectId")!;
+      c.req.valid("json"); // Validate but don't need the input
 
       // Check rate limit
       const recentJobs = await prisma.analysisJob.count({
@@ -103,7 +104,7 @@ export const analysisRoutes = new Hono()
         return c.json({ error: "Project not found" }, 404);
       }
 
-      if (!project.organization.githubAccessToken) {
+      if (!project.organization.githubInstallationId) {
         return c.json(
           { error: "GitHub not connected to organization" },
           400
@@ -132,7 +133,7 @@ export const analysisRoutes = new Hono()
         project.githubRepo,
         project.githubBranch,
         project.rootPath,
-        project.organization.githubAccessToken
+        project.organization.githubInstallationId
       ).catch((error) => {
         console.error("Analysis failed:", error);
       });
@@ -286,15 +287,15 @@ async function runAnalysis(
   githubRepo: string,
   branch: string,
   rootPath: string,
-  accessToken: string
+  installationId: string
 ) {
   const [owner, repo] = githubRepo.split("/");
 
   // Progress callback to update job status in DB
-  const updateProgress = async (progress: number, message: string) => {
+  const updateProgress = async (progress: number, _message: string) => {
     await prisma.analysisJob.update({
       where: { id: jobId },
-      data: { 
+      data: {
         progress,
         status: "running",
       }
@@ -305,11 +306,14 @@ async function runAnalysis(
     const pathInfo = rootPath ? ` (path: ${rootPath})` : "";
     console.log(`\n🔍 Starting analysis for ${githubRepo}${pathInfo}...`);
 
+    // Get installation token for GitHub App
+    const accessToken = await getInstallationToken(installationId);
+
     // Call the AI analysis with progress callback
     const result = await analyzeRepository({
       accessToken,
-      owner,
-      repo,
+      owner: owner!,
+      repo: repo!,
       branch,
       rootPath,
     }, updateProgress);

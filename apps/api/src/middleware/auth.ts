@@ -98,14 +98,15 @@ export const requireAuth = createMiddleware(async (c, next) => {
       },
     });
 
-    if (org && org.members.length > 0) {
+    const orgMember = org?.members[0];
+    if (org && orgMember) {
       c.set("org", {
         id: org.id,
         clerkOrgId: org.clerkOrgId,
         name: org.name,
         slug: org.slug,
         githubAccessToken: org.githubAccessToken,
-        role: org.members[0].role,
+        role: orgMember.role,
       } as AuthOrg);
     }
   }

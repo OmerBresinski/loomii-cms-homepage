@@ -27,12 +27,11 @@ const elementTypeColors: Record<string, string> = {
 
 interface ElementRowProps {
   element: any;
-  projectId: string;
   sectionId: string;
   sectionName: string;
 }
 
-export function ElementRow({ element, projectId, sectionId, sectionName }: ElementRowProps) {
+export function ElementRow({ element, sectionId, sectionName }: ElementRowProps) {
   const { saveEdit, hasEdit, getEdit } = useProjectContext();
 
   // Get existing edit if any

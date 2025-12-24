@@ -2,20 +2,16 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../db";
 import { inviteTeamMemberSchema, updateTeamMemberSchema } from "../lib/schemas";
-import { z } from "zod";
-import { requireAuth, requireProjectAccess } from "../middleware/auth";
+import { requireAuth, requireProjectAccess, getCurrentUser } from "../middleware/auth";
 
 export const teamRoutes = new Hono()
   // List team members
   .get("/", requireAuth, requireProjectAccess(), async (c) => {
-    const projectId = c.req.param("projectId");
+    const projectId = c.req.param("projectId")!;
 
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: {
-        user: {
-          select: { id: true, name: true, email: true, avatarUrl: true },
-        },
         teamMembers: {
           include: {
             user: {
@@ -34,9 +30,15 @@ export const teamRoutes = new Hono()
       return c.json({ error: "Project not found" }, 404);
     }
 
+    // Get the project owner
+    const owner = await prisma.user.findUnique({
+      where: { id: project.createdById },
+      select: { id: true, name: true, email: true, avatarUrl: true },
+    });
+
     return c.json(
       {
-        owner: { ...project.user, role: "owner" },
+        owner: owner ? { ...owner, role: "owner" } : null,
         members: project.teamMembers.map((m) => ({
           id: m.id,
           user: m.user,
@@ -56,8 +58,8 @@ export const teamRoutes = new Hono()
     requireProjectAccess("admin"),
     zValidator("json", inviteTeamMemberSchema),
     async (c) => {
-      const projectId = c.req.param("projectId");
-      const currentUser = c.get("user");
+      const projectId = c.req.param("projectId")!;
+      const currentUser = getCurrentUser(c);
       const input = c.req.valid("json");
 
       // Find user by email
@@ -85,7 +87,7 @@ export const teamRoutes = new Hono()
         where: { id: projectId },
       });
 
-      if (project?.userId === user.id) {
+      if (project?.createdById === user.id) {
         return c.json({ error: "Cannot add owner as team member" }, 400);
       }
 

@@ -34,7 +34,7 @@ async function getOrgWithAccess(userId: string, clerkOrgId: string | null | unde
     throw new HTTPException(403, { message: "Not a member of this organization" });
   }
 
-  return { org, membership: org.members[0] };
+  return { org, membership: org.members[0]! };
 }
 
 export const projectRoutes = new Hono()

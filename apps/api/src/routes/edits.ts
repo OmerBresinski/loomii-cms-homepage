@@ -8,7 +8,7 @@ import {
   paginationSchema,
 } from "../lib/schemas";
 import { z } from "zod";
-import { requireAuth, requireProjectAccess } from "../middleware/auth";
+import { requireAuth, requireProjectAccess, getCurrentUser } from "../middleware/auth";
 import {
   generateAllChanges,
   createContentPR,
@@ -98,11 +98,11 @@ export const editRoutes = new Hono()
   .post(
     "/",
     requireAuth,
-    requireProjectAccess("editor"),
+    requireProjectAccess(),
     zValidator("json", createEditSchema),
     async (c) => {
-      const projectId = c.req.param("projectId");
-      const user = c.get("user");
+      const projectId = c.req.param("projectId")!;
+      const user = getCurrentUser(c);
       const input = c.req.valid("json");
 
       // Verify element belongs to project
@@ -150,7 +150,7 @@ export const editRoutes = new Hono()
   .patch(
     "/:editId",
     requireAuth,
-    requireProjectAccess("editor"),
+    requireProjectAccess(),
     zValidator("json", z.object({ newValue: z.string() })),
     async (c) => {
       const editId = c.req.param("editId");
@@ -188,7 +188,7 @@ export const editRoutes = new Hono()
   .delete(
     "/:editId",
     requireAuth,
-    requireProjectAccess("editor"),
+    requireProjectAccess(),
     async (c) => {
       const editId = c.req.param("editId");
 
@@ -212,11 +212,11 @@ export const editRoutes = new Hono()
   .post(
     "/submit",
     requireAuth,
-    requireProjectAccess("editor"),
+    requireProjectAccess(),
     zValidator("json", submitEditSchema),
     async (c) => {
-      const projectId = c.req.param("projectId");
-      const user = c.get("user");
+      const projectId = c.req.param("projectId")!;
+      const user = getCurrentUser(c);
       const input = c.req.valid("json");
 
       // Get project and edits
@@ -353,11 +353,11 @@ export const editRoutes = new Hono()
   .post(
     "/publish",
     requireAuth,
-    requireProjectAccess("editor"),
+    requireProjectAccess(),
     zValidator("json", publishEditsSchema),
     async (c) => {
-      const projectId = c.req.param("projectId");
-      const user = c.get("user");
+      const projectId = c.req.param("projectId")!;
+      const user = getCurrentUser(c);
       const input = c.req.valid("json");
 
       // Get project with organization (for GitHub token)

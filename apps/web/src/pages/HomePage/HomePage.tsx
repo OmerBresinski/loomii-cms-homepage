@@ -137,7 +137,7 @@ const HomePage = () => {
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
       <style>{clerkHideStyles}</style>
       {/* Subtle gradient background */}
-      <div className="fixed inset-0 bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900" />
+      <div className="fixed inset-0 bg-linear-to-br from-zinc-950 via-zinc-950 to-zinc-900" />
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 blur-[120px] rounded-full" />
 
       <div className="relative z-10 w-full max-w-sm">
@@ -187,12 +187,12 @@ const HomePage = () => {
                   Continue to your dashboard
                 </p>
               </div>
-              <Button className="w-full" asChild>
-                <Link to="/dashboard">
+              <Link to="/dashboard" className="w-full">
+                <Button className="w-full">
                   Go to Dashboard
                   <IconArrowRight className="w-4 h-4 ml-2" />
-                </Link>
-              </Button>
+                </Button>
+              </Link>
             </div>
           </SignedIn>
         </div>

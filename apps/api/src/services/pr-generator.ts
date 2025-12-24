@@ -110,7 +110,7 @@ export async function generateCodeChange(
           fallbackContent = fallbackContent.replace(oldHref, newHref);
           logger.pr.editChange(oldHref, newHref);
         } else {
-          logger.pr.aiEdit("warning", `Href "${oldHref}" not found in file`);
+          logger.pr.aiEdit("fallback", `Href "${oldHref}" not found in file`);
         }
       }
 

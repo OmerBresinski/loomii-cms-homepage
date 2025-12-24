@@ -5,7 +5,7 @@ describe("Health Routes", () => {
   describe("GET /health", () => {
     it("returns healthy status", async () => {
       const res = await app.request("/health");
-      const json = await res.json();
+      const json = await res.json() as { status: string; timestamp: string };
 
       expect(res.status).toBe(200);
       expect(json.status).toBe("healthy");
@@ -16,7 +16,7 @@ describe("Health Routes", () => {
   describe("GET /health/ready", () => {
     it("returns readiness status", async () => {
       const res = await app.request("/health/ready");
-      const json = await res.json();
+      const json = await res.json() as { status: string; checks: unknown };
 
       expect(res.status).toBe(200);
       expect(json.status).toBeDefined();
