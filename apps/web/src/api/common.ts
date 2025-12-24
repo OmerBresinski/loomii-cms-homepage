@@ -15,6 +15,14 @@ export const queryKeys = {
       "folders",
       branch,
     ] as const,
+  repoBranches: (orgId: string, repo: string) =>
+    [
+      ...queryKeys.organization(),
+      orgId,
+      "repos",
+      repo,
+      "branches",
+    ] as const,
   orgMembers: (orgId: string) =>
     [...queryKeys.organization(), orgId, "members"] as const,
   projects: () => [...queryKeys.all, "projects"] as const,
@@ -82,6 +90,11 @@ export interface RepoFolder {
   path: string;
   name: string;
   depth: number;
+}
+
+export interface RepoBranch {
+  name: string;
+  protected: boolean;
 }
 
 export interface OrgMember {

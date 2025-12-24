@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
-import { queryKeys, Organization, GitHubRepo, OrgMember, RepoFolder } from "./common";
+import { queryKeys, Organization, GitHubRepo, OrgMember, RepoFolder, RepoBranch } from "./common";
 
 export function currentOrgQuery() {
   return queryOptions({
@@ -49,6 +49,20 @@ export function repoFoldersQuery(orgId: string, repo: string, branch: string) {
       );
     },
     enabled: !!orgId && !!repo && !!branch,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function repoBranchesQuery(orgId: string, repo: string) {
+  const [owner, repoName] = repo.split("/");
+  return queryOptions({
+    queryKey: queryKeys.repoBranches(orgId, repo),
+    queryFn: async () => {
+      return apiFetch<{ branches: RepoBranch[] }>(
+        `/organizations/${orgId}/github/repos/${owner}/${repoName}/branches`
+      );
+    },
+    enabled: !!orgId && !!repo,
     staleTime: 5 * 60 * 1000,
   });
 }

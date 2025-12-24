@@ -426,6 +426,69 @@ export const organizationRoutes = new Hono()
     }
   })
 
+  // Get branches in a repository
+  .get("/:orgId/github/repos/:owner/:repo/branches", requireAuth, async (c) => {
+    const user = getCurrentUser(c);
+    const orgId = c.req.param("orgId");
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
+
+    // Check user has access
+    const membership = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: { organizationId: orgId, userId: user.id },
+      },
+      include: { organization: true },
+    });
+
+    if (!membership) {
+      throw new HTTPException(403, { message: "Access denied" });
+    }
+
+    const org = membership.organization;
+    if (!org.githubInstallationId) {
+      return c.json({ error: "GitHub not connected" }, 400);
+    }
+
+    try {
+      // Get installation token
+      const token = await getInstallationToken(org.githubInstallationId);
+
+      // Fetch branches from GitHub API
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/branches?per_page=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch branches");
+      }
+
+      const data = (await response.json()) as Array<{
+        name: string;
+        protected: boolean;
+      }>;
+
+      return c.json(
+        {
+          branches: data.map((branch) => ({
+            name: branch.name,
+            protected: branch.protected,
+          })),
+        },
+        200
+      );
+    } catch (error) {
+      console.error("GitHub API error:", error);
+      return c.json({ error: "Failed to fetch branches" }, 500);
+    }
+  })
+
   // List organization members
   .get("/:orgId/members", requireAuth, async (c) => {
     const user = getCurrentUser(c);
