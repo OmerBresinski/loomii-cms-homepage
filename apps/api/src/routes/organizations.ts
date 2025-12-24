@@ -5,8 +5,7 @@ import { getAuth } from "@hono/clerk-auth";
 import { HTTPException } from "hono/http-exception";
 import { prisma } from "../db";
 import { requireAuth, getCurrentUser } from "../middleware/auth";
-import { exchangeCodeForToken, getGitHubUser } from "../services/github";
-import { keyframes } from "hono/css";
+import { getAppInstallationUrl, getInstallationRepositories, getInstallationToken } from "../services/github";
 
 // Schemas
 const createOrgSchema = z.object({
@@ -57,7 +56,7 @@ export const organizationRoutes = new Hono()
           name: org.name,
           slug: org.slug,
           logoUrl: org.logoUrl,
-          hasGitHubConnected: !!org.githubAccessToken,
+          hasGitHubConnected: !!org.githubInstallationId,
           githubOrgName: org.githubOrgName,
           memberCount: org._count.members,
           projectCount: org._count.projects,
@@ -214,10 +213,10 @@ export const organizationRoutes = new Hono()
   )
 
   // ============================================
-  // GitHub Connection Flow
+  // GitHub App Connection Flow
   // ============================================
 
-  // Initiate GitHub OAuth for organization
+  // Initiate GitHub App installation for organization
   .get("/:orgId/github/connect", requireAuth, async (c) => {
     const user = getCurrentUser(c);
     const orgId = c.req.param("orgId");
@@ -235,29 +234,17 @@ export const organizationRoutes = new Hono()
       });
     }
 
-    const clientId = process.env.GITHUB_CLIENT_ID;
-    if (!clientId) {
-      return c.json({ error: "GitHub OAuth not configured" }, 500);
-    }
-
-    // Use a single callback URL - pass orgId in state
-    const redirectUri = `${process.env.API_URL || "http://localhost:3001"}/github/callback`;
-    const scope = "read:user user:email repo read:org";
-
-    // Encode orgId in state for CSRF protection and to identify the org
+    // Encode orgId in state to identify the org after installation
     const state = Buffer.from(
       JSON.stringify({ orgId, nonce: crypto.randomUUID() })
     ).toString("base64url");
 
-    const authUrl = new URL("https://github.com/login/oauth/authorize");
-    authUrl.searchParams.set("client_id", clientId);
-    authUrl.searchParams.set("redirect_uri", redirectUri);
-    authUrl.searchParams.set("scope", scope);
-    authUrl.searchParams.set("state", state);
+    // Redirect to GitHub App installation page
+    const url = getAppInstallationUrl(state);
 
-    console.log({ clientId, authUrl: authUrl.toString() });
+    console.log("GitHub App installation URL:", url);
 
-    return c.json({ url: authUrl.toString(), state }, 200);
+    return c.json({ url, state }, 200);
   })
 
   // Disconnect GitHub from organization
@@ -306,39 +293,25 @@ export const organizationRoutes = new Hono()
     }
 
     const org = membership.organization;
-    if (!org.githubAccessToken) {
+    if (!org.githubInstallationId) {
       return c.json({ error: "GitHub not connected" }, 400);
     }
 
     try {
-      // Fetch repos from GitHub API
-      const response = await fetch(
-        "https://api.github.com/user/repos?per_page=100&sort=updated",
-        {
-          headers: {
-            Authorization: `Bearer ${org.githubAccessToken}`,
-            Accept: "application/vnd.github.v3+json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch repositories");
-      }
-
-      const repos = (await response.json()) as any[];
+      // Use installation token to fetch repos
+      const repos = await getInstallationRepositories(org.githubInstallationId);
 
       return c.json(
         {
-          repos: repos.map((repo: any) => ({
+          repos: repos.map((repo) => ({
             id: repo.id,
             name: repo.name,
             fullName: repo.full_name,
-            description: repo.description,
+            description: null,
             private: repo.private,
             defaultBranch: repo.default_branch,
             url: repo.html_url,
-            updatedAt: repo.updated_at,
+            updatedAt: null,
           })),
         },
         200
@@ -370,17 +343,20 @@ export const organizationRoutes = new Hono()
     }
 
     const org = membership.organization;
-    if (!org.githubAccessToken) {
+    if (!org.githubInstallationId) {
       return c.json({ error: "GitHub not connected" }, 400);
     }
 
     try {
+      // Get installation token
+      const token = await getInstallationToken(org.githubInstallationId);
+
       // Fetch the repository tree from GitHub API
       const response = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
         {
           headers: {
-            Authorization: `Bearer ${org.githubAccessToken}`,
+            Authorization: `Bearer ${token}`,
             Accept: "application/vnd.github.v3+json",
           },
         }

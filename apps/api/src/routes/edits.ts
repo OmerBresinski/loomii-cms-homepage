@@ -15,6 +15,7 @@ import {
   generatePRTitle,
   generatePRDescription,
 } from "../services/pr-generator";
+import { getInstallationToken } from "../services/github";
 
 const editFilterSchema = paginationSchema.extend({
   status: z
@@ -238,7 +239,7 @@ export const editRoutes = new Hono()
         return c.json({ error: "Project not found" }, 404);
       }
 
-      if (!project.organization.githubAccessToken) {
+      if (!project.organization.githubInstallationId) {
         return c.json({ error: "GitHub not connected. Please reconnect GitHub in settings." }, 400);
       }
 
@@ -256,11 +257,14 @@ export const editRoutes = new Hono()
       }
 
       try {
+        // Get installation token for GitHub App
+        const accessToken = await getInstallationToken(project.organization.githubInstallationId);
+
         // Generate code changes
         const changes = await generateAllChanges(
           edits.map((e) => ({ edit: e, element: e.element })),
           {
-            accessToken: project.organization.githubAccessToken,
+            accessToken,
             owner,
             repo,
             baseBranch: project.githubBranch,
@@ -288,7 +292,7 @@ export const editRoutes = new Hono()
           prTitle,
           prDescription,
           {
-            accessToken: project.organization.githubAccessToken,
+            accessToken,
             owner,
             repo,
             baseBranch: project.githubBranch,
@@ -366,7 +370,7 @@ export const editRoutes = new Hono()
         return c.json({ error: "Project not found" }, 404);
       }
 
-      if (!project.organization.githubAccessToken) {
+      if (!project.organization.githubInstallationId) {
         return c.json({ error: "GitHub not connected. Please reconnect GitHub in settings." }, 400);
       }
 
@@ -408,6 +412,9 @@ export const editRoutes = new Hono()
       }
 
       try {
+        // Get installation token for GitHub App
+        const accessToken = await getInstallationToken(project.organization.githubInstallationId);
+
         // Create Edit records in the database
         const createdEdits = await prisma.$transaction(
           input.edits.map((editInput) => {
@@ -448,7 +455,7 @@ export const editRoutes = new Hono()
 
         // Generate code changes
         const changes = await generateAllChanges(editElementPairs, {
-          accessToken: project.organization.githubAccessToken,
+          accessToken,
           owner,
           repo,
           baseBranch: project.githubBranch,
@@ -476,7 +483,7 @@ export const editRoutes = new Hono()
           prTitle,
           prDescription,
           {
-            accessToken: project.organization.githubAccessToken,
+            accessToken,
             owner,
             repo,
             baseBranch: project.githubBranch,

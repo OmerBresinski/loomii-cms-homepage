@@ -1,4 +1,5 @@
 import { GITHUB_API_VERSION } from "../lib/constants";
+import * as crypto from "crypto";
 
 // GitHub API types
 interface GitHubUser {
@@ -381,5 +382,136 @@ export async function searchCode(
   };
 
   return data.items;
+}
+
+// ============================================
+// GitHub App Authentication
+// ============================================
+
+/**
+ * Create a JWT for GitHub App authentication
+ * Used to authenticate as the GitHub App itself
+ */
+function createGitHubAppJWT(): string {
+  const appId = process.env.GITHUB_APP_ID;
+  let privateKey = process.env.GITHUB_APP_PRIVATE_KEY;
+
+  if (!appId || !privateKey) {
+    throw new Error("GitHub App credentials not configured (GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY)");
+  }
+
+  // Handle different formats of private key storage in env
+  // Replace literal \n with actual newlines
+  privateKey = privateKey.replace(/\\n/g, "\n");
+
+  // Remove surrounding quotes if present
+  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+    privateKey = privateKey.slice(1, -1);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iat: now - 60, // Issued 60 seconds ago (clock drift)
+    exp: now + 600, // Expires in 10 minutes
+    iss: appId,
+  };
+
+  // Create JWT header
+  const header = { alg: "RS256", typ: "JWT" };
+  const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+
+  // Sign with private key
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+  const sign = crypto.createSign("RSA-SHA256");
+  sign.update(signatureInput);
+  const signature = sign.sign(privateKey, "base64url");
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+/**
+ * Get an installation access token for a specific installation
+ * This token is used to make API calls on behalf of the app for that installation
+ */
+export async function getInstallationToken(installationId: string): Promise<string> {
+  const jwt = createGitHubAppJWT();
+
+  const response = await fetch(
+    `https://api.github.com/app/installations/${installationId}/access_tokens`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": GITHUB_API_VERSION,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("Failed to get installation token:", error);
+    throw new Error(`Failed to get installation token: ${response.status}`);
+  }
+
+  const data = (await response.json()) as { token: string; expires_at: string };
+  return data.token;
+}
+
+/**
+ * Get repositories accessible to a GitHub App installation
+ */
+export async function getInstallationRepositories(
+  installationId: string
+): Promise<Array<{
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  default_branch: string;
+  html_url: string;
+}>> {
+  const token = await getInstallationToken(installationId);
+
+  const response = await fetch(
+    "https://api.github.com/installation/repositories?per_page=100",
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": GITHUB_API_VERSION,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to get installation repositories");
+  }
+
+  const data = (await response.json()) as {
+    repositories: Array<{
+      id: number;
+      name: string;
+      full_name: string;
+      private: boolean;
+      default_branch: string;
+      html_url: string;
+    }>;
+  };
+
+  return data.repositories;
+}
+
+/**
+ * Get the GitHub App installation URL for a user to install the app
+ */
+export function getAppInstallationUrl(state?: string): string {
+  const appSlug = process.env.GITHUB_APP_SLUG || "loomii";
+  let url = `https://github.com/apps/${appSlug}/installations/new`;
+  if (state) {
+    url += `?state=${encodeURIComponent(state)}`;
+  }
+  return url;
 }
 
