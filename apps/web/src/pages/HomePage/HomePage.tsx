@@ -9,11 +9,7 @@ import { dark } from "@clerk/themes";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/ui/button";
 import { Badge } from "@/ui/badge";
-import {
-  IconArrowRight,
-  IconBrandGithub,
-  IconSparkles,
-} from "@tabler/icons-react";
+import { IconArrowRight, IconSparkles } from "@tabler/icons-react";
 
 const clerkAppearance = {
   baseTheme: dark,
@@ -219,19 +215,6 @@ const HomePage = () => {
               Privacy Policy
             </a>
           </p>
-        </div>
-
-        {/* Feature hint */}
-        <div className="mt-8 flex items-center justify-center gap-6 text-zinc-600">
-          <div className="flex items-center gap-1.5 text-xs">
-            <IconBrandGithub className="w-3.5 h-3.5" />
-            <span>Git-native</span>
-          </div>
-          <div className="w-1 h-1 rounded-full bg-zinc-700" />
-          <div className="flex items-center gap-1.5 text-xs">
-            <IconSparkles className="w-3.5 h-3.5" />
-            <span>AI-powered</span>
-          </div>
         </div>
       </div>
     </div>
