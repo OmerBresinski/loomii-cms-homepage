@@ -830,25 +830,48 @@ export async function analyzeRepository(
     for (const page of frameworkInfo.pages) {
       fileToPageRoute.set(page.pagePath, page.pageRoute);
     }
+    console.log(`  📍 Page route map created with ${fileToPageRoute.size} entries:`);
+    for (const [path, route] of fileToPageRoute) {
+      console.log(`      "${path}" → "${route}"`);
+    }
 
     // Helper to find the page route for a file
     const getPageRouteForFile = (filePath: string): string => {
+      // Normalize the file path (remove leading ./ if present)
+      const normalizedPath = filePath.replace(/^\.\//, "");
+
       // Direct match
-      if (fileToPageRoute.has(filePath)) {
-        return fileToPageRoute.get(filePath)!;
+      if (fileToPageRoute.has(normalizedPath)) {
+        console.log(`    🎯 [Route Match] "${filePath}" → direct match → "${fileToPageRoute.get(normalizedPath)}"`);
+        return fileToPageRoute.get(normalizedPath)!;
       }
+
+      // Also try matching just the filename for root-level HTML files
+      const fileName = normalizedPath.split("/").pop() || "";
+      if (fileToPageRoute.has(fileName)) {
+        console.log(`    🎯 [Route Match] "${filePath}" → filename match "${fileName}" → "${fileToPageRoute.get(fileName)}"`);
+        return fileToPageRoute.get(fileName)!;
+      }
+
       // For components, try to find the closest page (check if file is in same directory as a page)
-      const fileDir = filePath.split("/").slice(0, -1).join("/");
+      const fileDir = normalizedPath.split("/").slice(0, -1).join("/");
       for (const [pagePath, pageRoute] of fileToPageRoute) {
         const pageDir = pagePath.split("/").slice(0, -1).join("/");
-        if (fileDir.startsWith(pageDir) || pageDir.startsWith(fileDir)) {
+        // Only match if both are in the same directory (not just empty strings)
+        if (fileDir && pageDir && (fileDir.startsWith(pageDir) || pageDir.startsWith(fileDir))) {
+          console.log(`    🎯 [Route Match] "${filePath}" → dir match "${pagePath}" → "${pageRoute}"`);
           return pageRoute;
         }
       }
-      // Default to first page if single page site, otherwise "/"
-      return frameworkInfo.pages.length === 1 && frameworkInfo.pages[0]
+
+      // Fallback - log details about why no match was found
+      const defaultRoute = frameworkInfo.pages.length === 1 && frameworkInfo.pages[0]
         ? frameworkInfo.pages[0].pageRoute
         : "/";
+      console.log(`    ⚠️ [Route Match] "${filePath}" → NO MATCH, using fallback "${defaultRoute}"`);
+      console.log(`       Available pages in map: ${[...fileToPageRoute.keys()].join(", ")}`);
+
+      return defaultRoute;
     };
 
     // Step 2: List all files in the repository/subdirectory (10-15%)
