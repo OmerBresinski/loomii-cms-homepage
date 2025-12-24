@@ -94,8 +94,8 @@ function FileDiff({
 // Component to render the diff lines
 function DiffLines({ edit }: { edit: PendingEdit }) {
   const lines = parseSourceContext(edit.sourceContext);
-  const valueChanged = edit.originalValue !== edit.newValue;
-  const hrefChanged = edit.originalHref !== edit.newHref;
+  const valueChanged = (edit.originalValue || "") !== (edit.newValue || "");
+  const hrefChanged = (edit.originalHref || "") !== (edit.newHref || "");
 
   if (lines.length === 0) {
     // Fallback if no context available
@@ -138,61 +138,196 @@ function DiffLines({ edit }: { edit: PendingEdit }) {
     );
   }
 
+  // Track which lines have changes for rendering
+  const changedLines = new Set<number>();
+
+  // Pre-scan to find which lines have which changes
+  for (const line of lines) {
+    const hasContent = valueChanged && edit.originalValue && line.content.includes(edit.originalValue);
+    const hasHref = hrefChanged && edit.originalHref && line.content.includes(edit.originalHref);
+    if (hasContent || hasHref) {
+      changedLines.add(line.lineNum);
+    }
+  }
+
+  // Check if content/href were found in the context
+  const contentFoundInContext = valueChanged && edit.originalValue &&
+    lines.some(l => l.content.includes(edit.originalValue));
+  const hrefFoundInContext = hrefChanged && edit.originalHref &&
+    lines.some(l => l.content.includes(edit.originalHref));
+
   return (
-    <div className="divide-y divide-border/50">
-      {lines.map((line, idx) => {
-        const isChangedLine = line.lineNum === edit.sourceLine;
+    <div>
+      <div className="divide-y divide-border/50">
+        {lines.map((line, idx) => {
+          // Check if this line contains the content being changed
+          const hasContentChange = valueChanged && edit.originalValue && line.content.includes(edit.originalValue);
+          // Check if this line contains the href being changed
+          const hasHrefChange = hrefChanged && edit.originalHref && line.content.includes(edit.originalHref);
 
-        if (isChangedLine) {
-          // Show removed line
-          const removedLine = line.content.replace(edit.originalValue, edit.originalValue);
-          // Show added line
-          const addedLine = line.content.replace(edit.originalValue, edit.newValue);
+          if (hasContentChange || hasHrefChange) {
+            let removedLine = line.content;
+            let addedLine = line.content;
 
+            // Build list of highlights for this line
+            const removedHighlights: string[] = [];
+            const addedHighlights: string[] = [];
+
+            if (hasContentChange) {
+              addedLine = addedLine.replace(edit.originalValue, edit.newValue);
+              removedHighlights.push(edit.originalValue);
+              addedHighlights.push(edit.newValue);
+            }
+            if (hasHrefChange) {
+              addedLine = addedLine.replace(edit.originalHref!, edit.newHref!);
+              removedHighlights.push(edit.originalHref!);
+              addedHighlights.push(edit.newHref!);
+            }
+
+            return (
+              <div key={idx}>
+                {/* Removed line */}
+                <div className="flex bg-red-500/10">
+                  <span className="w-12 text-right pr-2 py-0.5 text-red-600 dark:text-red-400 select-none bg-red-500/20">
+                    {line.lineNum}
+                  </span>
+                  <span className="w-6 text-center py-0.5 text-red-600 dark:text-red-400 select-none">-</span>
+                  <span className="flex-1 py-0.5 pr-2 whitespace-pre text-red-700 dark:text-red-300">
+                    {highlightMultiple(removedLine, removedHighlights, "removed")}
+                  </span>
+                </div>
+                {/* Added line */}
+                <div className="flex bg-green-500/10">
+                  <span className="w-12 text-right pr-2 py-0.5 text-green-600 dark:text-green-400 select-none bg-green-500/20">
+                    {line.lineNum}
+                  </span>
+                  <span className="w-6 text-center py-0.5 text-green-600 dark:text-green-400 select-none">+</span>
+                  <span className="flex-1 py-0.5 pr-2 whitespace-pre text-green-700 dark:text-green-300">
+                    {highlightMultiple(addedLine, addedHighlights, "added")}
+                  </span>
+                </div>
+              </div>
+            );
+          }
+
+          // Context line (unchanged)
           return (
-            <div key={idx}>
-              {/* Removed line */}
-              <div className="flex bg-red-500/10">
-                <span className="w-12 text-right pr-2 py-0.5 text-red-600 dark:text-red-400 select-none bg-red-500/20">
-                  {line.lineNum}
-                </span>
-                <span className="w-6 text-center py-0.5 text-red-600 dark:text-red-400 select-none">-</span>
-                <span className="flex-1 py-0.5 pr-2 whitespace-pre text-red-700 dark:text-red-300">
-                  {highlightChange(removedLine, edit.originalValue, "removed")}
-                </span>
-              </div>
-              {/* Added line */}
-              <div className="flex bg-green-500/10">
-                <span className="w-12 text-right pr-2 py-0.5 text-green-600 dark:text-green-400 select-none bg-green-500/20">
-                  {line.lineNum}
-                </span>
-                <span className="w-6 text-center py-0.5 text-green-600 dark:text-green-400 select-none">+</span>
-                <span className="flex-1 py-0.5 pr-2 whitespace-pre text-green-700 dark:text-green-300">
-                  {highlightChange(addedLine, edit.newValue, "added")}
-                </span>
-              </div>
+            <div key={idx} className="flex">
+              <span className="w-12 text-right pr-2 py-0.5 text-muted-foreground select-none bg-muted/30">
+                {line.lineNum}
+              </span>
+              <span className="w-6 text-center py-0.5 text-muted-foreground select-none"> </span>
+              <span className="flex-1 py-0.5 pr-2 whitespace-pre text-muted-foreground">
+                {line.content}
+              </span>
             </div>
           );
-        }
+        })}
+      </div>
 
-        // Context line (unchanged)
-        return (
-          <div key={idx} className="flex">
-            <span className="w-12 text-right pr-2 py-0.5 text-muted-foreground select-none bg-muted/30">
-              {line.lineNum}
-            </span>
-            <span className="w-6 text-center py-0.5 text-muted-foreground select-none"> </span>
-            <span className="flex-1 py-0.5 pr-2 whitespace-pre text-muted-foreground">
-              {line.content}
-            </span>
-          </div>
-        );
-      })}
+      {/* Always show summary sections for clarity */}
+      {(valueChanged || hrefChanged) && (
+        <div className="border-t border-border/50 px-3 py-2 bg-muted/20 space-y-3">
+          {valueChanged && (
+            <div>
+              <div className="text-[10px] uppercase text-muted-foreground mb-1.5 font-medium flex items-center gap-2">
+                Content
+                {!contentFoundInContext && <span className="text-yellow-600">(not in visible context)</span>}
+              </div>
+              <div className="space-y-1 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400">-</span>
+                  <span className="bg-red-500/10 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded">
+                    {edit.originalValue}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-600 dark:text-green-400">+</span>
+                  <span className="bg-green-500/10 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded">
+                    {edit.newValue}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {hrefChanged && (
+            <div>
+              <div className="text-[10px] uppercase text-muted-foreground mb-1.5 font-medium flex items-center gap-2">
+                Link Target
+                {!hrefFoundInContext && <span className="text-yellow-600">(not in visible context)</span>}
+              </div>
+              <div className="space-y-1 text-xs font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600 dark:text-red-400">-</span>
+                  <span className="bg-red-500/10 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded">
+                    {edit.originalHref}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-green-600 dark:text-green-400">+</span>
+                  <span className="bg-green-500/10 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded">
+                    {edit.newHref}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-// Highlight the changed part of a line
+// Highlight multiple changes in a line
+function highlightMultiple(line: string, changes: string[], type: "removed" | "added") {
+  if (changes.length === 0) return line;
+
+  // Sort changes by their position in the line (to process left to right)
+  const sortedChanges = changes
+    .map(change => ({ change, idx: line.indexOf(change) }))
+    .filter(c => c.idx !== -1)
+    .sort((a, b) => a.idx - b.idx);
+
+  if (sortedChanges.length === 0) return line;
+
+  const result: React.ReactNode[] = [];
+  let lastEnd = 0;
+
+  for (const { change, idx } of sortedChanges) {
+    // Skip if this change overlaps with a previous one
+    if (idx < lastEnd) continue;
+
+    // Add text before this change
+    if (idx > lastEnd) {
+      result.push(line.slice(lastEnd, idx));
+    }
+
+    // Add highlighted change
+    result.push(
+      <span
+        key={idx}
+        className={cn(
+          "px-0.5 rounded",
+          type === "removed" ? "bg-red-500/30" : "bg-green-500/30"
+        )}
+      >
+        {change}
+      </span>
+    );
+
+    lastEnd = idx + change.length;
+  }
+
+  // Add remaining text after last change
+  if (lastEnd < line.length) {
+    result.push(line.slice(lastEnd));
+  }
+
+  return <>{result}</>;
+}
+
+// Highlight the changed part of a line (single change)
 function highlightChange(line: string, change: string, type: "removed" | "added") {
   const idx = line.indexOf(change);
   if (idx === -1) return line;

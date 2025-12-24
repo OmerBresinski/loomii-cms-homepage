@@ -1,14 +1,12 @@
 import { generateObject, gateway } from "ai";
 import { z } from "zod";
 
-// Schema for the AI's structured response
+// Simplified schema - AI only needs to identify what to find/replace
 const codeEditResponseSchema = z.object({
-  modifiedCode: z.string().describe("The complete modified file content with the edit applied"),
-  changeApplied: z.boolean().describe("Whether the change was successfully applied"),
-  changedLineNumber: z.number().describe("The line number where the change was made"),
-  originalSnippet: z.string().describe("The original code snippet that was changed (just the relevant line or element)"),
-  newSnippet: z.string().describe("The new code snippet after the change (just the relevant line or element)"),
-  reasoning: z.string().describe("Brief explanation of how the edit was applied"),
+  searchString: z.string().describe("The exact string to search for in the file (copy exactly from the source)"),
+  replaceString: z.string().describe("The replacement string with the edit applied"),
+  lineNumber: z.number().describe("The line number where the change should be made"),
+  confidence: z.enum(["high", "medium", "low"]).describe("How confident you are this is the correct location"),
 });
 
 interface EditInstruction {
@@ -28,18 +26,19 @@ interface AIEditResult {
   error?: string;
 }
 
-const SYSTEM_PROMPT = `You are a precise code editor. Your ONLY job is to apply a single content edit to source code.
+const SYSTEM_PROMPT = `You are a precise code editor. Your job is to identify the exact text to find and replace in source code.
 
 CRITICAL RULES:
-1. You MUST only change the specific text content requested - nothing else
-2. You MUST preserve ALL formatting, indentation, whitespace, and line breaks exactly as they are
-3. You MUST NOT add, remove, or modify any code that isn't part of the requested change
-4. You MUST NOT add comments, fix bugs, improve code quality, or make any other modifications
-5. You MUST return the COMPLETE file content, not just the changed portion
-6. If the old value appears multiple times, use the provided line number and element context to identify the correct one
-7. If you cannot find the exact text to change, set changeApplied to false
+1. searchString must be copied EXACTLY from the source code (including whitespace, quotes, etc.)
+2. searchString should include enough context to be unique (e.g., include the surrounding tag or attribute)
+3. replaceString should have the same structure as searchString, just with the values changed
+4. Apply ALL requested changes in replaceString - this may include text content AND href attribute changes
+5. For link elements with both text and href changes, include BOTH in searchString/replaceString
+6. If you cannot find a unique match, use confidence: "low"
 
-You are a surgical tool - make the minimum possible change to achieve the edit.`;
+Example for changing link text AND href:
+- searchString: '<a href="https://old.com">Old Text</a>'
+- replaceString: '<a href="https://new.com">New Text</a>'`;
 
 /**
  * Use AI to apply a content edit to source code.
@@ -51,6 +50,20 @@ export async function applyEditWithAI(
   edit: EditInstruction
 ): Promise<AIEditResult> {
   try {
+    const textChanged = edit.oldValue !== edit.newValue;
+    const hrefChanged = edit.oldHref !== undefined && edit.newHref !== undefined && edit.oldHref !== edit.newHref;
+
+    console.log("[AI Editor] Processing edit:", {
+      elementName: edit.elementName,
+      elementType: edit.elementType,
+      textChanged,
+      hrefChanged,
+      oldValue: edit.oldValue?.slice(0, 50),
+      newValue: edit.newValue?.slice(0, 50),
+      oldHref: edit.oldHref,
+      newHref: edit.newHref,
+    });
+
     const result = await generateObject({
       model: gateway("anthropic/claude-3-haiku"),
       schema: codeEditResponseSchema,
@@ -60,53 +73,56 @@ export async function applyEditWithAI(
     });
 
     const response = result.object;
+    console.log("[AI Editor] AI response:", {
+      searchString: response.searchString?.slice(0, 100),
+      replaceString: response.replaceString?.slice(0, 100),
+      lineNumber: response.lineNumber,
+      confidence: response.confidence,
+    });
 
-    // Verify the change was applied
-    if (!response.changeApplied) {
+    // Check if the search string exists in the file
+    if (!fileContent.includes(response.searchString)) {
       return {
         success: false,
         newContent: fileContent,
-        error: `AI could not apply edit: ${response.reasoning}`,
+        error: `Search string not found in file: "${response.searchString.slice(0, 50)}..."`,
       };
     }
 
-    // Verify the new content contains the new value
-    if (!response.modifiedCode.includes(edit.newValue)) {
+    // Check for multiple occurrences (ambiguity)
+    const occurrences = fileContent.split(response.searchString).length - 1;
+    if (occurrences > 1 && response.confidence === "low") {
       return {
         success: false,
         newContent: fileContent,
-        error: "Modified code does not contain the new value",
+        error: `Multiple occurrences (${occurrences}) of search string and low confidence`,
       };
     }
 
-    // Verify the old value was removed (unless old and new overlap)
-    if (
-      !edit.newValue.includes(edit.oldValue) &&
-      response.modifiedCode.includes(edit.oldValue) &&
-      fileContent.split(edit.oldValue).length === 2 // only had one occurrence
-    ) {
+    // Apply the replacement
+    const newContent = fileContent.replace(response.searchString, response.replaceString);
+
+    // Verify the changes were applied
+    if (textChanged && !newContent.includes(edit.newValue)) {
       return {
         success: false,
         newContent: fileContent,
-        error: "Modified code still contains the old value",
+        error: "Replacement did not include new text value",
       };
     }
 
-    // Verify line count is preserved (edits shouldn't add/remove lines)
-    const originalLines = fileContent.split("\n").length;
-    const newLines = response.modifiedCode.split("\n").length;
-    if (Math.abs(originalLines - newLines) > 1) {
+    if (hrefChanged && !newContent.includes(edit.newHref!)) {
       return {
         success: false,
         newContent: fileContent,
-        error: `Line count changed significantly (${originalLines} → ${newLines})`,
+        error: "Replacement did not include new href value",
       };
     }
 
     return {
       success: true,
-      newContent: response.modifiedCode,
-      changedLine: response.changedLineNumber,
+      newContent,
+      changedLine: response.lineNumber,
     };
   } catch (error) {
     console.error("AI edit failed:", error);
@@ -125,8 +141,9 @@ function buildEditPrompt(
 ): string {
   const lines = fileContent.split("\n");
   const targetLine = edit.sourceLine || 1;
-  const contextStart = Math.max(0, targetLine - 8);
-  const contextEnd = Math.min(lines.length, targetLine + 8);
+  // Expand context to find the full element (links may span multiple lines)
+  const contextStart = Math.max(0, targetLine - 5);
+  const contextEnd = Math.min(lines.length, targetLine + 5);
 
   // Build context with line numbers
   const contextWithLineNumbers = lines
@@ -134,23 +151,34 @@ function buildEditPrompt(
     .map((line, idx) => `${contextStart + idx + 1}| ${line}`)
     .join("\n");
 
-  let editDescription = `Change text: "${edit.oldValue}" → "${edit.newValue}"`;
-  if (edit.oldHref && edit.newHref && edit.oldHref !== edit.newHref) {
-    editDescription += `\nAlso change href: "${edit.oldHref}" → "${edit.newHref}"`;
+  const textChanged = edit.oldValue !== edit.newValue;
+  const hrefChanged = edit.oldHref !== undefined && edit.newHref !== undefined && edit.oldHref !== edit.newHref;
+
+  let editDescription = "";
+  if (textChanged && hrefChanged) {
+    editDescription = `Make BOTH changes in searchString/replaceString:
+1. Text: "${edit.oldValue}" → "${edit.newValue}"
+2. href: "${edit.oldHref}" → "${edit.newHref}"
+
+Include the ENTIRE <a> tag in searchString so both changes can be made.`;
+  } else if (textChanged) {
+    editDescription = `Change text: "${edit.oldValue}" → "${edit.newValue}"`;
+  } else if (hrefChanged) {
+    editDescription = `Change href: "${edit.oldHref}" → "${edit.newHref}"`;
   }
 
-  return `Apply this edit to the file:
+  return `Find the exact string to search and replace for this edit:
 
 FILE: ${filePath}
 ELEMENT: ${edit.elementName} (${edit.elementType})
 TARGET LINE: ~${targetLine}
 
-EDIT:
+CHANGES NEEDED:
 ${editDescription}
 
-CONTEXT (lines ${contextStart + 1}-${contextEnd}):
+SOURCE CODE CONTEXT (lines ${contextStart + 1}-${contextEnd}):
 ${contextWithLineNumbers}
 
-FULL FILE:
-${fileContent}`;
+Return searchString (exact text from source) and replaceString (with changes applied).
+For multi-line elements, include line breaks in both strings.`;
 }

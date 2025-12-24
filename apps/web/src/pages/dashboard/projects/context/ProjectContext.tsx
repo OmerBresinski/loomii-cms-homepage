@@ -37,9 +37,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const saveEdit = useCallback((edit: PendingEdit) => {
         setPendingEdits(prev => {
             const next = new Map(prev);
-            // Check if value or href actually changed
-            const valueChanged = edit.originalValue !== edit.newValue;
-            const hrefChanged = edit.originalHref !== edit.newHref;
+            // Check if value or href actually changed (normalize empty/undefined)
+            const valueChanged = (edit.originalValue || "") !== (edit.newValue || "");
+            const hrefChanged = (edit.originalHref || "") !== (edit.newHref || "");
 
             if (valueChanged || hrefChanged) {
                 next.set(edit.elementId, edit);

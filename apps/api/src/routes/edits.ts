@@ -425,10 +425,26 @@ export const editRoutes = new Hono()
         );
 
         // Build edit+element pairs for PR generation
-        const editElementPairs = createdEdits.map((edit) => ({
-          edit,
-          element: elementMap.get(edit.elementId)!,
-        }));
+        // Include the original input data to preserve href info
+        const editElementPairs = createdEdits.map((edit, index) => {
+          const inputEdit = input.edits[index]!;
+          console.log(`[Publish] Edit ${index}:`, {
+            elementId: edit.elementId,
+            originalValue: inputEdit.originalValue?.slice(0, 50),
+            newValue: inputEdit.newValue?.slice(0, 50),
+            originalHref: inputEdit.originalHref,
+            newHref: inputEdit.newHref,
+          });
+          return {
+            edit: {
+              ...edit,
+              // Add href info from original input (not stored in DB)
+              oldHref: inputEdit.originalHref,
+              newHref: inputEdit.newHref,
+            },
+            element: elementMap.get(edit.elementId)!,
+          };
+        });
 
         // Generate code changes
         const changes = await generateAllChanges(editElementPairs, {

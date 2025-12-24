@@ -46,9 +46,9 @@ export function ElementRow({ element, projectId, sectionId, sectionName }: Eleme
   const [value, setValue] = useState(existingEdit?.newValue ?? originalValue);
   const [hrefValue, setHrefValue] = useState(existingEdit?.newHref ?? originalHref);
 
-  // Check if current value differs from original
-  const valueChanged = value !== originalValue;
-  const hrefChanged = hrefValue !== originalHref;
+  // Check if current value differs from original (normalize empty/undefined)
+  const valueChanged = (value || "") !== (originalValue || "");
+  const hrefChanged = (hrefValue || "") !== (originalHref || "");
   const isDirty = valueChanged || hrefChanged;
   const hasSavedEdit = hasEdit(element.id);
 

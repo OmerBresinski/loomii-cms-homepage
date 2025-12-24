@@ -68,6 +68,13 @@ export async function generateCodeChange(
     }
 
     logger.pr.editChange(oldValue, edit.newValue);
+
+    const oldHref = (edit as any).oldHref;
+    const newHref = (edit as any).newHref;
+    if (oldHref !== undefined && newHref !== undefined && oldHref !== newHref) {
+      logger.pr.editChange(oldHref, newHref);
+    }
+
     logger.pr.aiEdit("start");
 
     // Use AI to apply the edit - more robust than simple string replacement
@@ -76,24 +83,50 @@ export async function generateCodeChange(
       elementType: element.type,
       oldValue,
       newValue: edit.newValue,
-      oldHref: (element as any).href || undefined,
-      newHref: (edit as any).newHref || undefined,
+      oldHref,
+      newHref,
       sourceLine: element.sourceLine || undefined,
     });
 
     if (!aiResult.success) {
       logger.pr.aiEdit("fallback", aiResult.error);
-      // Fallback to simple string replacement
-      if (!content.includes(oldValue)) {
-        logger.pr.aiEdit("failed", `Content not found in ${element.sourceFile}`);
-        return null;
+      // Fallback to simple string replacement for both text and href
+      let fallbackContent = content;
+      const textChanged = oldValue !== edit.newValue;
+      const hrefChanged = oldHref !== undefined && newHref !== undefined && oldHref !== newHref;
+
+      // Apply text change
+      if (textChanged) {
+        if (!content.includes(oldValue)) {
+          logger.pr.aiEdit("failed", `Content not found in ${element.sourceFile}`);
+          return null;
+        }
+        fallbackContent = fallbackContent.replace(oldValue, edit.newValue);
       }
-      const fallbackContent = content.replace(oldValue, edit.newValue);
+
+      // Apply href change
+      if (hrefChanged) {
+        if (fallbackContent.includes(oldHref)) {
+          fallbackContent = fallbackContent.replace(oldHref, newHref);
+          logger.pr.editChange(oldHref, newHref);
+        } else {
+          logger.pr.aiEdit("warning", `Href "${oldHref}" not found in file`);
+        }
+      }
+
+      let description = `Update ${element.name}`;
+      if (textChanged) {
+        description += `: "${oldValue.slice(0, 50)}${oldValue.length > 50 ? "..." : ""}" → "${edit.newValue.slice(0, 50)}${edit.newValue.length > 50 ? "..." : ""}"`;
+      }
+      if (hrefChanged) {
+        description += `${textChanged ? ", " : ": "}href: "${oldHref}" → "${newHref}"`;
+      }
+
       return {
         filePath: element.sourceFile,
         oldContent: content,
         newContent: fallbackContent,
-        description: `Update ${element.name}: "${oldValue.slice(0, 50)}..." → "${edit.newValue.slice(0, 50)}..."`,
+        description,
       };
     }
 
@@ -234,35 +267,79 @@ export async function createContentPR(
 // Generate a PR title from edits
 export function generatePRTitle(edits: Array<{ element: Element }>): string {
   if (edits.length === 1 && edits[0]) {
-    return `[Content] Update ${edits[0].element.name}`;
+    return `(cms): update ${edits[0].element.name.toLowerCase()}`;
   }
 
   const types = [...new Set(edits.map((e) => e.element.type))];
   if (types.length === 1) {
-    return `[Content] Update ${edits.length} ${types[0]}s`;
+    return `(cms): update ${edits.length} ${types[0]}s`;
   }
 
-  return `[Content] Update ${edits.length} elements`;
+  return `(cms): update ${edits.length} content elements`;
 }
 
 // Generate a PR description from edits
 export function generatePRDescription(
   edits: Array<{ edit: Edit; element: Element }>
 ): string {
-  const lines = [
-    "This pull request updates content via AI CMS.",
+  const fileCount = new Set(edits.map((e) => e.element.sourceFile)).size;
+  const elementTypes = [...new Set(edits.map((e) => e.element.type))];
+
+  const lines: string[] = [
+    "## Overview",
     "",
-    "## Summary",
+    "This PR updates website content managed through AI CMS.",
+    "",
+    "| Metric | Value |",
+    "| ------ | ----- |",
+    `| Elements updated | ${edits.length} |`,
+    `| Files modified | ${fileCount} |`,
+    `| Element types | ${elementTypes.join(", ")} |`,
+    "",
+    "---",
+    "",
+    "## Changes",
     "",
   ];
 
-  for (const { edit, element } of edits) {
-    const oldValue = (edit.oldValue || element.currentValue || "").slice(0, 100);
-    const newValue = edit.newValue.slice(0, 100);
-    lines.push(`- **${element.name}** (${element.type})`);
-    lines.push(`  - From: "${oldValue}${oldValue.length >= 100 ? "..." : ""}"`);
-    lines.push(`  - To: "${newValue}${newValue.length >= 100 ? "..." : ""}"`);
+  // Group edits by file
+  const editsByFile = new Map<string, Array<{ edit: Edit; element: Element }>>();
+  for (const item of edits) {
+    const file = item.element.sourceFile || "unknown";
+    const existing = editsByFile.get(file) || [];
+    existing.push(item);
+    editsByFile.set(file, existing);
   }
+
+  for (const [file, fileEdits] of editsByFile) {
+    lines.push(`### \`${file}\``);
+    lines.push("");
+
+    for (const { edit, element } of fileEdits) {
+      const oldValue = (edit.oldValue || element.currentValue || "").slice(0, 80);
+      const newValue = edit.newValue.slice(0, 80);
+      const oldHref = (edit as any).oldHref;
+      const newHref = (edit as any).newHref;
+      const hrefChanged = oldHref && newHref && oldHref !== newHref;
+
+      lines.push(`<details>`);
+      lines.push(`<summary><strong>${element.name}</strong> <code>${element.type}</code></summary>`);
+      lines.push("");
+      lines.push("| | Before | After |");
+      lines.push("|---|---|---|");
+      lines.push(`| **Content** | \`${oldValue}${oldValue.length >= 80 ? "..." : ""}\` | \`${newValue}${newValue.length >= 80 ? "..." : ""}\` |`);
+      if (hrefChanged) {
+        lines.push(`| **Link** | \`${oldHref}\` | \`${newHref}\` |`);
+      }
+      lines.push("");
+      lines.push("</details>");
+      lines.push("");
+    }
+  }
+
+  lines.push("---");
+  lines.push("");
+  lines.push("*Automated content update via [AI CMS](https://github.com)*");
 
   return lines.join("\n");
 }
