@@ -149,33 +149,118 @@ export async function generateAllChanges(
   edits: Array<{ edit: Edit; element: Element }>,
   options: PRGeneratorOptions
 ): Promise<CodeChange[]> {
+  const { accessToken, owner, repo, baseBranch } = options;
+
+  // Group edits by file first
+  const editsByFile = new Map<string, Array<{ edit: Edit; element: Element }>>();
+  for (const item of edits) {
+    const file = item.element.sourceFile;
+    if (!file) continue;
+    const existing = editsByFile.get(file) || [];
+    existing.push(item);
+    editsByFile.set(file, existing);
+  }
+
   const changes: CodeChange[] = [];
 
-  for (const { edit, element } of edits) {
-    const change = await generateCodeChange(element, edit, options);
-    if (change) {
-      changes.push(change);
-    }
-  }
+  // Process each file once, applying all its edits sequentially
+  for (const [filePath, fileEdits] of editsByFile) {
+    logger.pr.editStart(`${fileEdits.length} elements`, filePath);
 
-  // Merge changes to the same file
-  const mergedChanges = new Map<string, CodeChange>();
-
-  for (const change of changes) {
-    const existing = mergedChanges.get(change.filePath);
-    if (existing) {
-      // Apply this change on top of the previous one
-      existing.newContent = existing.newContent.replace(
-        change.oldContent,
-        change.newContent
+    try {
+      // Fetch file content once
+      const fileData = await getFileContent(
+        accessToken,
+        owner,
+        repo,
+        filePath,
+        baseBranch
       );
-      existing.description += `\n- ${change.description}`;
-    } else {
-      mergedChanges.set(change.filePath, { ...change });
+
+      const originalContent = decodeFileContent(fileData.content);
+      let currentContent = originalContent;
+      const descriptions: string[] = [];
+
+      // Apply each edit sequentially
+      for (const { edit, element } of fileEdits) {
+        const oldValue = edit.oldValue || element.currentValue;
+        if (!oldValue) {
+          logger.pr.aiEdit("failed", `No old value for ${element.name}`);
+          continue;
+        }
+
+        logger.pr.editChange(oldValue, edit.newValue);
+
+        const oldHref = (edit as any).oldHref;
+        const newHref = (edit as any).newHref;
+        const hrefChanged = oldHref && newHref && oldHref !== newHref;
+
+        if (hrefChanged) {
+          logger.pr.editChange(oldHref, newHref);
+        }
+
+        logger.pr.aiEdit("start");
+
+        // Use AI to apply the edit
+        const aiResult = await applyEditWithAI(currentContent, filePath, {
+          elementName: element.name,
+          elementType: element.type,
+          oldValue,
+          newValue: edit.newValue,
+          oldHref,
+          newHref,
+          sourceLine: element.sourceLine || undefined,
+        });
+
+        if (aiResult.success) {
+          logger.pr.aiEdit("success", aiResult.changedLine?.toString());
+          currentContent = aiResult.newContent;
+        } else {
+          logger.pr.aiEdit("fallback", aiResult.error);
+          // Fallback to simple string replacement
+          const textChanged = oldValue !== edit.newValue;
+
+          if (textChanged) {
+            if (currentContent.includes(oldValue)) {
+              currentContent = currentContent.replace(oldValue, edit.newValue);
+            } else {
+              logger.pr.aiEdit("failed", `Content "${oldValue.slice(0, 30)}..." not found`);
+              continue;
+            }
+          }
+
+          if (hrefChanged && currentContent.includes(oldHref)) {
+            currentContent = currentContent.replace(oldHref, newHref);
+          }
+        }
+
+        // Build description
+        let desc = `Update ${element.name}`;
+        const textChanged = oldValue !== edit.newValue;
+        if (textChanged) {
+          desc += `: "${oldValue.slice(0, 50)}${oldValue.length > 50 ? "..." : ""}" → "${edit.newValue.slice(0, 50)}${edit.newValue.length > 50 ? "..." : ""}"`;
+        }
+        if (hrefChanged) {
+          desc += `${textChanged ? ", " : ": "}href: "${oldHref}" → "${newHref}"`;
+        }
+        descriptions.push(desc);
+      }
+
+      // Only add if we made changes
+      if (currentContent !== originalContent) {
+        changes.push({
+          filePath,
+          oldContent: originalContent,
+          newContent: currentContent,
+          description: descriptions.join("\n"),
+        });
+      }
+    } catch (error) {
+      logger.pr.aiEdit("failed", error instanceof Error ? error.message : "Unknown error");
     }
   }
 
-  return Array.from(mergedChanges.values());
+  return changes;
 }
 
 // Create a PR with all the changes
