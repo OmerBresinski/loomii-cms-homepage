@@ -126,6 +126,7 @@ export interface Element {
   sourceFile: string | null;
   sourceLine: number | null;
   currentValue: string | null;
+  sourceContext?: string | null;
   schema?: any;
   pageUrl: string;
   confidence: number;
@@ -141,11 +142,34 @@ export interface Section {
   startLine: number | null;
   endLine: number | null;
   elementCount: number;
+  pendingEditCount?: number;
   createdAt: string;
 }
 
+export interface PendingEditInfo {
+  id: string;
+  newValue: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    avatarUrl: string | null;
+  };
+  pullRequest: {
+    id: string;
+    githubPrNumber: number;
+    githubPrUrl: string;
+    status: "open" | "merged" | "closed" | "draft" | "conflict";
+    title: string;
+  };
+}
+
+export interface ElementWithPendingEdit extends Element {
+  pendingEdit: PendingEditInfo | null;
+}
+
 export interface SectionWithElements extends Section {
-  elements: Element[];
+  elements: ElementWithPendingEdit[];
 }
 
 export interface Pagination {

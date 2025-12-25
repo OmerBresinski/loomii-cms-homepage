@@ -39,10 +39,13 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
   // Use the fetched details (with elements) or fallback to basic info
   const elements = sectionDetail?.section?.elements || [];
 
-  // Count pending edits for this section
-  const sectionEditCount = Array.from(pendingEdits.values()).filter(
+  // Count local pending edits for this section
+  const localEditCount = Array.from(pendingEdits.values()).filter(
     edit => edit.sectionId === section.id
   ).length;
+
+  // Count of elements with pending PRs (from API)
+  const pendingPRCount = section.pendingEditCount || 0;
 
   // Filter elements by search term and selected page
   const displayedElements = elements.filter((el: any) => {
@@ -65,7 +68,10 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
   return (
     <AccordionItem
       value={section.id}
-      className={cn(sectionEditCount > 0 && "border-l-2 border-l-primary")}
+      className={cn(
+        localEditCount > 0 && "border-l-2 border-l-primary",
+        pendingPRCount > 0 && localEditCount === 0 && "border-l-2 border-l-amber-500"
+      )}
     >
       <AccordionTrigger
         onMouseEnter={onMouseEnter}
@@ -74,9 +80,14 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
         <div className="text-left flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium">{section.name}</span>
-            {sectionEditCount > 0 && (
+            {localEditCount > 0 && (
               <Badge variant="default" className="text-[10px] bg-primary/20 text-primary">
-                {sectionEditCount} edit{sectionEditCount !== 1 ? 's' : ''}
+                {localEditCount} edit{localEditCount !== 1 ? 's' : ''}
+              </Badge>
+            )}
+            {pendingPRCount > 0 && (
+              <Badge variant="warning" className="text-[10px]">
+                {pendingPRCount} pending
               </Badge>
             )}
           </div>

@@ -17,6 +17,7 @@ import { analysisRoutes } from "./routes/analysis";
 import { teamRoutes } from "./routes/team";
 import { healthRoutes } from "./routes/health";
 import { dashboardRoutes } from "./routes/dashboard";
+import { webhookRoutes } from "./routes/webhooks";
 
 // Create the main Hono app
 const app = new Hono();
@@ -48,7 +49,10 @@ app.use(
   })
 );
 
-// Clerk authentication middleware
+// Mount webhook routes BEFORE Clerk auth (webhooks don't have auth tokens)
+app.route("/webhooks", webhookRoutes);
+
+// Clerk authentication middleware (for all other routes)
 app.use("*", clerkMiddleware());
 
 // Mount routes

@@ -4,9 +4,11 @@ import { Input } from "@/ui/input";
 import { Button } from "@/ui/button";
 import { Badge } from "@/ui/badge";
 import { Label } from "@/ui/label";
-import { IconDeviceFloppy, IconCheck } from "@tabler/icons-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/ui/tooltip";
+import { IconDeviceFloppy, IconCheck, IconGitPullRequest, IconLock, IconExternalLink } from "@tabler/icons-react";
 import { useProjectContext } from "../context/ProjectContext";
 import { cn } from "@/lib/utils";
+import type { ElementWithPendingEdit } from "@/api/common";
 
 // Map element types to colors (all unique)
 const elementTypeColors: Record<string, string> = {
@@ -26,13 +28,16 @@ const elementTypeColors: Record<string, string> = {
 };
 
 interface ElementRowProps {
-  element: any;
+  element: ElementWithPendingEdit;
   sectionId: string;
   sectionName: string;
 }
 
 export function ElementRow({ element, sectionId, sectionName }: ElementRowProps) {
   const { saveEdit, hasEdit, getEdit } = useProjectContext();
+
+  // Check if this element has a pending PR (blocks editing)
+  const hasPendingPR = !!element.pendingEdit;
 
   // Get existing edit if any
   const existingEdit = getEdit(element.id);
@@ -97,14 +102,33 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
       variant="outline"
       className={cn(
         "flex-col items-stretch transition-colors",
-        hasSavedEdit && "border-l-2 border-l-primary bg-primary/5"
+        hasSavedEdit && "border-l-2 border-l-primary bg-primary/5",
+        hasPendingPR && "border-l-2 border-l-amber-500 bg-amber-500/5"
       )}
     >
       <div className="flex items-center gap-3 w-full">
         <ItemContent className="flex-1">
           <div className="flex items-center gap-2">
             <ItemTitle>{element.name || "Untitled Element"}</ItemTitle>
-            {hasSavedEdit && (
+            {hasPendingPR && (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Badge variant="warning" className="text-[10px] cursor-help gap-1">
+                    <IconGitPullRequest className="w-3 h-3" />
+                    PR #{element.pendingEdit!.pullRequest.githubPrNumber}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p className="font-medium">{element.pendingEdit!.pullRequest.title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <span className="line-through">{element.currentValue}</span>
+                    {" → "}
+                    <span className="text-amber-600">{element.pendingEdit!.newValue}</span>
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {!hasPendingPR && hasSavedEdit && (
               <Badge variant="default" className="text-[10px] bg-primary/20 text-primary">
                 Edited
               </Badge>
@@ -125,19 +149,46 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
         )}
 
         <ItemActions>
-          <Button
-            size="sm"
-            variant={needsSave || hasUnsavedChanges ? "default" : hasSavedEdit ? "outline" : "ghost"}
-            onClick={handleSave}
-            disabled={!isDirty}
-          >
-            {hasSavedEdit && !hasUnsavedChanges ? (
-              <IconCheck className="w-3.5 h-3.5" />
-            ) : (
-              <IconDeviceFloppy className="w-3.5 h-3.5" />
-            )}
-            {hasSavedEdit && !hasUnsavedChanges ? "Saved" : "Save"}
-          </Button>
+          {hasPendingPR ? (
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger>
+                  <IconLock className="w-3.5 h-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Editing blocked until PR is merged or closed
+                </TooltipContent>
+              </Tooltip>
+              <Button
+                size="sm"
+                variant="outline"
+                render={
+                  <a
+                    href={element.pendingEdit!.pullRequest.githubPrUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
+              >
+                View PR
+                <IconExternalLink className="w-3 h-3 ml-1" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant={needsSave || hasUnsavedChanges ? "default" : hasSavedEdit ? "outline" : "ghost"}
+              onClick={handleSave}
+              disabled={!isDirty}
+            >
+              {hasSavedEdit && !hasUnsavedChanges ? (
+                <IconCheck className="w-3.5 h-3.5" />
+              ) : (
+                <IconDeviceFloppy className="w-3.5 h-3.5" />
+              )}
+              {hasSavedEdit && !hasUnsavedChanges ? "Saved" : "Save"}
+            </Button>
+          )}
         </ItemActions>
       </div>
 
@@ -152,10 +203,14 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
           </Label>
           <Input
             id={`input-${element.id}`}
-            value={value}
+            value={hasPendingPR ? (element.currentValue || "") : value}
             onChange={handleChange}
             placeholder="No content"
-            className={cn(hasSavedEdit && "border-primary/50")}
+            disabled={hasPendingPR}
+            className={cn(
+              hasSavedEdit && "border-primary/50",
+              hasPendingPR && "opacity-60 cursor-not-allowed"
+            )}
           />
         </div>
 
@@ -163,10 +218,14 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-muted-foreground">Links to</Label>
             <Input
-              value={hrefValue}
+              value={hasPendingPR ? (element.schema?.href || "") : hrefValue}
               onChange={handleHrefChange}
               placeholder="Target URL (e.g. /features, https://...)"
-              className="font-mono"
+              disabled={hasPendingPR}
+              className={cn(
+                "font-mono",
+                hasPendingPR && "opacity-60 cursor-not-allowed"
+              )}
             />
           </div>
         )}

@@ -22,7 +22,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "webhook:dev": "smee -u https://smee.io/e5Em1seoO14eJsC -t http://localhost:3001/webhooks/github"
   },
   "dependencies": {
     "@clerk/backend": "^2.27.0",
