@@ -415,7 +415,7 @@ export const editRoutes = new Hono()
         // Get installation token for GitHub App
         const accessToken = await getInstallationToken(project.organization.githubInstallationId);
 
-        // Create Edit records in the database
+        // Create Edit records in the database (including href for link elements)
         const createdEdits = await prisma.$transaction(
           input.edits.map((editInput) => {
             const element = elementMap.get(editInput.elementId)!;
@@ -425,6 +425,8 @@ export const editRoutes = new Hono()
                 userId: user.id,
                 oldValue: editInput.originalValue,
                 newValue: editInput.newValue,
+                oldHref: editInput.originalHref,
+                newHref: editInput.newHref,
                 status: "draft",
               },
             });
@@ -432,23 +434,17 @@ export const editRoutes = new Hono()
         );
 
         // Build edit+element pairs for PR generation
-        // Include the original input data to preserve href info
+        // Href values are now stored in the Edit record
         const editElementPairs = createdEdits.map((edit, index) => {
-          const inputEdit = input.edits[index]!;
           console.log(`[Publish] Edit ${index}:`, {
             elementId: edit.elementId,
-            originalValue: inputEdit.originalValue?.slice(0, 50),
-            newValue: inputEdit.newValue?.slice(0, 50),
-            originalHref: inputEdit.originalHref,
-            newHref: inputEdit.newHref,
+            originalValue: edit.oldValue?.slice(0, 50),
+            newValue: edit.newValue?.slice(0, 50),
+            oldHref: edit.oldHref,
+            newHref: edit.newHref,
           });
           return {
-            edit: {
-              ...edit,
-              // Add href info from original input (not stored in DB)
-              oldHref: inputEdit.originalHref,
-              newHref: inputEdit.newHref,
-            },
+            edit,
             element: elementMap.get(edit.elementId)!,
           };
         });

@@ -23,17 +23,13 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
 
   // Prefetch on hover
   const onMouseEnter = () => {
-    queryClient.prefetchQuery({
-      ...sectionDetailQuery(projectId, section.id),
-      staleTime: Infinity
-    });
+    queryClient.prefetchQuery(sectionDetailQuery(projectId, section.id));
   };
 
   // Fetch only when open
   const { data: sectionDetail } = useQuery({
     ...sectionDetailQuery(projectId, section.id),
     enabled: isOpen,
-    staleTime: Infinity
   });
 
   // Use the fetched details (with elements) or fallback to basic info

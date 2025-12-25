@@ -21,9 +21,13 @@ export const webhookRoutes = new Hono()
 
     // 2. Handle pull_request events
     if (event === "pull_request") {
+      console.log(`PR #${data.pull_request?.number}: merged=${data.pull_request?.merged}, merged_at=${data.pull_request?.merged_at}`);
+
       if (data.action === "closed" && data.pull_request.merged) {
+        console.log("-> Calling handlePRMerged");
         await handlePRMerged(data.pull_request);
       } else if (data.action === "closed" && !data.pull_request.merged) {
+        console.log("-> Calling handlePRClosed (not merged)");
         await handlePRClosed(data.pull_request);
       }
     }
@@ -67,6 +71,29 @@ async function handlePRMerged(pr: {
 
   // 3. Update each Edit and its Element
   for (const edit of pullRequest.edits) {
+    console.log(`Updating Element ${edit.elementId}: currentValue = "${edit.newValue}", newHref = "${edit.newHref}"`);
+
+    // Build element update data
+    const elementUpdateData: { currentValue: string; schema?: any } = {
+      currentValue: edit.newValue,
+    };
+
+    // If href was changed, update the schema.href as well
+    if (edit.newHref) {
+      // Get the current element to merge schema
+      const currentElement = await prisma.element.findUnique({
+        where: { id: edit.elementId },
+        select: { schema: true },
+      });
+
+      const currentSchema = (currentElement?.schema as Record<string, unknown>) || {};
+      elementUpdateData.schema = {
+        ...currentSchema,
+        href: edit.newHref,
+      };
+      console.log(`  Also updating schema.href to "${edit.newHref}"`);
+    }
+
     await prisma.$transaction([
       prisma.edit.update({
         where: { id: edit.id },
@@ -74,9 +101,10 @@ async function handlePRMerged(pr: {
       }),
       prisma.element.update({
         where: { id: edit.elementId },
-        data: { currentValue: edit.newValue },
+        data: elementUpdateData,
       }),
     ]);
+    console.log(`Element ${edit.elementId} updated successfully`);
   }
 
   console.log(`Successfully processed merged PR #${pr.number}`);

@@ -69,10 +69,8 @@ export async function generateCodeChange(
 
     logger.pr.editChange(oldValue, edit.newValue);
 
-    const oldHref = (edit as any).oldHref;
-    const newHref = (edit as any).newHref;
-    if (oldHref !== undefined && newHref !== undefined && oldHref !== newHref) {
-      logger.pr.editChange(oldHref, newHref);
+    if (edit.oldHref && edit.newHref && edit.oldHref !== edit.newHref) {
+      logger.pr.editChange(edit.oldHref, edit.newHref);
     }
 
     logger.pr.aiEdit("start");
@@ -83,8 +81,8 @@ export async function generateCodeChange(
       elementType: element.type,
       oldValue,
       newValue: edit.newValue,
-      oldHref,
-      newHref,
+      oldHref: edit.oldHref || undefined,
+      newHref: edit.newHref || undefined,
       sourceLine: element.sourceLine || undefined,
     });
 
@@ -93,7 +91,7 @@ export async function generateCodeChange(
       // Fallback to simple string replacement for both text and href
       let fallbackContent = content;
       const textChanged = oldValue !== edit.newValue;
-      const hrefChanged = oldHref !== undefined && newHref !== undefined && oldHref !== newHref;
+      const hrefChanged = edit.oldHref && edit.newHref && edit.oldHref !== edit.newHref;
 
       // Apply text change
       if (textChanged) {
@@ -106,11 +104,11 @@ export async function generateCodeChange(
 
       // Apply href change
       if (hrefChanged) {
-        if (fallbackContent.includes(oldHref)) {
-          fallbackContent = fallbackContent.replace(oldHref, newHref);
-          logger.pr.editChange(oldHref, newHref);
+        if (fallbackContent.includes(edit.oldHref!)) {
+          fallbackContent = fallbackContent.replace(edit.oldHref!, edit.newHref!);
+          logger.pr.editChange(edit.oldHref!, edit.newHref!);
         } else {
-          logger.pr.aiEdit("fallback", `Href "${oldHref}" not found in file`);
+          logger.pr.aiEdit("fallback", `Href "${edit.oldHref}" not found in file`);
         }
       }
 
@@ -119,7 +117,7 @@ export async function generateCodeChange(
         description += `: "${oldValue.slice(0, 50)}${oldValue.length > 50 ? "..." : ""}" → "${edit.newValue.slice(0, 50)}${edit.newValue.length > 50 ? "..." : ""}"`;
       }
       if (hrefChanged) {
-        description += `${textChanged ? ", " : ": "}href: "${oldHref}" → "${newHref}"`;
+        description += `${textChanged ? ", " : ": "}href: "${edit.oldHref}" → "${edit.newHref}"`;
       }
 
       return {
@@ -191,12 +189,10 @@ export async function generateAllChanges(
 
         logger.pr.editChange(oldValue, edit.newValue);
 
-        const oldHref = (edit as any).oldHref;
-        const newHref = (edit as any).newHref;
-        const hrefChanged = oldHref && newHref && oldHref !== newHref;
+        const hrefChanged = edit.oldHref && edit.newHref && edit.oldHref !== edit.newHref;
 
         if (hrefChanged) {
-          logger.pr.editChange(oldHref, newHref);
+          logger.pr.editChange(edit.oldHref!, edit.newHref!);
         }
 
         logger.pr.aiEdit("start");
@@ -207,8 +203,8 @@ export async function generateAllChanges(
           elementType: element.type,
           oldValue,
           newValue: edit.newValue,
-          oldHref,
-          newHref,
+          oldHref: edit.oldHref || undefined,
+          newHref: edit.newHref || undefined,
           sourceLine: element.sourceLine || undefined,
         });
 
@@ -229,8 +225,8 @@ export async function generateAllChanges(
             }
           }
 
-          if (hrefChanged && currentContent.includes(oldHref)) {
-            currentContent = currentContent.replace(oldHref, newHref);
+          if (hrefChanged && currentContent.includes(edit.oldHref!)) {
+            currentContent = currentContent.replace(edit.oldHref!, edit.newHref!);
           }
         }
 
@@ -241,7 +237,7 @@ export async function generateAllChanges(
           desc += `: "${oldValue.slice(0, 50)}${oldValue.length > 50 ? "..." : ""}" → "${edit.newValue.slice(0, 50)}${edit.newValue.length > 50 ? "..." : ""}"`;
         }
         if (hrefChanged) {
-          desc += `${textChanged ? ", " : ": "}href: "${oldHref}" → "${newHref}"`;
+          desc += `${textChanged ? ", " : ": "}href: "${edit.oldHref}" → "${edit.newHref}"`;
         }
         descriptions.push(desc);
       }
@@ -357,9 +353,7 @@ export function generatePRDescription(
   const fileCount = new Set(edits.map((e) => e.element.sourceFile)).size;
   const elementTypes = [...new Set(edits.map((e) => e.element.type))];
   const hasLinkChanges = edits.some((e) => {
-    const oldHref = (e.edit as any).oldHref;
-    const newHref = (e.edit as any).newHref;
-    return oldHref && newHref && oldHref !== newHref;
+    return e.edit.oldHref && e.edit.newHref && e.edit.oldHref !== e.edit.newHref;
   });
 
   const lines: string[] = [
@@ -396,9 +390,7 @@ export function generatePRDescription(
     for (const { edit, element } of fileEdits) {
       const oldValue = edit.oldValue || element.currentValue || "";
       const newValue = edit.newValue;
-      const oldHref = (edit as any).oldHref;
-      const newHref = (edit as any).newHref;
-      const hrefChanged = oldHref && newHref && oldHref !== newHref;
+      const hrefChanged = edit.oldHref && edit.newHref && edit.oldHref !== edit.newHref;
 
       lines.push(`#### ${element.name} \`${element.type}\``);
       lines.push("");
@@ -411,8 +403,8 @@ export function generatePRDescription(
         lines.push("");
         lines.push("**Link changed:**");
         lines.push("```diff");
-        lines.push(`- ${oldHref}`);
-        lines.push(`+ ${newHref}`);
+        lines.push(`- ${edit.oldHref}`);
+        lines.push(`+ ${edit.newHref}`);
         lines.push("```");
       }
 

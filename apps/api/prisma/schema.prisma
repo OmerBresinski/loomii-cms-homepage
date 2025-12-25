@@ -200,6 +200,8 @@ model Edit {
   userId        String
   oldValue      String?    @db.Text
   newValue      String     @db.Text
+  oldHref       String?    // For link elements - original href
+  newHref       String?    // For link elements - new href
   status        EditStatus @default(draft)
   pullRequestId String?
   createdAt     DateTime   @default(now())
