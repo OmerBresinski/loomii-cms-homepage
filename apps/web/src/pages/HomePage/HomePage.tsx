@@ -143,9 +143,7 @@ const HomePage = () => {
       <div className="relative z-10 w-full max-w-sm">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-foreground text-lg font-bold">L</span>
-          </div>
+          <img src="/loomii-black-pink.png" alt="Loomii" className="w-8 h-8" />
           <span className="text-xl font-semibold text-zinc-100">Loomii</span>
           <Badge
             variant="secondary"

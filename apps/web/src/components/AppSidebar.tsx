@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router"
-import { UserButton, OrganizationSwitcher } from "@clerk/clerk-react"
+import { UserButton } from "@clerk/clerk-react"
 import { dark } from "@clerk/themes"
 import { useQuery } from "@tanstack/react-query"
 import { currentOrgQuery } from "@/lib/queries"
@@ -32,28 +32,13 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-3">
-        <OrganizationSwitcher
-          afterSelectOrganizationUrl="/dashboard"
-          afterLeaveOrganizationUrl="/onboarding"
-          hidePersonal
-          appearance={{
-            baseTheme: dark,
-            elements: {
-              rootBox: "w-full",
-              organizationSwitcherTrigger: cn(
-                "w-full px-3 py-2.5 rounded-lg",
-                "bg-transparent border-0",
-                "hover:bg-sidebar-accent",
-                "transition-all text-sm"
-              ),
-              organizationSwitcherTriggerIcon: "text-muted-foreground",
-              organizationPreviewAvatarBox: "w-8 h-8 rounded-lg",
-              organizationPreviewMainIdentifier: "text-foreground font-semibold text-sm",
-              organizationPreviewTextContainer: "gap-0",
-              organizationSwitcherPopoverActionButton__createOrganization: "!hidden",
-            },
-          }}
-        />
+        <Link
+          to="/dashboard"
+          className="flex items-center gap-2.5 px-3 py-2.5 hover:opacity-80 transition-opacity"
+        >
+          <img src="/loomii-black-pink.png" alt="Loomii" className="w-7 h-7" />
+          <span className="text-base font-semibold text-foreground">Loomii</span>
+        </Link>
       </SidebarHeader>
 
       <div className="px-3">

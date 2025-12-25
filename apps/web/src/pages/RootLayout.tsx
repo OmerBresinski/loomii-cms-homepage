@@ -39,9 +39,7 @@ export function RootLayout() {
               to="/"
               className="flex items-center gap-2 font-semibold text-lg hover:opacity-80 transition-opacity"
             >
-              <div className="w-7 h-7 bg-primary rounded flex items-center justify-center">
-                <span className="text-primary-foreground text-xs font-bold">L</span>
-              </div>
+              <img src="/loomii-black-pink.png" alt="Loomii" className="w-7 h-7" />
               <span className="tracking-tight">Loomii</span>
             </Link>
 
