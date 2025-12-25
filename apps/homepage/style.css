@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #FF2157;
-  --color-primary-hover: color-mix(in srgb, #FF2157 80%, transparent);
+  --color-primary: oklch(0.59 0.2 6.55);
+  --color-primary-hover: color-mix(in srgb, oklch(0.59 0.2 6.55) 80%, transparent);
   --color-secondary: oklch(1 0 0);
   --color-background: #000000;
   --color-foreground: #ffffff;
