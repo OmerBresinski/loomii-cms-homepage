@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/ui/button";
 import { Badge } from "@/ui/badge";
+import { Spinner } from "@/ui/spinner";
 import { cn } from "@/lib/utils";
 
 export function ProjectsPage() {
@@ -53,7 +54,7 @@ export function ProjectsPage() {
       <div className="border border-border/50 rounded-lg overflow-hidden bg-card/50 backdrop-blur-sm">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
+            <Spinner className="size-6" />
           </div>
         ) : projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-4">

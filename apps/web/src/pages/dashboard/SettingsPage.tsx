@@ -17,8 +17,9 @@ import {
 import { Button } from "@/ui/button";
 import { Card, CardContent } from "@/ui/card";
 import { Badge } from "@/ui/badge";
+import { Spinner } from "@/ui/spinner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/ui/tabs";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 type SettingsTab = "integrations" | "organization" | "account";
 
@@ -76,27 +77,17 @@ export function SettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 p-1 bg-muted/30 rounded-lg w-fit">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
-              activeTab === tab.id
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <tab.icon className="w-4 h-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SettingsTab)}>
+        <TabsList>
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id}>
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-      {/* Content */}
-      <div className="min-h-[400px]">
-        {activeTab === "integrations" && (
+        <TabsContent value="integrations" className="min-h-[400px]">
           <Card>
             <CardContent className="p-0">
               <div className="flex items-center gap-4 p-4">
@@ -108,7 +99,7 @@ export function SettingsPage() {
                     <span className="font-medium">GitHub</span>
                     {isLoading ? (
                       <Badge variant="secondary" className="gap-1 text-[10px]">
-                        <IconRefresh className="w-3 h-3 animate-spin" />
+                        <Spinner className="size-3" />
                         Checking...
                       </Badge>
                     ) : hasGitHub ? (
@@ -140,22 +131,22 @@ export function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        )}
+        </TabsContent>
 
-        {activeTab === "organization" && (
+        <TabsContent value="organization" className="min-h-[400px]">
           <OrganizationProfile
             appearance={clerkAppearance}
             routing="hash"
           />
-        )}
+        </TabsContent>
 
-        {activeTab === "account" && (
+        <TabsContent value="account" className="min-h-[400px]">
           <UserProfile
             appearance={clerkAppearance}
             routing="hash"
           />
-        )}
-      </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

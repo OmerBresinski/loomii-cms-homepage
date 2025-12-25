@@ -4,7 +4,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { Badge } from "@/ui/badge";
-import { IconArrowRight, IconLoader2 } from "@tabler/icons-react";
+import { Spinner } from "@/ui/spinner";
+import { IconArrowRight } from "@tabler/icons-react";
 
 const clerkAppearance = {
   baseTheme: dark,
@@ -106,7 +107,7 @@ export function OnboardingPage() {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4 text-center">
-          <IconLoader2 className="w-6 h-6 text-primary animate-spin" />
+          <Spinner className="size-6 text-primary" />
           <p className="text-sm text-zinc-500">Setting things up...</p>
         </div>
       </div>

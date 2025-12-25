@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { AccordionItem, AccordionTrigger, AccordionContent } from "@/ui/accordion";
-import { IconLoader2 } from "@tabler/icons-react";
+import { Spinner } from "@/ui/spinner";
 import { sectionDetailQuery } from "@/lib/queries";
 import { ElementRow } from "./ElementRow";
 import { Empty, EmptyDescription } from "@/ui/empty";
@@ -89,7 +89,7 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
         <div className="space-y-2 pt-2">
           {elements.length === 0 && isOpen ? (
             <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground text-xs">
-              <IconLoader2 className="w-3 h-3 animate-spin" />
+              <Spinner className="size-3" />
               Loading elements...
             </div>
           ) : displayedElements.length === 0 ? (

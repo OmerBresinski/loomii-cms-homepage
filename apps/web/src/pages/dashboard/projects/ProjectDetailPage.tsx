@@ -8,12 +8,12 @@ import {
   IconExternalLink,
   IconRefresh,
   IconCalendar,
-  IconChevronRight,
   IconBrandGithub,
   IconGitBranch,
   IconSearch,
-  IconLoader2,
 } from "@tabler/icons-react";
+import { Spinner } from "@/ui/spinner";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/ui/breadcrumb";
 import { Button } from "@/ui/button";
 import { Card, CardContent } from "@/ui/card";
 import { Badge } from "@/ui/badge";
@@ -203,16 +203,19 @@ export function ProjectDetailPage() {
       <div className="flex-1 p-8 space-y-8 pb-24">
       {/* Header */}
       <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link
-            to="/dashboard/projects"
-            className="hover:text-primary transition-colors"
-          >
-            Projects
-          </Link>
-          <IconChevronRight className="w-3 h-3" />
-          <span className="text-foreground font-medium">{project.name}</span>
-        </div>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link to="/dashboard/projects" />}>
+                Projects
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{project.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex flex-col gap-3">
@@ -346,7 +349,7 @@ export function ProjectDetailPage() {
             <div className="space-y-4">
               <div className="flex justify-between text-sm font-bold">
                 <span className="text-primary flex items-center gap-2">
-                  <IconLoader2 className="w-4 h-4 animate-spin" />
+                  <Spinner className="size-4" />
                   Analyzing repository structure...
                 </span>
                 <div className="flex items-center gap-4">

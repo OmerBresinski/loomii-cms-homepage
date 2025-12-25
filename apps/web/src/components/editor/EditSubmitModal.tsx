@@ -13,7 +13,8 @@ import { Textarea } from "@/ui/textarea";
 import { ScrollArea } from "@/ui/scroll-area";
 import { Field, FieldLabel, FieldContent } from "@/ui/field";
 import { Item, ItemGroup, ItemContent, ItemTitle, ItemMedia } from "@/ui/item";
-import { IconInfoCircle, IconSend, IconTypography, IconPhoto, IconLink, IconRefresh } from "@tabler/icons-react";
+import { IconInfoCircle, IconSend, IconTypography, IconPhoto, IconLink } from "@tabler/icons-react";
+import { Spinner } from "@/ui/spinner";
 
 interface Edit {
   id: string;
@@ -134,7 +135,7 @@ export function EditSubmitModal({
             </Button>
             <Button type="submit" disabled={isLoading || !prTitle.trim()}>
               {isLoading ? (
-                <IconRefresh className="w-4 h-4 mr-2 animate-spin" />
+                <Spinner className="size-4 mr-2" />
               ) : (
                 <IconSend className="w-4 h-4 mr-2" />
               )}

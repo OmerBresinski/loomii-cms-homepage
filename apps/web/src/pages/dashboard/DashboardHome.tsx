@@ -13,6 +13,7 @@ import {
 import { Button } from "@/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/ui/card";
 import { Badge } from "@/ui/badge";
+import { Spinner } from "@/ui/spinner";
 import { Item, ItemContent, ItemTitle, ItemDescription } from "@/ui/item";
 import { Separator } from "@/ui/separator";
 import { apiFetch } from "@/lib/api";
@@ -186,7 +187,7 @@ export function DashboardHome() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="py-8 flex justify-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />
+              <Spinner className="size-5" />
             </div>
           ) : recentProjects.length === 0 ? (
             <div className="py-8 text-center">

@@ -23,12 +23,12 @@ import {
   IconCheck,
   IconSelector,
   IconLock,
-  IconLoader2,
   IconFolder,
   IconBrandGithub,
   IconArrowLeft,
   IconGitBranch,
 } from "@tabler/icons-react";
+import { Spinner } from "@/ui/spinner";
 
 export function NewProjectPage() {
   const navigate = useNavigate();
@@ -204,7 +204,7 @@ export function NewProjectPage() {
                   <label className="text-xs font-medium text-muted-foreground">Branch</label>
                   {branchesLoading && formData.githubRepo ? (
                     <div className="h-6 bg-muted/50 rounded-md flex items-center justify-center border">
-                      <IconLoader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                      <Spinner className="size-3 text-muted-foreground" />
                     </div>
                   ) : (
                     <Popover open={branchOpen} onOpenChange={(open) => formData.githubRepo && setBranchOpen(open)}>
@@ -265,7 +265,7 @@ export function NewProjectPage() {
                   <label className="text-xs font-medium text-muted-foreground">Root Folder</label>
                   {foldersLoading && formData.githubRepo ? (
                     <div className="h-6 bg-muted/50 rounded-md flex items-center justify-center border">
-                      <IconLoader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                      <Spinner className="size-3 text-muted-foreground" />
                     </div>
                   ) : (
                     <Popover open={folderOpen} onOpenChange={(open) => formData.githubRepo && setFolderOpen(open)}>
@@ -374,7 +374,7 @@ export function NewProjectPage() {
               >
                 {createProject.isPending ? (
                   <>
-                    <IconLoader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                    <Spinner className="size-4 mr-1.5" />
                     Creating...
                   </>
                 ) : (

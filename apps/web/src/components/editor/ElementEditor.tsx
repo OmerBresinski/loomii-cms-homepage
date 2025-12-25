@@ -16,7 +16,8 @@ import { Textarea } from "@/ui/textarea";
 import { Label } from "@/ui/label";
 import { Badge } from "@/ui/badge";
 import { Field, FieldLabel, FieldContent, FieldDescription } from "@/ui/field";
-import { IconRefresh, IconDeviceFloppy, IconX, IconTypography, IconPhoto, IconLink } from "@tabler/icons-react";
+import { IconDeviceFloppy, IconTypography, IconPhoto, IconLink } from "@tabler/icons-react";
+import { Spinner } from "@/ui/spinner";
 
 interface ElementEditorProps {
   projectId: string;
@@ -149,7 +150,7 @@ function ElementEditorForm({
              onClick={handleSave}
           >
             {updateElement.isPending ? (
-              <IconRefresh className="w-4 h-4 mr-2 animate-spin" />
+              <Spinner className="size-4 mr-2" />
             ) : (
               <IconDeviceFloppy className="w-4 h-4 mr-2" />
             )}
@@ -177,7 +178,7 @@ export function ElementEditor({ projectId, elementId, onClose }: ElementEditorPr
        <SheetContent className="sm:max-w-md flex flex-col h-full p-0 gap-0 border-l border-border bg-card">
           {(isLoading || !element) ? (
              <div className="flex h-full items-center justify-center p-6 text-muted-foreground">
-                <IconRefresh className="w-6 h-6 animate-spin" />
+                <Spinner className="size-6" />
              </div>
           ) : (
              <ElementEditorForm 

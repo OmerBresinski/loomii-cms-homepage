@@ -7,15 +7,16 @@ import { Button } from "@/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
 import { Badge } from "@/ui/badge";
 import {
-  IconChevronRight,
   IconArrowLeft,
   IconFile,
   IconGitPullRequest,
-  IconLoader2,
   IconCheck,
   IconExternalLink,
   IconCopy,
 } from "@tabler/icons-react";
+import { Spinner } from "@/ui/spinner";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/ui/breadcrumb";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -40,53 +41,55 @@ function FileDiff({
   filePath: string;
   edits: PendingEdit[];
 }) {
-  const [isExpanded, setIsExpanded] = useState(true);
   const fileName = filePath.split("/").pop() || filePath;
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader
-        className="py-3 px-4 bg-muted/50 cursor-pointer flex-row items-center justify-between"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center gap-3">
-          <IconFile className="w-4 h-4 text-muted-foreground" />
-          <div>
-            <CardTitle className="text-sm font-mono">{fileName}</CardTitle>
-            <p className="text-xs text-muted-foreground font-mono">{filePath}</p>
-          </div>
-        </div>
-        <Badge variant="outline" className="ml-auto">
-          {edits.length} change{edits.length !== 1 ? "s" : ""}
-        </Badge>
-      </CardHeader>
-
-      {isExpanded && (
-        <CardContent className="p-0">
-          {edits.map((edit, idx) => (
-            <div key={edit.elementId} className={cn(idx > 0 && "border-t")}>
-              {/* Edit header */}
-              <div className="px-4 py-2 bg-muted/30 border-b flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">{edit.elementName}</span>
-                  {" "}in{" "}
-                  <span className="font-medium text-foreground">{edit.sectionName}</span>
-                  {" "}• Line {edit.sourceLine}
-                </span>
-                <Badge variant="secondary" className="text-[10px]">
-                  {edit.pageUrl}
-                </Badge>
-              </div>
-
-              {/* Diff view */}
-              <div className="font-mono text-xs overflow-x-auto">
-                <DiffLines edit={edit} />
-              </div>
+    <Collapsible defaultOpen>
+      <Card className="overflow-hidden">
+        <CollapsibleTrigger
+          render={
+            <CardHeader className="py-3 px-4 bg-muted/50 cursor-pointer flex-row items-center justify-between" />
+          }
+        >
+          <div className="flex items-center gap-3">
+            <IconFile className="w-4 h-4 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-sm font-mono">{fileName}</CardTitle>
+              <p className="text-xs text-muted-foreground font-mono">{filePath}</p>
             </div>
-          ))}
-        </CardContent>
-      )}
-    </Card>
+          </div>
+          <Badge variant="outline" className="ml-auto">
+            {edits.length} change{edits.length !== 1 ? "s" : ""}
+          </Badge>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
+          <CardContent className="p-0">
+            {edits.map((edit, idx) => (
+              <div key={edit.elementId} className={cn(idx > 0 && "border-t")}>
+                {/* Edit header */}
+                <div className="px-4 py-2 bg-muted/30 border-b flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{edit.elementName}</span>
+                    {" "}in{" "}
+                    <span className="font-medium text-foreground">{edit.sectionName}</span>
+                    {" "}• Line {edit.sourceLine}
+                  </span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {edit.pageUrl}
+                  </Badge>
+                </div>
+
+                {/* Diff view */}
+                <div className="font-mono text-xs overflow-x-auto">
+                  <DiffLines edit={edit} />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
@@ -474,23 +477,25 @@ export function ReviewPage() {
     <div className="p-6 space-y-6 pb-24 min-h-screen">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link
-            to="/dashboard/projects"
-            className="hover:text-primary transition-colors"
-          >
-            Projects
-          </Link>
-          <IconChevronRight className="w-3 h-3" />
-          <Link
-            to={`/dashboard/projects/${projectId}`}
-            className="hover:text-primary transition-colors"
-          >
-            {project?.name || "Project"}
-          </Link>
-          <IconChevronRight className="w-3 h-3" />
-          <span className="text-foreground font-medium">Review Changes</span>
-        </div>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link to="/dashboard/projects" />}>
+                Projects
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link to={`/dashboard/projects/${projectId}`} />}>
+                {project?.name || "Project"}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Review Changes</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
         <div className="flex items-center justify-between">
           <div>
@@ -510,7 +515,7 @@ export function ReviewPage() {
             </Button>
             <Button onClick={handlePublish} disabled={publishEdits.isPending}>
               {publishEdits.isPending ? (
-                <IconLoader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Spinner className="size-4 mr-2" />
               ) : (
                 <IconGitPullRequest className="w-4 h-4 mr-2" />
               )}
@@ -566,7 +571,7 @@ export function ReviewPage() {
             </Button>
             <Button onClick={handlePublish} size="lg" disabled={publishEdits.isPending}>
               {publishEdits.isPending ? (
-                <IconLoader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Spinner className="size-4 mr-2" />
               ) : (
                 <IconGitPullRequest className="w-4 h-4 mr-2" />
               )}
