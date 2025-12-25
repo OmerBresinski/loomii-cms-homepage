@@ -113,18 +113,49 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
             {hasPendingPR && (
               <Tooltip>
                 <TooltipTrigger>
-                  <Badge variant="warning" className="text-[10px] cursor-help gap-1">
+                  <Badge variant="warning" className="text-[10px] gap-1">
                     <IconGitPullRequest className="w-3 h-3" />
                     PR #{element.pendingEdit!.pullRequest.githubPrNumber}
                   </Badge>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p className="font-medium">{element.pendingEdit!.pullRequest.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <span className="line-through">{element.currentValue}</span>
-                    {" → "}
-                    <span className="text-amber-600">{element.pendingEdit!.newValue}</span>
-                  </p>
+                <TooltipContent side="top" className="max-w-sm p-3">
+                  <div className="flex items-center gap-1.5 text-zinc-400 text-xs mb-2">
+                    <IconGitPullRequest className="w-3.5 h-3.5" />
+                    <span className="font-semibold text-zinc-100">{element.pendingEdit!.pullRequest.title}</span>
+                  </div>
+
+                  <div className="font-mono text-xs space-y-0.5">
+                    {/* Content change */}
+                    {element.currentValue !== element.pendingEdit!.newValue && (
+                      <>
+                        <div className="text-green-400">
+                          <span className="text-green-500/70 select-none">+ </span>
+                          {element.pendingEdit!.newValue}
+                        </div>
+                        <div className="text-red-400">
+                          <span className="text-red-500/70 select-none">- </span>
+                          {element.currentValue}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Href change for links */}
+                    {element.pendingEdit!.oldHref && element.pendingEdit!.newHref && element.pendingEdit!.oldHref !== element.pendingEdit!.newHref && (
+                      <>
+                        {element.currentValue !== element.pendingEdit!.newValue && (
+                          <div className="border-t border-zinc-700 my-1.5" />
+                        )}
+                        <div className="text-green-400 break-all">
+                          <span className="text-green-500/70 select-none">+ </span>
+                          {element.pendingEdit!.newHref}
+                        </div>
+                        <div className="text-red-400 break-all">
+                          <span className="text-red-500/70 select-none">- </span>
+                          {element.pendingEdit!.oldHref}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -161,12 +192,14 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
               </Tooltip>
               <Button
                 size="sm"
-                variant="outline"
+                variant="ghost"
+                className="hover:bg-zinc-800 hover:text-zinc-100 text-zinc-400 transition-colors"
                 render={
                   <a
                     href={element.pendingEdit!.pullRequest.githubPrUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    style={{ textDecoration: 'none' }}
                   />
                 }
               >

@@ -144,6 +144,8 @@ export const sectionRoutes = new Hono()
                 ? {
                     id: pendingEdit.id,
                     newValue: pendingEdit.newValue,
+                    oldHref: pendingEdit.oldHref,
+                    newHref: pendingEdit.newHref,
                     createdAt: pendingEdit.createdAt.toISOString(),
                     user: {
                       id: pendingEdit.user.id,

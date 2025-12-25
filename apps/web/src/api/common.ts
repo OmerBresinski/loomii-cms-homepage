@@ -149,6 +149,8 @@ export interface Section {
 export interface PendingEditInfo {
   id: string;
   newValue: string;
+  oldHref: string | null;
+  newHref: string | null;
   createdAt: string;
   user: {
     id: string;
