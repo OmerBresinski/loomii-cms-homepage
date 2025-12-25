@@ -64,10 +64,11 @@ export const dashboardRoutes = new Hono()
           project: { organizationId: org.id },
         },
       }),
-      // Total PRs
+      // Total merged PRs
       prisma.pullRequest.count({
         where: {
           project: { organizationId: org.id },
+          status: "merged",
         },
       }),
       // Recent projects with stats

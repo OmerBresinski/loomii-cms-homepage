@@ -93,7 +93,7 @@ export function DashboardHome() {
     { label: "Projects", value: stats?.totalProjects ?? "-" },
     { label: "Elements", value: stats?.totalElements ?? "-" },
     { label: "Sections", value: stats?.totalSections ?? "-" },
-    { label: "Pull Requests", value: stats?.totalPullRequests ?? "-" },
+    { label: "Merged PRs", value: stats?.totalPullRequests ?? "-" },
   ];
 
   return (
