@@ -1,8 +1,8 @@
 import { Link, useLocation } from "@tanstack/react-router"
 import { UserButton } from "@clerk/clerk-react"
 import { dark } from "@clerk/themes"
-import { useQuery } from "@tanstack/react-query"
-import { currentOrgQuery } from "@/lib/queries"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { currentOrgQuery, dashboardStatsQuery, projectListQuery } from "@/lib/queries"
 import { cn } from "@/lib/utils"
 import { IconHome, IconFolder, IconSettings } from "@tabler/icons-react"
 import {
@@ -21,7 +21,19 @@ import { Separator } from "@/ui/separator"
 export function AppSidebar() {
   const { data: orgData } = useQuery(currentOrgQuery())
   const location = useLocation()
+  const queryClient = useQueryClient()
   const hasGitHub = orgData?.organization?.hasGitHubConnected
+
+  const handlePrefetch = (to: string) => {
+    const staleTime = 60000
+    if (to === "/dashboard") {
+      queryClient.prefetchQuery({ ...dashboardStatsQuery(), staleTime })
+    } else if (to === "/dashboard/projects") {
+      queryClient.prefetchQuery({ ...projectListQuery(), staleTime })
+    } else if (to === "/dashboard/settings") {
+      queryClient.prefetchQuery({ ...currentOrgQuery(), staleTime })
+    }
+  }
 
   const navItems = [
     { to: "/dashboard", label: "Overview", icon: IconHome, exact: true },
@@ -59,6 +71,7 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       render={<Link to={item.to} />}
                       isActive={isActive}
+                      onMouseEnter={() => handlePrefetch(item.to)}
                       className={cn(
                         "h-10 px-3 rounded-lg transition-all",
                         isActive
