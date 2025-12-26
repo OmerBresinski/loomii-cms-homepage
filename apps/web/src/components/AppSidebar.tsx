@@ -36,7 +36,7 @@ export function AppSidebar() {
           to="/dashboard"
           className="flex items-center gap-2.5 px-3 py-2.5 hover:opacity-80 transition-opacity"
         >
-          <img src="/loomii-black-pink.png" alt="Loomii" className="w-7 h-7" />
+          <img src="/loomii-pink-black.png" alt="Loomii" className="w-7 h-7" />
           <span className="text-base font-semibold text-foreground">Loomii</span>
         </Link>
       </SidebarHeader>
