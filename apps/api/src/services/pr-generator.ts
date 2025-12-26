@@ -23,6 +23,34 @@ interface PRGeneratorOptions {
   baseBranch: string;
 }
 
+// Replace text only on a specific line number for precise edits
+function replaceOnLine(
+  content: string,
+  lineNumber: number,
+  oldValue: string,
+  newValue: string
+): { success: boolean; content: string; error?: string } {
+  const lines = content.split('\n');
+
+  // Validate line number
+  if (lineNumber < 1 || lineNumber > lines.length) {
+    return { success: false, content, error: `Line ${lineNumber} out of range (file has ${lines.length} lines)` };
+  }
+
+  const lineIndex = lineNumber - 1; // Convert to 0-based
+  const line = lines[lineIndex]!;
+
+  // Check if the old value exists on this specific line
+  if (!line.includes(oldValue)) {
+    return { success: false, content, error: `"${oldValue.slice(0, 30)}..." not found on line ${lineNumber}` };
+  }
+
+  // Replace on this line only (first occurrence on the line)
+  lines[lineIndex] = line.replace(oldValue, newValue);
+
+  return { success: true, content: lines.join('\n') };
+}
+
 // Generate a unique branch name for the PR
 export function generateBranchName(projectName: string): string {
   const timestamp = Date.now();
@@ -95,11 +123,22 @@ export async function generateCodeChange(
 
       // Apply text change
       if (textChanged) {
-        if (!content.includes(oldValue)) {
-          logger.pr.aiEdit("failed", `Content not found in ${element.sourceFile}`);
-          return null;
+        if (element.sourceLine) {
+          // Use line-based replacement for precision when we have line info
+          const result = replaceOnLine(fallbackContent, element.sourceLine, oldValue, edit.newValue);
+          if (!result.success) {
+            logger.pr.aiEdit("failed", result.error);
+            return null;
+          }
+          fallbackContent = result.content;
+        } else {
+          // Fallback to simple replace only if no line info available
+          if (!content.includes(oldValue)) {
+            logger.pr.aiEdit("failed", `Content not found in ${element.sourceFile}`);
+            return null;
+          }
+          fallbackContent = fallbackContent.replace(oldValue, edit.newValue);
         }
-        fallbackContent = fallbackContent.replace(oldValue, edit.newValue);
       }
 
       // Apply href change
@@ -213,11 +252,21 @@ export async function generateAllChanges(
           currentContent = aiResult.newContent;
         } else {
           logger.pr.aiEdit("fallback", aiResult.error);
-          // Fallback to simple string replacement
+          // Fallback to string replacement
           const textChanged = oldValue !== edit.newValue;
 
           if (textChanged) {
-            if (currentContent.includes(oldValue)) {
+            if (element.sourceLine) {
+              // Use line-based replacement for precision
+              const result = replaceOnLine(currentContent, element.sourceLine, oldValue, edit.newValue);
+              if (result.success) {
+                currentContent = result.content;
+              } else {
+                logger.pr.aiEdit("failed", result.error);
+                continue;
+              }
+            } else if (currentContent.includes(oldValue)) {
+              // Fallback to simple replace only if no line info
               currentContent = currentContent.replace(oldValue, edit.newValue);
             } else {
               logger.pr.aiEdit("failed", `Content "${oldValue.slice(0, 30)}..." not found`);

@@ -91,16 +91,53 @@ export async function applyEditWithAI(
 
     // Check for multiple occurrences (ambiguity)
     const occurrences = fileContent.split(response.searchString).length - 1;
-    if (occurrences > 1 && response.confidence === "low") {
-      return {
-        success: false,
-        newContent: fileContent,
-        error: `Multiple occurrences (${occurrences}) of search string and low confidence`,
-      };
-    }
 
-    // Apply the replacement
-    const newContent = fileContent.replace(response.searchString, response.replaceString);
+    let newContent: string;
+
+    if (occurrences > 1) {
+      // Multiple occurrences - use line number to find the right one
+      const targetLine = edit.sourceLine || response.lineNumber;
+      if (targetLine) {
+        const lines = fileContent.split('\n');
+        let found = false;
+
+        // Search within a window around the target line
+        for (let offset = 0; offset <= 5; offset++) {
+          for (const lineNum of [targetLine + offset, targetLine - offset]) {
+            if (lineNum >= 1 && lineNum <= lines.length) {
+              const lineIndex = lineNum - 1;
+              const line = lines[lineIndex]!;
+              if (line.includes(response.searchString)) {
+                lines[lineIndex] = line.replace(response.searchString, response.replaceString);
+                found = true;
+                break;
+              }
+            }
+          }
+          if (found) break;
+        }
+
+        if (!found) {
+          // If not found near target line, fall back to first occurrence with warning
+          console.warn(`[AI Editor] Multiple occurrences but none near line ${targetLine}, using first match`);
+          newContent = fileContent.replace(response.searchString, response.replaceString);
+        } else {
+          newContent = lines.join('\n');
+        }
+      } else if (response.confidence === "low") {
+        return {
+          success: false,
+          newContent: fileContent,
+          error: `Multiple occurrences (${occurrences}) of search string, no line info, and low confidence`,
+        };
+      } else {
+        // No line info but high/medium confidence - use first occurrence
+        newContent = fileContent.replace(response.searchString, response.replaceString);
+      }
+    } else {
+      // Single occurrence - safe to replace
+      newContent = fileContent.replace(response.searchString, response.replaceString);
+    }
 
     // Verify the changes were applied
     if (textChanged && !newContent.includes(edit.newValue)) {
