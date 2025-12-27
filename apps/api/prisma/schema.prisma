@@ -41,6 +41,12 @@ enum EditStatus {
   rejected
 }
 
+enum EditType {
+  modify  // Change existing content
+  add     // Add new item to group
+  delete  // Remove item from group
+}
+
 enum PullRequestStatus {
   open
   merged
@@ -136,11 +142,12 @@ model Project {
   updatedAt      DateTime      @updatedAt
 
   // Relations
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  sections     Section[]
-  elements     Element[]
-  pullRequests PullRequest[]
-  teamMembers  TeamMember[]
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sections      Section[]
+  elements      Element[]
+  elementGroups ElementGroup[]
+  pullRequests  PullRequest[]
+  teamMembers   TeamMember[]
 
   @@map("projects")
 }
@@ -148,6 +155,7 @@ model Project {
 model Section {
   id          String   @id @default(uuid())
   projectId   String
+  pageUrl     String?  // Page route this section belongs to (e.g., "/", "/about")
   name        String   // AI-generated name like "Hero Section"
   description String?
   sourceFile  String?  // Primary file this section is from
@@ -157,16 +165,45 @@ model Section {
   updatedAt   DateTime @updatedAt
 
   // Relations
-  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project  Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   elements Element[]
+  groups   ElementGroup[]
 
   @@map("sections")
+}
+
+model ElementGroup {
+  id            String   @id @default(uuid())
+  projectId     String
+  sectionId     String?
+  pageUrl       String?  // Page route this group belongs to (e.g., "/", "/about")
+  name          String   // "Comparison Items Left", "Navigation Links"
+  description   String?
+  sourceFile    String
+  startLine     Int      // First item starts here
+  endLine       Int      // Last item ends here
+  itemCount     Int      // Current number of items
+  templateCode  String   @db.Text  // Code template for one item
+  placeholders  Json?    // Array of placeholder names/descriptions
+  containerInfo Json?    // Parent element info (tag, attributes)
+  confidence    Float    @default(0.8)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section  Section?  @relation(fields: [sectionId], references: [id])
+  elements Element[]
+
+  @@map("element_groups")
 }
 
 model Element {
   id            String      @id @default(uuid())
   projectId     String
   sectionId     String?     // Group elements into sections
+  groupId       String?     // Link to ElementGroup for repeatable items
+  groupIndex    Int?        // Position within group (0, 1, 2...)
   name          String
   type          ElementType
   selector      String?     // Optional - only set for DOM-scraped elements
@@ -185,10 +222,11 @@ model Element {
   updatedAt     DateTime    @updatedAt
 
   // Relations
-  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  section  Section?  @relation(fields: [sectionId], references: [id])
-  parent   Element?  @relation("ElementHierarchy", fields: [parentId], references: [id])
-  children Element[] @relation("ElementHierarchy")
+  project  Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  section  Section?      @relation(fields: [sectionId], references: [id])
+  group    ElementGroup? @relation(fields: [groupId], references: [id])
+  parent   Element?      @relation("ElementHierarchy", fields: [parentId], references: [id])
+  children Element[]     @relation("ElementHierarchy")
   edits    Edit[]
 
   @@map("elements")
@@ -198,10 +236,13 @@ model Edit {
   id            String     @id @default(uuid())
   elementId     String
   userId        String
+  editType      EditType   @default(modify)
   oldValue      String?    @db.Text
   newValue      String     @db.Text
   oldHref       String?    // For link elements - original href
   newHref       String?    // For link elements - new href
+  templateData  Json?      // For 'add': filled template content with placeholders
+  deletedCode   String?    @db.Text  // For 'delete': the code being removed
   status        EditStatus @default(draft)
   pullRequestId String?
   createdAt     DateTime   @default(now())

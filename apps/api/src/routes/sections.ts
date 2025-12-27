@@ -14,12 +14,21 @@ export const sectionRoutes = new Hono()
           select: { elements: true },
         },
         elements: {
-          select: { id: true, pageUrl: true },
+          select: { id: true, pageUrl: true, groupId: true },
           distinct: ["pageUrl"],
         },
       },
       orderBy: [{ sourceFile: "asc" }, { startLine: "asc" }],
     });
+
+    // Count distinct groups per section
+    const groupCountBySection = new Map<string, number>();
+    for (const section of sections) {
+      const uniqueGroups = new Set(
+        section.elements.filter(e => e.groupId).map(e => e.groupId)
+      );
+      groupCountBySection.set(section.id, uniqueGroups.size);
+    }
 
     // Get count of elements with pending edits per section (single aggregated query)
     const sectionIds = sections.map((s) => s.id);
@@ -58,6 +67,7 @@ export const sectionRoutes = new Hono()
           startLine: s.startLine,
           endLine: s.endLine,
           elementCount: s._count.elements,
+          groupCount: groupCountBySection.get(s.id) || 0,
           pendingEditCount: pendingCountBySection.get(s.id) || 0,
           pages: s.elements.map((e) => e.pageUrl),
           createdAt: s.createdAt.toISOString(),
@@ -77,6 +87,9 @@ export const sectionRoutes = new Hono()
       include: {
         elements: {
           orderBy: { sourceLine: "asc" },
+          include: {
+            group: true,
+          },
         },
       },
     });
@@ -110,6 +123,16 @@ export const sectionRoutes = new Hono()
       orderBy: { createdAt: "desc" },
     });
 
+    // Also get draft "add" edits (newly added items not yet published)
+    const draftAddEdits = await prisma.edit.findMany({
+      where: {
+        elementId: { in: elementIds },
+        status: "draft",
+        editType: "add",
+      },
+    });
+    const draftAddByElement = new Map(draftAddEdits.map(e => [e.elementId, e]));
+
     // Build map: elementId -> most recent pending edit
     const pendingEditByElement = new Map<string, (typeof pendingEdits)[0]>();
     for (const edit of pendingEdits) {
@@ -129,6 +152,7 @@ export const sectionRoutes = new Hono()
           endLine: section.endLine,
           elements: section.elements.map((e) => {
             const pendingEdit = pendingEditByElement.get(e.id);
+            const isNewItem = draftAddByElement.has(e.id);
             return {
               id: e.id,
               name: e.name,
@@ -140,6 +164,17 @@ export const sectionRoutes = new Hono()
               schema: e.schema,
               confidence: e.confidence,
               pageUrl: e.pageUrl,
+              groupId: e.groupId,
+              groupIndex: e.groupIndex,
+              isNewItem,  // Has draft "add" edit - needs to be published
+              group: e.group ? {
+                id: e.group.id,
+                name: e.group.name,
+                description: e.group.description,
+                itemCount: e.group.itemCount,
+                templateCode: e.group.templateCode,
+                placeholders: e.group.placeholders,
+              } : null,
               pendingEdit: pendingEdit
                 ? {
                     id: pendingEdit.id,

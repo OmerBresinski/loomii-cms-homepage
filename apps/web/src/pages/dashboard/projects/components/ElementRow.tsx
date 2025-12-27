@@ -56,6 +56,9 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
   const isDirty = valueChanged || hrefChanged;
   const hasSavedEdit = hasEdit(element.id);
 
+  // New items (with draft "add" edit) should always be saveable
+  const isNewItem = element.isNewItem || false;
+
   // Sync state when element prop changes (e.g. after refetch)
   useEffect(() => {
     // Only reset if there's no pending edit for this element
@@ -102,6 +105,7 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
       variant="outline"
       className={cn(
         "flex-col items-stretch transition-colors",
+        isNewItem && !hasSavedEdit && "border-l-2 border-l-green-500 bg-green-500/5",
         hasSavedEdit && "border-l-2 border-l-primary bg-primary/5",
         hasPendingPR && "border-l-2 border-l-amber-500 bg-amber-500/5"
       )}
@@ -159,6 +163,11 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
                 </TooltipContent>
               </Tooltip>
             )}
+            {!hasPendingPR && isNewItem && !hasSavedEdit && (
+              <Badge variant="default" className="text-[10px] bg-green-500/20 text-green-400">
+                New
+              </Badge>
+            )}
             {!hasPendingPR && hasSavedEdit && (
               <Badge variant="default" className="text-[10px] bg-primary/20 text-primary">
                 Edited
@@ -210,9 +219,9 @@ export function ElementRow({ element, sectionId, sectionName }: ElementRowProps)
           ) : (
             <Button
               size="sm"
-              variant={needsSave || hasUnsavedChanges ? "default" : hasSavedEdit ? "outline" : "ghost"}
+              variant={needsSave || hasUnsavedChanges || isNewItem ? "default" : hasSavedEdit ? "outline" : "ghost"}
               onClick={handleSave}
-              disabled={!isDirty}
+              disabled={!isDirty && !isNewItem}
             >
               {hasSavedEdit && !hasUnsavedChanges ? (
                 <IconCheck className="w-3.5 h-3.5" />

@@ -7,7 +7,7 @@ import {
 } from "./github";
 import { applyEditWithAI } from "./ai-code-editor";
 import { logger } from "../ai/logger";
-import type { Element, Edit } from "@prisma/client";
+import type { Element, Edit, ElementGroup } from "@prisma/client";
 
 interface CodeChange {
   filePath: string;
@@ -181,15 +181,55 @@ export async function generateCodeChange(
   }
 }
 
+// Insert new code at a specific line number
+function insertAtLine(
+  content: string,
+  lineNumber: number,
+  newCode: string,
+  indentation: string = ""
+): { success: boolean; content: string; error?: string } {
+  const lines = content.split('\n');
+
+  if (lineNumber < 1 || lineNumber > lines.length + 1) {
+    return { success: false, content, error: `Line ${lineNumber} out of range` };
+  }
+
+  // Apply indentation to the new code
+  const indentedCode = newCode.split('\n').map(line => indentation + line).join('\n');
+
+  // Insert after the specified line
+  lines.splice(lineNumber, 0, indentedCode);
+
+  return { success: true, content: lines.join('\n') };
+}
+
+// Delete lines from content
+function deleteLines(
+  content: string,
+  startLine: number,
+  endLine: number
+): { success: boolean; content: string; error?: string } {
+  const lines = content.split('\n');
+
+  if (startLine < 1 || endLine > lines.length || startLine > endLine) {
+    return { success: false, content, error: `Invalid line range ${startLine}-${endLine}` };
+  }
+
+  // Remove lines (convert to 0-based index)
+  lines.splice(startLine - 1, endLine - startLine + 1);
+
+  return { success: true, content: lines.join('\n') };
+}
+
 // Generate all code changes for a batch of edits
 export async function generateAllChanges(
-  edits: Array<{ edit: Edit; element: Element }>,
+  edits: Array<{ edit: Edit; element: Element; group?: ElementGroup | null }>,
   options: PRGeneratorOptions
 ): Promise<CodeChange[]> {
   const { accessToken, owner, repo, baseBranch } = options;
 
   // Group edits by file first
-  const editsByFile = new Map<string, Array<{ edit: Edit; element: Element }>>();
+  const editsByFile = new Map<string, Array<{ edit: Edit; element: Element; group?: ElementGroup | null }>>();
   for (const item of edits) {
     const file = item.element.sourceFile;
     if (!file) continue;
@@ -219,7 +259,56 @@ export async function generateAllChanges(
       const descriptions: string[] = [];
 
       // Apply each edit sequentially
-      for (const { edit, element } of fileEdits) {
+      for (const { edit, element, group } of fileEdits) {
+        const editType = edit.editType || "modify";
+
+        // Handle ADD operation
+        if (editType === "add") {
+          const templateData = edit.templateData as { insertAfterLine?: number; indentation?: string } | null;
+          const insertLine = templateData?.insertAfterLine || group?.endLine || element.sourceLine || 0;
+          const indentation = templateData?.indentation || "";
+
+          if (!insertLine) {
+            logger.pr.aiEdit("failed", `No insert line for add operation on ${element.name}`);
+            continue;
+          }
+
+          const result = insertAtLine(currentContent, insertLine, edit.newValue, indentation);
+          if (result.success) {
+            currentContent = result.content;
+            descriptions.push(`Add new item to ${group?.name || "group"}`);
+            logger.pr.aiEdit("success", `Inserted at line ${insertLine}`);
+          } else {
+            logger.pr.aiEdit("failed", result.error);
+          }
+          continue;
+        }
+
+        // Handle DELETE operation
+        if (editType === "delete") {
+          const sourceLine = element.sourceLine;
+          if (!sourceLine) {
+            logger.pr.aiEdit("failed", `No source line for delete operation on ${element.name}`);
+            continue;
+          }
+
+          // Estimate how many lines to delete based on the deleted code
+          const deletedCode = edit.deletedCode || edit.oldValue || "";
+          const lineCount = deletedCode.split('\n').length;
+          const endLine = sourceLine + lineCount - 1;
+
+          const result = deleteLines(currentContent, sourceLine, endLine);
+          if (result.success) {
+            currentContent = result.content;
+            descriptions.push(`Remove ${element.name} from ${group?.name || "group"}`);
+            logger.pr.aiEdit("success", `Deleted lines ${sourceLine}-${endLine}`);
+          } else {
+            logger.pr.aiEdit("failed", result.error);
+          }
+          continue;
+        }
+
+        // Handle MODIFY operation (existing code)
         const oldValue = edit.oldValue || element.currentValue;
         if (!oldValue) {
           logger.pr.aiEdit("failed", `No old value for ${element.name}`);

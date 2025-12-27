@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { AccordionItem, AccordionTrigger, AccordionContent } from "@/ui/accordion";
 import { Spinner } from "@/ui/spinner";
 import { sectionDetailQuery } from "@/lib/queries";
 import { ElementRow } from "./ElementRow";
+import { ElementGroupRow } from "./ElementGroupRow";
 import { Empty, EmptyDescription } from "@/ui/empty";
 import { Badge } from "@/ui/badge";
 import { useProjectContext } from "../context/ProjectContext";
+import { useAddGroupItem, useDeleteGroupItem } from "@/api/useGroups";
 import { cn } from "@/lib/utils";
 
 interface SectionRowProps {
@@ -20,6 +22,17 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const { pendingEdits } = useProjectContext();
+
+  const addItemMutation = useAddGroupItem();
+  const deleteItemMutation = useDeleteGroupItem();
+
+  const handleAddItem = (groupId: string, values: Record<string, string>) => {
+    addItemMutation.mutate({ projectId, groupId, values });
+  };
+
+  const handleDeleteItem = (groupId: string, elementId: string) => {
+    deleteItemMutation.mutate({ projectId, groupId, elementId });
+  };
 
   // Prefetch on hover
   const onMouseEnter = () => {
@@ -61,6 +74,38 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
     return true;
   });
 
+  // Group elements by groupId
+  const { groupedElements, ungroupedElements, groups } = useMemo(() => {
+    const grouped = new Map<string, any[]>();
+    const ungrouped: any[] = [];
+    const groupInfo = new Map<string, any>();
+
+    for (const el of displayedElements) {
+      if (el.groupId) {
+        const existing = grouped.get(el.groupId) || [];
+        existing.push(el);
+        grouped.set(el.groupId, existing);
+        // Store group info from first element (they should all have same group)
+        if (!groupInfo.has(el.groupId) && el.group) {
+          groupInfo.set(el.groupId, el.group);
+        }
+      } else {
+        ungrouped.push(el);
+      }
+    }
+
+    // Sort grouped elements by groupIndex
+    for (const [, elems] of grouped) {
+      elems.sort((a: any, b: any) => (a.groupIndex || 0) - (b.groupIndex || 0));
+    }
+
+    return {
+      groupedElements: grouped,
+      ungroupedElements: ungrouped,
+      groups: groupInfo,
+    };
+  }, [displayedElements]);
+
   return (
     <AccordionItem
       value={section.id}
@@ -89,6 +134,8 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
           </div>
           <div className="text-muted-foreground text-xs">
             {section.elementCount || elements.length} components
+            {(section.groupCount ?? groupedElements.size) > 0 &&
+              `, ${section.groupCount ?? groupedElements.size} list${(section.groupCount ?? groupedElements.size) !== 1 ? 's' : ''}`}
           </div>
         </div>
       </AccordionTrigger>
@@ -108,14 +155,37 @@ export function SectionRow({ section, projectId, searchTerm, selectedPage }: Sec
               </EmptyDescription>
             </Empty>
           ) : (
-            displayedElements.map((element: any) => (
-              <ElementRow
-                key={`${element.id}-${element.currentValue}`}
-                element={element}
-                sectionId={section.id}
-                sectionName={section.name}
-              />
-            ))
+            <>
+              {/* Render ungrouped elements */}
+              {ungroupedElements.map((element: any) => (
+                <ElementRow
+                  key={`${element.id}-${element.currentValue}`}
+                  element={element}
+                  sectionId={section.id}
+                  sectionName={section.name}
+                />
+              ))}
+
+              {/* Render grouped elements */}
+              {Array.from(groupedElements.entries()).map(([groupId, groupElems]) => {
+                const groupInfo = groups.get(groupId) || {
+                  id: groupId,
+                  name: "Group",
+                  itemCount: groupElems.length,
+                };
+                return (
+                  <ElementGroupRow
+                    key={groupId}
+                    group={groupInfo}
+                    elements={groupElems}
+                    sectionId={section.id}
+                    sectionName={section.name}
+                    onAddItem={handleAddItem}
+                    onDeleteItem={handleDeleteItem}
+                  />
+                );
+              })}
+            </>
           )}
         </div>
       </AccordionContent>

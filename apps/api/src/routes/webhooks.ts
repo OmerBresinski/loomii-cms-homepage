@@ -69,9 +69,96 @@ async function handlePRMerged(pr: {
     data: { status: "merged", mergedAt: new Date() },
   });
 
-  // 3. Update each Edit and its Element
+  // 3. Update each Edit and its Element based on edit type
   for (const edit of pullRequest.edits) {
-    console.log(`Updating Element ${edit.elementId}: currentValue = "${edit.newValue}", newHref = "${edit.newHref}"`);
+    const editType = edit.editType || "modify";
+    console.log(`Processing Edit ${edit.id} (type: ${editType}) for Element ${edit.elementId}`);
+
+    // Handle DELETE edits
+    if (editType === "delete") {
+      console.log(`  Deleting element ${edit.elementId}`);
+
+      // Get the element to find its group info
+      const element = await prisma.element.findUnique({
+        where: { id: edit.elementId },
+        select: { groupId: true, groupIndex: true },
+      });
+
+      await prisma.$transaction(async (tx) => {
+        // Approve the edit
+        await tx.edit.update({
+          where: { id: edit.id },
+          data: { status: "approved" },
+        });
+
+        // Delete the element
+        await tx.element.delete({
+          where: { id: edit.elementId },
+        });
+
+        // If element was in a group, update remaining elements' indices and group itemCount
+        if (element?.groupId) {
+          // Update group item count
+          await tx.elementGroup.update({
+            where: { id: element.groupId },
+            data: { itemCount: { decrement: 1 } },
+          });
+
+          // Update indices of elements that came after the deleted one
+          if (element.groupIndex !== null) {
+            await tx.element.updateMany({
+              where: {
+                groupId: element.groupId,
+                groupIndex: { gt: element.groupIndex },
+              },
+              data: { groupIndex: { decrement: 1 } },
+            });
+          }
+        }
+      });
+      console.log(`  Element ${edit.elementId} deleted successfully`);
+      continue;
+    }
+
+    // Handle ADD edits
+    if (editType === "add") {
+      console.log(`  Approving add edit for element ${edit.elementId}`);
+
+      // Get the element to check if it's a link and needs href update
+      const element = await prisma.element.findUnique({
+        where: { id: edit.elementId },
+        select: { type: true, schema: true },
+      });
+
+      const isLink = element?.type === "link";
+      const elementUpdateData: { currentValue: string; schema?: any } = {
+        currentValue: edit.newValue,
+      };
+
+      // If this is a link and we have a newHref, update schema.href
+      if (isLink && edit.newHref) {
+        elementUpdateData.schema = {
+          ...(element?.schema as any),
+          href: edit.newHref,
+        };
+      }
+
+      await prisma.$transaction([
+        prisma.edit.update({
+          where: { id: edit.id },
+          data: { status: "approved" },
+        }),
+        prisma.element.update({
+          where: { id: edit.elementId },
+          data: elementUpdateData,
+        }),
+      ]);
+      console.log(`  Add edit approved for element ${edit.elementId}`);
+      continue;
+    }
+
+    // Handle MODIFY edits (existing logic)
+    console.log(`  Updating Element ${edit.elementId}: currentValue = "${edit.newValue}", newHref = "${edit.newHref}"`);
 
     // Build element update data
     const elementUpdateData: { currentValue: string; schema?: any } = {

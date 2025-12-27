@@ -6,6 +6,7 @@ import { requireAuth, requireProjectAccess } from "../middleware/auth";
 import { RATE_LIMIT_ANALYSIS_PER_HOUR } from "../lib/constants";
 import { analyzeRepository } from "../ai";
 import { getInstallationToken } from "../services/github";
+import { extractGroupTemplate } from "../services/template-extractor";
 
 const triggerAnalysisSchema = z.object({
   fullRescan: z.boolean().default(false),
@@ -318,9 +319,6 @@ async function runAnalysis(
       rootPath,
     }, updateProgress);
 
-    // Update progress to 100% before saving
-    await updateProgress(100, "Saving results");
-
     const totalElements = result.sections.reduce(
       (acc, s) => acc + s.elements.length,
       0
@@ -339,17 +337,87 @@ async function runAnalysis(
       });
     }
 
-    // Clear existing sections and elements for this project
-    console.log("🗑️ Clearing existing sections and elements...");
+    // Clear existing data for this project (edits cascade from elements)
+    console.log("🗑️ Clearing existing sections, elements, groups, and pull requests...");
+    await prisma.pullRequest.deleteMany({
+      where: { projectId },
+    });
     await prisma.element.deleteMany({
+      where: { projectId },
+    });
+    await prisma.elementGroup.deleteMany({
       where: { projectId },
     });
     await prisma.section.deleteMany({
       where: { projectId },
     });
 
-    // Save sections and elements
+    // Create a mapping from temporary group IDs to real DB IDs
+    const groupIdMap = new Map<string, string>();
+
+    // Save element groups first (so we can link elements to them)
+    if (result.elementGroups.length > 0) {
+      console.log(
+        `💾 Saving ${result.elementGroups.length} element groups...`
+      );
+
+      for (let i = 0; i < result.elementGroups.length; i++) {
+        const group = result.elementGroups[i]!;
+        // Progress 95-98% for group saving + template extraction
+        const groupProgress = Math.round(95 + ((i / result.elementGroups.length) * 3));
+        await updateProgress(groupProgress, `Extracting template: ${group.name}`);
+
+        const createdGroup = await prisma.elementGroup.create({
+          data: {
+            projectId,
+            pageUrl: group.pageRoute,
+            name: group.name,
+            description: group.description,
+            sourceFile: group.sourceFile,
+            startLine: group.startLine,
+            endLine: group.endLine,
+            itemCount: group.itemCount,
+            templateCode: "",
+            confidence: group.confidence,
+          },
+        });
+        groupIdMap.set(group.id, createdGroup.id);
+
+        // Extract template for this group
+        try {
+          console.log(`  📋 Extracting template for "${group.name}"...`);
+          const template = await extractGroupTemplate({
+            accessToken,
+            owner: owner!,
+            repo: repo!,
+            branch,
+            sourceFile: group.sourceFile,
+            startLine: group.startLine,
+            endLine: group.endLine,
+            itemCount: group.itemCount,
+          });
+
+          if (template) {
+            await prisma.elementGroup.update({
+              where: { id: createdGroup.id },
+              data: {
+                templateCode: template.templateCode,
+                placeholders: template.placeholders,
+              },
+            });
+            console.log(`  ✅ Template extracted with ${template.placeholders.length} placeholders`);
+          }
+        } catch (err) {
+          console.log(`  ⚠️ Failed to extract template for "${group.name}": ${(err as Error).message}`);
+        }
+      }
+
+      console.log(`✅ Saved ${result.elementGroups.length} element groups`);
+    }
+
+    // Save sections and elements (98-100%)
     if (result.sections.length > 0) {
+      await updateProgress(98, "Saving sections and elements");
       console.log(
         `💾 Saving ${result.sections.length} sections with ${totalElements} elements...`
       );
@@ -359,6 +427,7 @@ async function runAnalysis(
         const createdSection = await prisma.section.create({
           data: {
             projectId,
+            pageUrl: section.pageRoute,
             name: section.name,
             description: section.description,
             sourceFile: section.sourceFile,
@@ -373,6 +442,9 @@ async function runAnalysis(
             data: section.elements.map((el) => ({
               projectId,
               sectionId: createdSection.id,
+              // Link to element group if this element belongs to one
+              groupId: el.groupId ? groupIdMap.get(el.groupId) : undefined,
+              groupIndex: el.groupIndex,
               name: el.name,
               type: mapToElementType(el.type) as any,
               sourceFile: el.filePath,
@@ -392,7 +464,34 @@ async function runAnalysis(
       console.log("⚠️ No sections to save");
     }
 
+    // Update element group section links (find which section each group belongs to)
+    if (result.elementGroups.length > 0) {
+      for (const group of result.elementGroups) {
+        const dbGroupId = groupIdMap.get(group.id);
+        if (!dbGroupId) continue;
+
+        // Find the section that contains this group (by file, page, and line range)
+        const matchingSection = await prisma.section.findFirst({
+          where: {
+            projectId,
+            sourceFile: group.sourceFile,
+            pageUrl: group.pageRoute,
+            startLine: { lte: group.startLine },
+            endLine: { gte: group.endLine },
+          },
+        });
+
+        if (matchingSection) {
+          await prisma.elementGroup.update({
+            where: { id: dbGroupId },
+            data: { sectionId: matchingSection.id },
+          });
+        }
+      }
+    }
+
     // Update job status
+    await updateProgress(100, "Analysis complete");
     await prisma.analysisJob.update({
       where: { id: jobId },
       data: {

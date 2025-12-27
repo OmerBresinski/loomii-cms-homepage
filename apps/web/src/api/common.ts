@@ -118,6 +118,19 @@ export interface Project {
   updatedAt: string;
 }
 
+export interface ElementGroup {
+  id: string;
+  name: string;
+  description?: string | null;
+  itemCount: number;
+  templateCode?: string;
+  placeholders?: Array<{
+    name: string;
+    description: string;
+    type: string;
+  }>;
+}
+
 export interface Element {
   id: string;
   name: string;
@@ -130,6 +143,9 @@ export interface Element {
   schema?: any;
   pageUrl: string;
   confidence: number;
+  groupId?: string | null;
+  groupIndex?: number | null;
+  group?: ElementGroup | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -142,6 +158,7 @@ export interface Section {
   startLine: number | null;
   endLine: number | null;
   elementCount: number;
+  groupCount?: number;
   pendingEditCount?: number;
   createdAt: string;
 }
@@ -168,6 +185,7 @@ export interface PendingEditInfo {
 
 export interface ElementWithPendingEdit extends Element {
   pendingEdit: PendingEditInfo | null;
+  isNewItem?: boolean;  // Has draft "add" edit - needs to be published
 }
 
 export interface SectionWithElements extends Section {

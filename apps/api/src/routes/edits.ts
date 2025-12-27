@@ -380,12 +380,15 @@ export const editRoutes = new Hono()
         return c.json({ error: "Invalid GitHub repo format" }, 400);
       }
 
-      // Get all elements referenced by the edits
+      // Get all elements referenced by the edits (include group for "add" operations)
       const elementIds = input.edits.map((e) => e.elementId);
       const elements = await prisma.element.findMany({
         where: {
           id: { in: elementIds },
           projectId,
+        },
+        include: {
+          group: true,
         },
       });
 
@@ -415,37 +418,74 @@ export const editRoutes = new Hono()
         // Get installation token for GitHub App
         const accessToken = await getInstallationToken(project.organization.githubInstallationId);
 
-        // Create Edit records in the database (including href for link elements)
-        const createdEdits = await prisma.$transaction(
-          input.edits.map((editInput) => {
-            const element = elementMap.get(editInput.elementId)!;
-            return prisma.edit.create({
-              data: {
-                elementId: editInput.elementId,
-                userId: user.id,
-                oldValue: editInput.originalValue,
-                newValue: editInput.newValue,
-                oldHref: editInput.originalHref,
-                newHref: editInput.newHref,
-                status: "draft",
-              },
-            });
-          })
-        );
+        // Check for existing draft edits (especially "add" edits from group item creation)
+        const existingDraftEdits = await prisma.edit.findMany({
+          where: {
+            elementId: { in: elementIds },
+            status: "draft",
+          },
+        });
+        const existingEditByElement = new Map(existingDraftEdits.map(e => [e.elementId, e]));
 
-        // Build edit+element pairs for PR generation
-        // Href values are now stored in the Edit record
-        const editElementPairs = createdEdits.map((edit, index) => {
-          console.log(`[Publish] Edit ${index}:`, {
-            elementId: edit.elementId,
-            originalValue: edit.oldValue?.slice(0, 50),
-            newValue: edit.newValue?.slice(0, 50),
-            oldHref: edit.oldHref,
-            newHref: edit.newHref,
-          });
+        // Separate edits: "add" edits use existing record, others get created/updated
+        const addEdits: typeof existingDraftEdits = [];
+        const editsToProcess: typeof input.edits = [];
+
+        for (const editInput of input.edits) {
+          const existingEdit = existingEditByElement.get(editInput.elementId);
+          if (existingEdit?.editType === "add") {
+            // Use existing "add" edit as-is (has template code)
+            addEdits.push(existingEdit);
+          } else {
+            editsToProcess.push(editInput);
+          }
+        }
+
+        // Create or update non-add Edit records
+        const processedEdits = editsToProcess.length > 0
+          ? await prisma.$transaction(
+              editsToProcess.map((editInput) => {
+                const existingEdit = existingEditByElement.get(editInput.elementId);
+
+                if (existingEdit) {
+                  // Update existing draft edit
+                  return prisma.edit.update({
+                    where: { id: existingEdit.id },
+                    data: {
+                      newValue: editInput.newValue,
+                      newHref: editInput.newHref,
+                      oldValue: editInput.originalValue,
+                      oldHref: editInput.originalHref,
+                    },
+                  });
+                }
+
+                // Create new edit
+                return prisma.edit.create({
+                  data: {
+                    elementId: editInput.elementId,
+                    userId: user.id,
+                    oldValue: editInput.originalValue,
+                    newValue: editInput.newValue,
+                    oldHref: editInput.originalHref,
+                    newHref: editInput.newHref,
+                    status: "draft",
+                  },
+                });
+              })
+            )
+          : [];
+
+        // Combine all edits
+        const createdEdits = [...addEdits, ...processedEdits];
+
+        // Build edit+element pairs for PR generation (include group for "add" operations)
+        const editElementPairs = createdEdits.map((edit) => {
+          const element = elementMap.get(edit.elementId)!;
           return {
             edit,
-            element: elementMap.get(edit.elementId)!,
+            element,
+            group: element.group,
           };
         });
 
@@ -458,10 +498,12 @@ export const editRoutes = new Hono()
         });
 
         if (changes.length === 0) {
-          // Rollback: delete the created edits
-          await prisma.edit.deleteMany({
-            where: { id: { in: createdEdits.map((e) => e.id) } },
-          });
+          // Rollback: only delete newly created edits (not existing "add" edits)
+          if (processedEdits.length > 0) {
+            await prisma.edit.deleteMany({
+              where: { id: { in: processedEdits.map((e) => e.id) } },
+            });
+          }
           return c.json(
             { error: "Could not generate any code changes. The content may not exist in the source files." },
             400

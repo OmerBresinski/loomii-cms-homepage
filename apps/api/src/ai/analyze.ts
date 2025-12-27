@@ -1,4 +1,5 @@
-import { generateText } from "ai";
+import { generateText, generateObject } from "ai";
+import { z } from "zod";
 import {
   createToolExecutors,
   type GitHubContext,
@@ -7,6 +8,26 @@ import {
 import { logger } from "./logger";
 
 const MODEL = "xai/grok-code-fast-1";
+
+// Zod schema for AI grouping response
+const groupingResponseSchema = z.object({
+  sections: z.array(z.object({
+    name: z.string().describe("Section name (2-4 words, e.g., 'Hero', 'Features', 'Navigation')"),
+    description: z.string().optional().describe("Brief description of the section"),
+    elements: z.array(z.object({
+      idx: z.number().describe("Element index from the input"),
+      title: z.string().describe("Role-based title for the element (e.g., 'Main Headline', 'Primary CTA')"),
+    })).describe("Elements in this section"),
+  })).describe("Sections grouping the elements"),
+  repeatingPatterns: z.array(z.object({
+    id: z.string().describe("Unique ID for this group (e.g., 'group_1')"),
+    name: z.string().describe("Group name (e.g., 'Navigation Links', 'Feature Cards')"),
+    description: z.string().optional().describe("Description of the repeating pattern"),
+    elementIndices: z.array(z.number()).describe("Indices of elements that form this group"),
+    templateStructure: z.string().describe("Description of the repeating code pattern"),
+    confidence: z.number().min(0).max(1).describe("Confidence score (0-1)"),
+  })).optional().describe("Detected repeating patterns (groups of similar elements)"),
+});
 
 // Detected page information
 export interface DetectedPage {
@@ -387,11 +408,29 @@ export interface SectionGroup {
     confidence: number;
     href?: string;
     pageRoute: string; // URL route this element belongs to
+    groupId?: string; // Temporary group ID for linking during analysis
+    groupIndex?: number; // Position within group
   }>;
+}
+
+// Detected element group (repeating patterns like lists, cards, etc.)
+export interface DetectedElementGroup {
+  id: string; // Temporary ID for linking elements during analysis
+  name: string; // "Feature Cards", "Navigation Links", "Comparison Items Left"
+  description?: string;
+  sourceFile: string;
+  startLine: number;
+  endLine: number;
+  itemCount: number;
+  elementIndices: number[]; // Indices in the raw elements array
+  templateStructure: string; // Description of the repeating pattern
+  confidence: number;
+  pageRoute: string; // Page route this group belongs to (derived from elements)
 }
 
 export interface AnalysisResult {
   sections: SectionGroup[];
+  elementGroups: DetectedElementGroup[];
   filesAnalyzed: string[];
   frameworkInfo: FrameworkInfo;
   pages: DetectedPage[];
@@ -430,123 +469,269 @@ function generateElementName(
   }
 }
 
-// Use AI to group elements into logical sections
+// Result type for groupElementsWithAI
+interface GroupingResult {
+  sections: SectionGroup[];
+  elementGroups: DetectedElementGroup[];
+}
+
+// Use AI to group elements into logical sections AND detect repeating patterns
 async function groupElementsWithAI(
+  elements: RawElement[],
+  onProgress?: (progress: number, message: string) => Promise<void>
+): Promise<GroupingResult> {
+  if (elements.length === 0) return { sections: [], elementGroups: [] };
+
+  // Group elements by file AND page to process separately
+  // This prevents mixing elements from different pages in the same file
+  const elementsByFileAndPage = new Map<string, RawElement[]>();
+  for (const el of elements) {
+    const key = `${el.filePath}::${el.pageRoute}`;  // Composite key
+    const existing = elementsByFileAndPage.get(key) || [];
+    existing.push(el);
+    elementsByFileAndPage.set(key, existing);
+  }
+
+  const allSections: SectionGroup[] = [];
+  const allElementGroups: DetectedElementGroup[] = [];
+
+  // Process each file+page combination separately (progress from 85% to 95%)
+  const groups = Array.from(elementsByFileAndPage.entries());
+  for (let i = 0; i < groups.length; i++) {
+    const [key, fileElements] = groups[i]!;
+    const [filePath, pageRoute] = key.split("::");
+    const fileName = filePath!.split("/").pop() || filePath;
+
+    // Progress: 85% + (i / total) * 10% = spreads 85-95% across file+page groups
+    const progress = Math.round(85 + ((i / groups.length) * 10));
+    await onProgress?.(progress, `Grouping ${fileName} ${pageRoute || ""} (${i + 1}/${groups.length})`);
+    console.log(`  📄 Grouping ${fileElements.length} elements from ${fileName}...`);
+
+    const { sections, elementGroups } = await groupElementsForFile(fileElements);
+    allSections.push(...sections);
+    allElementGroups.push(...elementGroups);
+  }
+
+  return { sections: allSections, elementGroups: allElementGroups };
+}
+
+// Process a single file's elements through AI grouping
+async function groupElementsForFile(
   elements: RawElement[]
-): Promise<SectionGroup[]> {
-  if (elements.length === 0) return [];
+): Promise<GroupingResult> {
+  if (elements.length === 0) return { sections: [], elementGroups: [] };
 
-  // Sort elements by file then by line number (top to bottom)
-  const sorted = [...elements].sort((a, b) => {
-    if (a.filePath !== b.filePath) return a.filePath.localeCompare(b.filePath);
-    return a.line - b.line;
-  });
+  // Sort elements by line number (top to bottom)
+  const sorted = [...elements].sort((a, b) => a.line - b.line);
 
-  // Prepare elements for AI with index
+  // Prepare elements for AI with index (no file needed since we're processing per-file)
   const elementsForAI = sorted.map((e, idx) => ({
     idx,
-    file: e.filePath.split("/").pop(), // Just filename for brevity
     line: e.line,
     type: e.type,
-    content: e.content.slice(0, 80), // Truncate for API limits
+    content: e.content.slice(0, 150), // More context for better detection
+    isLink: !!e.href, // Critical for identifying navigation lists
   }));
 
-  console.log(
-    `  Sending ${elementsForAI.length} elements to AI for grouping...`
-  );
-
-  const prompt = `Analyze these website content elements and group them into logical sections.
+  const prompt = `Analyze these website content elements and:
+1. Group them into logical sections
+2. Identify REPEATING PATTERNS (groups of similar items)
 
 ELEMENTS (sorted by position, top to bottom):
 ${JSON.stringify(elementsForAI, null, 2)}
 
-YOUR TASK:
-1. Group elements into logical UI sections (navigation, hero, features, footer, etc.)
-2. Name each section with a descriptive 2-4 word title
-3. Give each element a role-based title (NOT its content)
+## TASK 1: SECTION GROUPING
+Group elements into logical UI sections (navigation, hero, features, footer, etc.)
 
 SECTION NAMING RULES:
 - Use descriptive names like "Hero", "Navigation", "Features", "Footer", "Benefits"
-- Section names should describe WHAT the section IS
 - Keep names to 1-3 words
-- DO NOT include page type prefixes like "Landing Page", "Pitch Deck", "Homepage" etc.
-- BAD: "Landing Page Hero", "Pitch Deck Features"
-- GOOD: "Hero", "Features"
+- DO NOT include page type prefixes like "Landing Page", "Pitch Deck"
 
-ELEMENT TITLE RULES (CRITICAL):
+ELEMENT TITLE RULES:
 - Titles describe the element's ROLE, not its content
+- GOOD: "Primary CTA", "Main Headline", "Feature Title 1"
 - BAD: "Learn More Button" (echoes content)
-- GOOD: "Primary CTA" (describes role)
-- BAD: "Welcome to Our Site" (echoes content)
-- GOOD: "Main Headline" (describes role)
 
-EXAMPLES OF GOOD ELEMENT TITLES:
-- "Main Headline" (not the actual heading text)
-- "Primary CTA" (not "Learn More Button")
-- "Description" (not the paragraph text)
-- "Navigation Link 1", "Navigation Link 2"
-- "Feature Title", "Feature Description"
-- "Hero Image Alt"
+## TASK 2: REPEATING PATTERN DETECTION (LISTS)
+A LIST is a group where a user would ADD or REMOVE items. Be VERY selective.
+
+PRIORITY 1 - ALWAYS detect these as lists:
+- **Navigation links**: 3+ consecutive elements with isLink:true (ALWAYS a list!)
+- **Footer links**: Groups of links in footer area
+- **Social media links**: Links to social platforms
+
+PRIORITY 2 - Detect if clearly repeated:
+- Feature cards (3+ items with identical structure: icon + title + description)
+- Pricing tiers (2+ pricing options with same format)
+- Team members (3+ people with photo + name + role)
+- Testimonials (3+ quotes with same structure)
+
+NEVER mark these as lists:
+- Heading + paragraph (content structure, NOT a list)
+- Hero section (headline + subtext + CTA = NOT a list)
+- Two paragraphs in a row (prose, NOT a list)
+- A button after text (CTA, NOT a list)
+- Mixed element types (heading, then paragraph, then button = NOT a list)
+
+THE KEY TEST:
+"If I remove one item, does it leave a GAP in a menu/grid?"
+- YES → It's a list (nav links, feature grid, team members)
+- NO → It's just content (hero text, about section prose)
+
+CRITICAL RULES:
+1. isLink:true elements in sequence = NAVIGATION LIST (almost always)
+2. Same element TYPE is not enough - they must serve the SAME PURPOSE
+3. Minimum 3 items (except pricing: 2 is OK)
+4. When in doubt, DON'T mark it as a list
+
+TYPE CONSISTENCY (MOST IMPORTANT):
+- ALL elements in a repeating pattern MUST have the SAME type AND same isLink value
+- If mixing isLink:true with isLink:false = NOT a valid group, NEVER do this
+- Brand logo/site name (standalone text near nav) is NOT part of "Navigation Links"
+- Only group elements where you could ADD MORE of the exact same type
+
+INVALID GROUPS (never do these):
+- Text "Logo" + Link "Features" + Link "About" = WRONG (text mixed with links)
+- Heading + Paragraph = WRONG (different types)
+
+VALID GROUPS:
+- Link + Link + Link = CORRECT (all same type, all isLink:true)
+- Card + Card + Card = CORRECT (all same structure)
 
 Return ONLY valid JSON in this exact format:
-[
-  {
-    "name": "Hero Section",
-    "description": "Main hero with headline and CTA",
-    "elements": [
-      { "idx": 0, "title": "Main Headline" },
-      { "idx": 1, "title": "Supporting Text" },
-      { "idx": 2, "title": "Primary CTA" }
-    ]
-  }
-]
+{
+  "sections": [
+    {
+      "name": "Hero",
+      "description": "Main hero with headline and CTA",
+      "elements": [
+        { "idx": 0, "title": "Main Headline" },
+        { "idx": 1, "title": "Supporting Text" },
+        { "idx": 2, "title": "Primary CTA" }
+      ]
+    }
+  ],
+  "repeatingPatterns": [
+    {
+      "id": "group_1",
+      "name": "Navigation Links",
+      "description": "Main navigation menu items",
+      "elementIndices": [3, 4, 5, 6],
+      "templateStructure": "Each item is a link element with text content",
+      "confidence": 0.9
+    },
+    {
+      "id": "group_2",
+      "name": "Feature Cards",
+      "description": "Feature showcase with icon, title, and description",
+      "elementIndices": [10, 11, 12, 13, 14, 15],
+      "templateStructure": "Repeating pattern of heading followed by paragraph",
+      "confidence": 0.85
+    }
+  ]
+}
 
-IMPORTANT:
-- idx values MUST match the "idx" from the input
-- Every element MUST have both "idx" and "title"
-- Include ALL elements from the input
-- Return ONLY the JSON array, no other text`;
+GROUP NAMING - IMPORTANT:
+- Name groups by STRUCTURE not CONTENT
+- Links in nav area = "Navigation Links" (NOT "About Company Links")
+- Links in footer = "Footer Links" (NOT "Resource Links")
+- Repeated cards = "Feature Cards" or "Service Cards" (NOT "Our Products")
+
+CRITICAL REQUIREMENTS:
+- You MUST include EVERY element (every idx from 0 to ${elementsForAI.length - 1}) in exactly one section
+- idx values in sections MUST match the "idx" from the input
+- Do NOT skip or drop any elements - all ${elementsForAI.length} elements must appear in sections
+- elementIndices in repeatingPatterns MUST be consecutive element indices that form a group
+- Elements CAN appear in both a section AND a repeatingPattern
+- Only include GENUINE repeating patterns (not just similar elements scattered around)`;
 
   try {
-    const response = await (generateText as any)({
-      model: "openai/gpt-5-mini",
+    const response = await generateObject({
+      model: "anthropic/claude-3-haiku" as any,
+      schema: groupingResponseSchema,
       prompt,
-      system: `You are an expert at understanding website structure and content organization. 
-You analyze HTML/JSX elements and group them into meaningful UI sections.
-Always return valid JSON. Be concise with section names (2-4 words).
+      system: `You are an expert at understanding website structure and content organization.
+You analyze HTML/JSX elements to:
+1. Group them into meaningful UI sections
+2. Detect repeating patterns (lists, cards, navigation items, etc.)
+
+CRITICAL NAMING RULES:
+- Section names: 2-4 words, describe UI PURPOSE (Hero, Navigation, Features, Footer)
+- Group/Pattern names: Describe STRUCTURAL TYPE, not CONTENT
+  - GOOD: "Navigation Links", "Footer Links", "Feature Cards", "Social Links"
+  - BAD: "CMS Examples", "Product Names", "Company Info" (these describe content, not structure!)
+- For link groups: ALWAYS name them "[Location] Links" (e.g., "Navigation Links", "Footer Links")
+- Never use the actual text content in group names
+
 Group related content together - a heading typically starts a new section.`,
     });
 
-    const jsonMatch = response.text?.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      console.log(
-        "  Warning: AI did not return valid JSON, using fallback grouping"
-      );
-      return fallbackGrouping(sorted);
-    }
+    const aiResult = response.object;
 
-    const aiSections = JSON.parse(jsonMatch[0]);
     const sections: SectionGroup[] = [];
+    const elementGroups: DetectedElementGroup[] = [];
 
     // Track type counts for fallback naming
     const typeCounters = new Map<string, number>();
 
-    for (const aiSection of aiSections) {
-      // Support both old format (elementIndices) and new format (elements with titles)
-      const elementsWithTitles =
-        aiSection.elements ||
-        aiSection.elementIndices?.map((idx: number) => ({
-          idx,
-          title: null,
-        })) ||
-        [];
+    // Create a map from element index to group info for linking
+    const elementToGroup = new Map<number, { groupId: string; groupIndex: number }>();
 
-      if (elementsWithTitles.length === 0) {
+    // Process repeating patterns first to build the mapping
+    if (aiResult.repeatingPatterns && aiResult.repeatingPatterns.length > 0) {
+      console.log(`  Found ${aiResult.repeatingPatterns.length} repeating patterns`);
+
+      for (const pattern of aiResult.repeatingPatterns) {
+        if (!pattern.elementIndices || pattern.elementIndices.length < 2) {
+          continue;
+        }
+
+        const patternElements = pattern.elementIndices
+          .map((idx: number) => sorted[idx])
+          .filter(Boolean) as RawElement[];
+
+        if (patternElements.length < 2) continue;
+
+        const lines = patternElements.map((e) => e.line);
+        // Include file + page + line in ID to ensure uniqueness across pages
+        const sourceFile = patternElements[0]!.filePath;
+        const pageRoute = patternElements[0]!.pageRoute;
+        const startLine = Math.min(...lines);
+        // Always use unique ID (don't use pattern.id - AI returns same IDs for different pages)
+        const groupId = `group_${sourceFile}_${pageRoute}_${startLine}`;
+
+        // Store group mapping for each element
+        pattern.elementIndices.forEach((idx: number, groupIndex: number) => {
+          elementToGroup.set(idx, { groupId, groupIndex });
+        });
+
+        elementGroups.push({
+          id: groupId,
+          name: pattern.name || `Group ${elementGroups.length + 1}`,
+          description: pattern.description,
+          sourceFile,
+          startLine,
+          endLine: Math.max(...lines),
+          itemCount: patternElements.length,
+          elementIndices: pattern.elementIndices,
+          templateStructure: pattern.templateStructure || "",
+          confidence: pattern.confidence || 0.8,
+          pageRoute,
+        });
+
+        console.log(`    - "${pattern.name}": ${patternElements.length} items`);
+      }
+    }
+
+    // Process sections
+    for (const aiSection of aiResult.sections) {
+      if (aiSection.elements.length === 0) {
         continue;
       }
 
-      const sectionElements = elementsWithTitles
-        .map((el: { idx: number; title?: string }) => {
+      const sectionElements = aiSection.elements
+        .map((el) => {
           const rawElement = sorted[el.idx];
           if (!rawElement) return null;
 
@@ -562,12 +747,23 @@ Group related content together - a heading typically starts a new section.`,
             );
           }
 
+          // Check if this element belongs to a group
+          const groupInfo = elementToGroup.get(el.idx);
+
           return {
             ...rawElement,
             aiTitle: title,
+            originalIdx: el.idx,
+            groupId: groupInfo?.groupId,
+            groupIndex: groupInfo?.groupIndex,
           };
         })
-        .filter(Boolean) as (RawElement & { aiTitle: string })[];
+        .filter(Boolean) as (RawElement & {
+          aiTitle: string;
+          originalIdx: number;
+          groupId?: string;
+          groupIndex?: number;
+        })[];
 
       if (sectionElements.length === 0) continue;
 
@@ -623,6 +819,8 @@ Group related content together - a heading typically starts a new section.`,
           confidence: 0.9,
           href: e.href,
           pageRoute: e.pageRoute,
+          groupId: e.groupId,
+          groupIndex: e.groupIndex,
         })),
       });
     }
@@ -635,7 +833,7 @@ Group related content together - a heading typically starts a new section.`,
       return a.startLine - b.startLine;
     });
 
-    return sections;
+    return { sections, elementGroups };
   } catch (error) {
     console.log(`  Warning: AI grouping failed: ${(error as Error).message}`);
     return fallbackGrouping(sorted);
@@ -687,8 +885,8 @@ function generateSectionName(elements: RawElement[], index: number): string {
   return sectionTypes[index % sectionTypes.length] || `Section ${index + 1}`;
 }
 
-// Fallback grouping when AI fails - group by headings
-function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
+// Fallback grouping when AI fails - group by headings (no pattern detection)
+function fallbackGrouping(elements: RawElement[]): GroupingResult {
   const sections: SectionGroup[] = [];
   let currentElements: RawElement[] = [];
   let sectionIndex = 0;
@@ -775,7 +973,8 @@ function fallbackGrouping(elements: RawElement[]): SectionGroup[] {
     });
   }
 
-  return sections;
+  // Fallback doesn't detect repeating patterns
+  return { sections, elementGroups: [] };
 }
 
 // Progress callback type
@@ -898,10 +1097,12 @@ export async function analyzeRepository(
       await reportProgress(100, "No source files found");
       logger.workflow.complete("analyzeRepository", Date.now() - startTime, {
         sectionsFound: 0,
+        elementGroupsFound: 0,
         filesAnalyzed: 0,
       });
       return {
         sections: [],
+        elementGroups: [],
         filesAnalyzed: [],
         frameworkInfo,
         pages: frameworkInfo.pages,
@@ -952,14 +1153,14 @@ export async function analyzeRepository(
       }
     }
 
-    // Step 4: Use AI to group elements into sections (85-95%)
+    // Step 4: Use AI to group elements into sections and detect patterns (85-95%)
     await reportProgress(85, "AI grouping elements into sections");
     logger.workflow.step("AI grouping elements into sections");
-    const sections = await groupElementsWithAI(allRawElements);
+    const { sections, elementGroups } = await groupElementsWithAI(allRawElements, reportProgress);
 
-    await reportProgress(95, `Created ${sections.length} sections`);
+    await reportProgress(95, `Created ${sections.length} sections, ${elementGroups.length} groups`);
     console.log(
-      `  Created ${sections.length} sections from ${allRawElements.length} elements`
+      `  Created ${sections.length} sections and ${elementGroups.length} element groups from ${allRawElements.length} elements`
     );
 
     // Log section breakdown
@@ -970,6 +1171,16 @@ export async function analyzeRepository(
           `  ${i + 1}. "${s.name}" (${s.pageRoute}) - ${
             s.elements.length
           } elements`
+        );
+      });
+    }
+
+    // Log element groups breakdown
+    if (elementGroups.length > 0) {
+      console.log("🔄 Element groups (repeating patterns):");
+      elementGroups.forEach((g, i) => {
+        console.log(
+          `  ${i + 1}. "${g.name}" - ${g.itemCount} items (confidence: ${g.confidence})`
         );
       });
     }
@@ -989,6 +1200,7 @@ export async function analyzeRepository(
 
     const result: AnalysisResult = {
       sections,
+      elementGroups,
       filesAnalyzed,
       frameworkInfo,
       pages: frameworkInfo.pages,
@@ -996,6 +1208,7 @@ export async function analyzeRepository(
 
     logger.workflow.complete("analyzeRepository", Date.now() - startTime, {
       sectionsFound: result.sections.length,
+      elementGroupsFound: result.elementGroups.length,
       elementsFound: result.sections.reduce(
         (acc, s) => acc + s.elements.length,
         0

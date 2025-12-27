@@ -9,7 +9,7 @@ import {
   paginationSchema,
 } from "../lib/schemas";
 import { requireAuth, getCurrentUser } from "../middleware/auth";
-import { getRepository } from "../services/github";
+import { getRepository, getInstallationToken } from "../services/github";
 
 // Helper to get organization and check membership
 async function getOrgWithAccess(userId: string, clerkOrgId: string | null | undefined) {
@@ -148,7 +148,7 @@ export const projectRoutes = new Hono()
     }
 
     // Check if org has GitHub connected
-    if (!org.githubAccessToken) {
+    if (!org.githubInstallationId) {
       return c.json({ error: "Please connect GitHub to your organization first" }, 400);
     }
 
@@ -158,9 +158,10 @@ export const projectRoutes = new Hono()
       return c.json({ error: "Invalid GitHub repo format" }, 400);
     }
 
-    // Validate GitHub repo access using org's token
+    // Validate GitHub repo access using installation token
     try {
-      await getRepository(org.githubAccessToken, owner, repo);
+      const accessToken = await getInstallationToken(org.githubInstallationId);
+      await getRepository(accessToken, owner, repo);
     } catch (error) {
       return c.json(
         { error: "Cannot access repository. Please check permissions." },
